@@ -156,15 +156,7 @@ void sshCloseConnection(SshConnection *connection)
       {
          //Check channel state
          if(connection->context->mode == SSH_OPERATION_MODE_SERVER &&
-            channel->state == SSH_CHANNEL_STATE_CLOSED &&
-            channel->closeRequest)
-         {
-            //Release SSH channel
-            channel->state = SSH_CHANNEL_STATE_UNUSED;
-         }
-         else if(connection->context->mode == SSH_OPERATION_MODE_SERVER &&
-            channel->state == SSH_CHANNEL_STATE_OPEN &&
-            !channel->channelSuccessSent)
+            (channel->closeRequest || !channel->channelSuccessSent))
          {
             //Release SSH channel
             channel->state = SSH_CHANNEL_STATE_UNUSED;
