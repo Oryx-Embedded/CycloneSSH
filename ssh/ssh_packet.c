@@ -364,15 +364,29 @@ error_t sshParsePacket(SshConnection *connection, uint8_t *packet,
          //Convert the packet length to host byte order
          n = ntohl(header->packetLen);
 
-         //Malformed message?
-         if(n < (header->paddingLen + sizeof(uint8_t)))
-            return ERROR_INVALID_MESSAGE;
+         //Sanity check
+         if(length == (n + sizeof(uint32_t)))
+         {
+            //Check the length of the padding string
+            if(n >= (header->paddingLen + sizeof(uint8_t)))
+            {
+               //Retrieve the length of the payload
+               n -= header->paddingLen + sizeof(uint8_t);
 
-         //Retrieve the length of the payload
-         n -= header->paddingLen + sizeof(uint8_t);
-
-         //Parse the received message
-         error = sshParseMessage(connection, header->payload, n);
+               //Parse the received message
+               error = sshParseMessage(connection, header->payload, n);
+            }
+            else
+            {
+               //Invalid padding length
+               error = ERROR_INVALID_MESSAGE;
+            }
+         }
+         else
+         {
+            //Invalid length
+            error = ERROR_INVALID_MESSAGE;
+         }
       }
       else
       {
@@ -864,9 +878,6 @@ error_t sshDecryptPacket(SshConnection *connection, uint8_t *packet,
          TRACE_VERBOSE("Computed MAC:\r\n");
          TRACE_VERBOSE_ARRAY("  ", mac, macSize);
 
-         //Return the length of the decrypted packet
-         *length = n;
-
          //The calculated MAC is bitwise compared to the received message
          //authentication code
          for(mask = 0, i = 0; i < macSize; i++)
@@ -880,9 +891,15 @@ error_t sshDecryptPacket(SshConnection *connection, uint8_t *packet,
 #endif
    }
 
-   //Failed to decrypt SSH packet?
-   if(error)
+   //Check status code
+   if(!error)
    {
+      //Return the length of the decrypted packet
+      *length = n;
+   }
+   else
+   {
+      //Failed to decrypt SSH packet
       error = ERROR_DECRYPTION_FAILED;
    }
 
@@ -1120,180 +1137,186 @@ error_t sshParseMessage(SshConnection *connection, const uint8_t *message,
    error_t error;
    uint8_t type;
 
-   //Malformed message?
-   if(length < sizeof(uint8_t))
-      return ERROR_INVALID_MESSAGE;
+   //Check the length of the message
+   if(length >= sizeof(uint8_t))
+   {
+      //The first byte of the payload indicates the message type
+      type = message[0];
 
-   //The first byte of the payload indicates the message type
-   type = message[0];
-
-   //Check message type
-   if(type == SSH_MSG_KEXINIT)
-   {
-      //Key exchange begins with an SSH_MSG_KEXINIT message
-      error = sshParseKexInit(connection, message, length);
-   }
-   else if(type >= SSH_MSG_KEX_MIN && type <= SSH_MSG_KEX_MAX)
-   {
-      //Parse key exchange method-specific messages
-      error = sshParseKexMessage(connection, type, message, length);
-   }
-   else if(type == SSH_MSG_NEWKEYS)
-   {
-      //Key exchange ends with an SSH_MSG_NEWKEYS message
-      error = sshParseNewKeys(connection, message, length);
-   }
-   else if(type == SSH_MSG_SERVICE_REQUEST)
-   {
-      //After the key exchange, the client requests a service using a
-      //SSH_MSG_SERVICE_REQUEST message
-      error = sshParseServiceRequest(connection, message, length);
-   }
-   else if(type == SSH_MSG_SERVICE_ACCEPT)
-   {
-      //If the server supports the service (and permits the client to use
-      //it), it must respond with an SSH_MSG_SERVICE_ACCEPT message
-      error = sshParseServiceAccept(connection, message, length);
-   }
-   else if(type == SSH_MSG_USERAUTH_REQUEST)
-   {
-      //All authentication requests use an SSH_MSG_USERAUTH_REQUEST message
-      error = sshParseUserAuthRequest(connection, message, length);
-   }
-   else if(type == SSH_MSG_USERAUTH_SUCCESS)
-   {
-      //When the server accepts authentication, it must respond with a
-      //SSH_MSG_USERAUTH_SUCCESS message
-      error = sshParseUserAuthSuccess(connection, message, length);
-   }
-   else if(type == SSH_MSG_USERAUTH_FAILURE)
-   {
-      //If the server rejects the authentication request, it must respond
-      //with an SSH_MSG_USERAUTH_FAILURE message
-      error = sshParseUserAuthFailure(connection, message, length);
-   }
-   else if(type == SSH_MSG_USERAUTH_BANNER)
-   {
-      //The SSH server may send an SSH_MSG_USERAUTH_BANNER message at any time
-      //after this authentication protocol starts and before authentication is
-      //successful
-      error = sshParseUserAuthBanner(connection, message, length);
-   }
-   else if(type >= SSH_MSG_USERAUTH_MIN && type <= SSH_MSG_USERAUTH_MAX)
-   {
-      //Parse authentication method-specific messages
-      error = sshParseUserAuthMessage(connection, type, message, length);
-   }
-   else if(type == SSH_MSG_GLOBAL_REQUEST)
-   {
-      //Both the client and server may send global requests at any time (refer
-      //to RFC 4254, section 4)
-      error = sshParseGlobalRequest(connection, message, length);
-   }
-   else if(type == SSH_MSG_REQUEST_SUCCESS)
-   {
-      //The recipient responds with either SSH_MSG_REQUEST_SUCCESS or
-      //SSH_MSG_REQUEST_FAILURE
-      error = sshParseRequestSuccess(connection, message, length);
-   }
-   else if(type == SSH_MSG_REQUEST_FAILURE)
-   {
-      //The recipient responds with either SSH_MSG_REQUEST_SUCCESS or
-      //SSH_MSG_REQUEST_FAILURE
-      error = sshParseRequestFailure(connection, message, length);
-   }
-   else if(type == SSH_MSG_CHANNEL_OPEN)
-   {
-      //When either side wishes to open a new channel, it then sends a
-      //SSH_MSG_CHANNEL_OPEN message to the other side
-      error = sshParseChannelOpen(connection, message, length);
-   }
-   else if(type == SSH_MSG_CHANNEL_OPEN_CONFIRMATION)
-   {
-      //The recipient responds with either SSH_MSG_CHANNEL_OPEN_CONFIRMATION
-      //or SSH_MSG_CHANNEL_OPEN_FAILURE
-      error = sshParseChannelOpenConfirmation(connection, message, length);
-   }
-   else if(type == SSH_MSG_CHANNEL_OPEN_FAILURE)
-   {
-      //The recipient responds with either SSH_MSG_CHANNEL_OPEN_CONFIRMATION
-      //or SSH_MSG_CHANNEL_OPEN_FAILURE
-      error = sshParseChannelOpenFailure(connection, message, length);
-   }
-   else if(type == SSH_MSG_CHANNEL_REQUEST)
-   {
-      //All channel-specific requests use an SSH_MSG_CHANNEL_REQUEST message
-      error = sshParseChannelRequest(connection, message, length);
-   }
-   else if(type == SSH_MSG_CHANNEL_SUCCESS)
-   {
-      //The recipient responds with either SSH_MSG_CHANNEL_SUCCESS or
-      //SSH_MSG_CHANNEL_FAILURE
-      error = sshParseChannelSuccess(connection, message, length);
-   }
-   else if(type == SSH_MSG_CHANNEL_FAILURE)
-   {
-      //The recipient responds with either SSH_MSG_CHANNEL_SUCCESS or
-      //SSH_MSG_CHANNEL_FAILURE
-      error = sshParseChannelFailure(connection, message, length);
-   }
-   else if(type == SSH_MSG_CHANNEL_WINDOW_ADJUST)
-   {
-      //Both parties use the SSH_MSG_CHANNEL_WINDOW_ADJUST message to adjust
-      //the window
-      error = sshParseChannelWindowAdjust(connection, message, length);
-   }
-   else if(type == SSH_MSG_CHANNEL_DATA)
-   {
-      //Data transfer is done with SSH_MSG_CHANNEL_DATA message
-      error = sshParseChannelData(connection, message, length);
-   }
-   else if(type == SSH_MSG_CHANNEL_EXTENDED_DATA)
-   {
-      //Extended data can be passed with SSH_MSG_CHANNEL_EXTENDED_DATA messages
-      error = sshParseChannelExtendedData(connection, message, length);
-   }
-   else if(type == SSH_MSG_CHANNEL_EOF)
-   {
-      //When a party will no longer send more data to a channel, it should
-      //send an SSH_MSG_CHANNEL_EOF message
-      error = sshParseChannelEof(connection, message, length);
-   }
-   else if(type == SSH_MSG_CHANNEL_CLOSE)
-   {
-      //When either party wishes to terminate the channel, it sends an
-      //SSH_MSG_CHANNEL_CLOSE message
-      error = sshParseChannelClose(connection, message, length);
-   }
-   else if(type == SSH_MSG_IGNORE)
-   {
-      //The SSH_MSG_IGNORE message can be used as an additional protection
-      //measure against advanced traffic analysis techniques
-      error = sshParseIgnore(connection, message, length);
-   }
-   else if(type == SSH_MSG_DEBUG)
-   {
-      //The SSH_MSG_DEBUG message is used to transmit information that may
-      //help debugging
-      error = sshParseDebug(connection, message, length);
-   }
-   else if(type == SSH_MSG_DISCONNECT)
-   {
-      //The SSH_MSG_DISCONNECT message causes immediate termination of the
-      //connection. All implementations must be able to process this message
-      error = sshParseDisconnect(connection, message, length);
-   }
-   else if(type == SSH_MSG_UNIMPLEMENTED)
-   {
-      //An implementation must respond to all unrecognized messages with an
-      //SSH_MSG_UNIMPLEMENTED message in the order in which the messages were
-      //received
-      error = sshParseUnimplemented(connection, message, length);
+      //Check message type
+      if(type == SSH_MSG_KEXINIT)
+      {
+         //Key exchange begins with an SSH_MSG_KEXINIT message
+         error = sshParseKexInit(connection, message, length);
+      }
+      else if(type >= SSH_MSG_KEX_MIN && type <= SSH_MSG_KEX_MAX)
+      {
+         //Parse key exchange method-specific messages
+         error = sshParseKexMessage(connection, type, message, length);
+      }
+      else if(type == SSH_MSG_NEWKEYS)
+      {
+         //Key exchange ends with an SSH_MSG_NEWKEYS message
+         error = sshParseNewKeys(connection, message, length);
+      }
+      else if(type == SSH_MSG_SERVICE_REQUEST)
+      {
+         //After the key exchange, the client requests a service using a
+         //SSH_MSG_SERVICE_REQUEST message
+         error = sshParseServiceRequest(connection, message, length);
+      }
+      else if(type == SSH_MSG_SERVICE_ACCEPT)
+      {
+         //If the server supports the service (and permits the client to use
+         //it), it must respond with an SSH_MSG_SERVICE_ACCEPT message
+         error = sshParseServiceAccept(connection, message, length);
+      }
+      else if(type == SSH_MSG_USERAUTH_REQUEST)
+      {
+         //All authentication requests use an SSH_MSG_USERAUTH_REQUEST message
+         error = sshParseUserAuthRequest(connection, message, length);
+      }
+      else if(type == SSH_MSG_USERAUTH_SUCCESS)
+      {
+         //When the server accepts authentication, it must respond with a
+         //SSH_MSG_USERAUTH_SUCCESS message
+         error = sshParseUserAuthSuccess(connection, message, length);
+      }
+      else if(type == SSH_MSG_USERAUTH_FAILURE)
+      {
+         //If the server rejects the authentication request, it must respond
+         //with an SSH_MSG_USERAUTH_FAILURE message
+         error = sshParseUserAuthFailure(connection, message, length);
+      }
+      else if(type == SSH_MSG_USERAUTH_BANNER)
+      {
+         //The SSH server may send an SSH_MSG_USERAUTH_BANNER message at any
+         //time after this authentication protocol starts and before
+         //authentication is successful
+         error = sshParseUserAuthBanner(connection, message, length);
+      }
+      else if(type >= SSH_MSG_USERAUTH_MIN && type <= SSH_MSG_USERAUTH_MAX)
+      {
+         //Parse authentication method-specific messages
+         error = sshParseUserAuthMessage(connection, type, message, length);
+      }
+      else if(type == SSH_MSG_GLOBAL_REQUEST)
+      {
+         //Both the client and server may send global requests at any time
+         //(refer to RFC 4254, section 4)
+         error = sshParseGlobalRequest(connection, message, length);
+      }
+      else if(type == SSH_MSG_REQUEST_SUCCESS)
+      {
+         //The recipient responds with either SSH_MSG_REQUEST_SUCCESS or
+         //SSH_MSG_REQUEST_FAILURE
+         error = sshParseRequestSuccess(connection, message, length);
+      }
+      else if(type == SSH_MSG_REQUEST_FAILURE)
+      {
+         //The recipient responds with either SSH_MSG_REQUEST_SUCCESS or
+         //SSH_MSG_REQUEST_FAILURE
+         error = sshParseRequestFailure(connection, message, length);
+      }
+      else if(type == SSH_MSG_CHANNEL_OPEN)
+      {
+         //When either side wishes to open a new channel, it then sends a
+         //SSH_MSG_CHANNEL_OPEN message to the other side
+         error = sshParseChannelOpen(connection, message, length);
+      }
+      else if(type == SSH_MSG_CHANNEL_OPEN_CONFIRMATION)
+      {
+         //The recipient responds with either SSH_MSG_CHANNEL_OPEN_CONFIRMATION
+         //or SSH_MSG_CHANNEL_OPEN_FAILURE
+         error = sshParseChannelOpenConfirmation(connection, message, length);
+      }
+      else if(type == SSH_MSG_CHANNEL_OPEN_FAILURE)
+      {
+         //The recipient responds with either SSH_MSG_CHANNEL_OPEN_CONFIRMATION
+         //or SSH_MSG_CHANNEL_OPEN_FAILURE
+         error = sshParseChannelOpenFailure(connection, message, length);
+      }
+      else if(type == SSH_MSG_CHANNEL_REQUEST)
+      {
+         //All channel-specific requests use an SSH_MSG_CHANNEL_REQUEST message
+         error = sshParseChannelRequest(connection, message, length);
+      }
+      else if(type == SSH_MSG_CHANNEL_SUCCESS)
+      {
+         //The recipient responds with either SSH_MSG_CHANNEL_SUCCESS or
+         //SSH_MSG_CHANNEL_FAILURE
+         error = sshParseChannelSuccess(connection, message, length);
+      }
+      else if(type == SSH_MSG_CHANNEL_FAILURE)
+      {
+         //The recipient responds with either SSH_MSG_CHANNEL_SUCCESS or
+         //SSH_MSG_CHANNEL_FAILURE
+         error = sshParseChannelFailure(connection, message, length);
+      }
+      else if(type == SSH_MSG_CHANNEL_WINDOW_ADJUST)
+      {
+         //Both parties use the SSH_MSG_CHANNEL_WINDOW_ADJUST message to adjust
+         //the window
+         error = sshParseChannelWindowAdjust(connection, message, length);
+      }
+      else if(type == SSH_MSG_CHANNEL_DATA)
+      {
+         //Data transfer is done with SSH_MSG_CHANNEL_DATA message
+         error = sshParseChannelData(connection, message, length);
+      }
+      else if(type == SSH_MSG_CHANNEL_EXTENDED_DATA)
+      {
+         //Extended data can be passed with SSH_MSG_CHANNEL_EXTENDED_DATA
+         //messages
+         error = sshParseChannelExtendedData(connection, message, length);
+      }
+      else if(type == SSH_MSG_CHANNEL_EOF)
+      {
+         //When a party will no longer send more data to a channel, it should
+         //send an SSH_MSG_CHANNEL_EOF message
+         error = sshParseChannelEof(connection, message, length);
+      }
+      else if(type == SSH_MSG_CHANNEL_CLOSE)
+      {
+         //When either party wishes to terminate the channel, it sends an
+         //SSH_MSG_CHANNEL_CLOSE message
+         error = sshParseChannelClose(connection, message, length);
+      }
+      else if(type == SSH_MSG_IGNORE)
+      {
+         //The SSH_MSG_IGNORE message can be used as an additional protection
+         //measure against advanced traffic analysis techniques
+         error = sshParseIgnore(connection, message, length);
+      }
+      else if(type == SSH_MSG_DEBUG)
+      {
+         //The SSH_MSG_DEBUG message is used to transmit information that may
+         //help debugging
+         error = sshParseDebug(connection, message, length);
+      }
+      else if(type == SSH_MSG_DISCONNECT)
+      {
+         //The SSH_MSG_DISCONNECT message causes immediate termination of the
+         //connection. All implementations must be able to process this message
+         error = sshParseDisconnect(connection, message, length);
+      }
+      else if(type == SSH_MSG_UNIMPLEMENTED)
+      {
+         //An implementation must respond to all unrecognized messages with an
+         //SSH_MSG_UNIMPLEMENTED message in the order in which the messages
+         //were received
+         error = sshParseUnimplemented(connection, message, length);
+      }
+      else
+      {
+         //Unrecognized message received
+         error = sshParseUnrecognized(connection, message, length);
+      }
    }
    else
    {
-      //Unrecognized message received
-      error = sshParseUnrecognized(connection, message, length);
+      //Malformed message
+      error = ERROR_INVALID_MESSAGE;
    }
 
    //Return status code

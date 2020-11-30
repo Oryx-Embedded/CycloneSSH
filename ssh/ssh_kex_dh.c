@@ -183,6 +183,7 @@ error_t sshSendKexDhReply(SshConnection *connection)
 error_t sshFormatKexDhInit(SshConnection *connection, uint8_t *p,
    size_t *length)
 {
+#if (SSH_CLIENT_SUPPORT == ENABLED)
    error_t error;
    size_t n;
 
@@ -207,6 +208,10 @@ error_t sshFormatKexDhInit(SshConnection *connection, uint8_t *p,
 
    //Successful processing
    return NO_ERROR;
+#else
+   //Client operation mode is not implemented
+   return ERROR_NOT_IMPLEMENTED;
+#endif
 }
 
 
@@ -221,6 +226,7 @@ error_t sshFormatKexDhInit(SshConnection *connection, uint8_t *p,
 error_t sshFormatKexDhReply(SshConnection *connection, uint8_t *p,
    size_t *length)
 {
+#if (SSH_SERVER_SUPPORT == ENABLED)
    error_t error;
    size_t n;
 
@@ -321,6 +327,10 @@ error_t sshFormatKexDhReply(SshConnection *connection, uint8_t *p,
 
    //Successful processing
    return NO_ERROR;
+#else
+   //Server operation mode is not implemented
+   return ERROR_NOT_IMPLEMENTED;
+#endif
 }
 
 
@@ -335,6 +345,7 @@ error_t sshFormatKexDhReply(SshConnection *connection, uint8_t *p,
 error_t sshParseKexDhInit(SshConnection *connection, const uint8_t *message,
    size_t length)
 {
+#if (SSH_SERVER_SUPPORT == ENABLED)
    error_t error;
    const uint8_t *p;
    SshBinaryString publicKey;
@@ -418,6 +429,10 @@ error_t sshParseKexDhInit(SshConnection *connection, const uint8_t *message,
 
    //The server responds with an SSH_MSG_KEX_DH_REPLY message
    return sshSendKexDhReply(connection);
+#else
+   //Server operation mode is not implemented
+   return ERROR_UNEXPECTED_MESSAGE;
+#endif
 }
 
 
@@ -432,6 +447,7 @@ error_t sshParseKexDhInit(SshConnection *connection, const uint8_t *message,
 error_t sshParseKexDhReply(SshConnection *connection, const uint8_t *message,
    size_t length)
 {
+#if (SSH_CLIENT_SUPPORT == ENABLED)
    error_t error;
    const uint8_t *p;
    SshString hostKeyAlgo;
@@ -606,6 +622,10 @@ error_t sshParseKexDhReply(SshConnection *connection, const uint8_t *message,
 
    //Key exchange ends by each side sending an SSH_MSG_NEWKEYS message
    return sshSendNewKeys(connection);
+#else
+   //Client operation mode is not implemented
+   return ERROR_UNEXPECTED_MESSAGE;
+#endif
 }
 
 

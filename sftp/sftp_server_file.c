@@ -139,11 +139,11 @@ error_t sftpServerGetFileStat(SftpServerSession *session,
    //File permissions
    if((fileStat.attributes & FS_FILE_ATTR_READ_ONLY) != 0)
    {
-      attributes->permissions = S_IRUSR;
+      attributes->permissions = SFTP_MODE_IRUSR;
    }
    else
    {
-      attributes->permissions = S_IRUSR | S_IWUSR;
+      attributes->permissions = SFTP_MODE_IRUSR | SFTP_MODE_IWUSR;
    }
 
    //Modification time

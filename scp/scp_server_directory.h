@@ -1,5 +1,5 @@
 /**
- * @file sftp_server_directory.h
+ * @file scp_server_directory.h
  * @brief Directory operations
  *
  * @section License
@@ -28,35 +28,21 @@
  * @version 2.0.0
  **/
 
-#ifndef _SFTP_SERVER_DIRECTORY_H
-#define _SFTP_SERVER_DIRECTORY_H
+#ifndef _SCP_SERVER_DIRECTORY_H
+#define _SCP_SERVER_DIRECTORY_H
 
 //Dependencies
-#include "sftp/sftp_server.h"
+#include "scp/scp_server.h"
 
 //C++ guard
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-//SFTP server related functions
-error_t sftpServerCreateDir(SftpServerSession *session,
-   const SshString *path, const SftpFileAttrs *attributes);
-
-error_t sftpServerRemoveDir(SftpServerSession *session,
-   const SshString *path);
-
-error_t sftpServerOpenDir(SftpServerSession *session,
-   const SshString *path, uint32_t *handle);
-
-error_t sftpServerReadDir(SftpServerSession *session,
-   const SshBinaryString *handle, SftpName *name);
-
-error_t sftpServerCloseDir(SftpServerSession *session,
-   const SshBinaryString *handle);
-
-SftpFileObject *sftpServerFindDir(SftpServerSession *session,
-   const SshBinaryString *handle);
+//SCP server related functions
+error_t scpServerCreateDir(ScpServerSession *session, const char_t *name);
+error_t scpServerOpenDir(ScpServerSession *session);
+void scpServerGetNextDirEntry(ScpServerSession *session);
 
 //C++ guard
 #ifdef __cplusplus

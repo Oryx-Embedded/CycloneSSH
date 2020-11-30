@@ -599,6 +599,11 @@ error_t sshFormatChannelRequest(SshChannel *channel, const char_t *requestType,
       //Format "signal" request specific data
       error = sshFormatSignalReqParams(requestParams, p, &n);
    }
+   else if(!osStrcmp(requestType, "exit-status"))
+   {
+      //Format "exit-status" request specific data
+      error = sshFormatExitStatusReqParams(requestParams, p, &n);
+   }
    else if(!osStrcmp(requestType, "break"))
    {
       //Format "break" request specific data
@@ -822,6 +827,32 @@ error_t sshFormatSignalReqParams(const SshSignalReqParams *requestParams,
 
    //Return status code
    return error;
+}
+
+
+/**
+ * @brief Format "exit-status" request specific data
+ * @param[in] requestParams Pointer to the request specific parameters
+ * @param[out] p Output stream where to write the request type specific data
+ * @param[out] written Total number of bytes that have been written
+ * @return Error code
+ **/
+
+error_t sshFormatExitStatusReqParams(const SshExitStatusReqParams *requestParams,
+   uint8_t *p, size_t *written)
+{
+   //Check parameters
+   if(requestParams == NULL)
+      return ERROR_INVALID_PARAMETER;
+
+   //Set exit status
+   STORE32BE(requestParams->exitStatus, p);
+
+   //Total number of bytes that have been written
+   *written = sizeof(uint32_t);
+
+   //Successful processing
+   return NO_ERROR;
 }
 
 
@@ -1314,10 +1345,10 @@ error_t sshParsePtyReqParams(const uint8_t *p, size_t length,
       return ERROR_INVALID_MESSAGE;
 
    //Debug message
-   TRACE_INFO("  Term Width (chars) = %u\r\n", ptyReqParams->termWidthChars);
-   TRACE_INFO("  Term Height (rows) = %u\r\n", ptyReqParams->termHeightRows);
-   TRACE_INFO("  Term Width (pixels) = %u\r\n", ptyReqParams->termWidthPixels);
-   TRACE_INFO("  Term Height (pixels) = %u\r\n", ptyReqParams->termHeightPixels);
+   TRACE_INFO("  Term Width (chars) = %" PRIu32 "\r\n", ptyReqParams->termWidthChars);
+   TRACE_INFO("  Term Height (rows) = %" PRIu32 "\r\n", ptyReqParams->termHeightRows);
+   TRACE_INFO("  Term Width (pixels) = %" PRIu32 "\r\n", ptyReqParams->termWidthPixels);
+   TRACE_INFO("  Term Height (pixels) = %" PRIu32 "\r\n", ptyReqParams->termHeightPixels);
 
    //Successful processing
    return NO_ERROR;
@@ -1349,6 +1380,58 @@ error_t sshParseExecReqParams(const uint8_t *p, size_t length,
 
    //Successful processing
    return NO_ERROR;
+}
+
+
+/**
+ * @brief Retrieve the specified argument from an "exec" request
+ * @param[in] requestParams Pointer to the "exec" request parameters
+ * @param[in] index Zero-based index of the argument
+ * @param[out] arg Value of the argument
+ * @return TRUE if the index is valid, else FALSE
+ **/
+
+bool_t sshGetExecReqArg(const SshExecReqParams *requestParams, uint_t index,
+   SshString *arg)
+{
+   size_t i;
+   size_t j;
+   uint_t n;
+
+   //Initialize variables
+   i = 0;
+   n = 0;
+
+   //Parse the command line
+   for(j = 0; j <= requestParams->command.length; j++)
+   {
+      //Arguments are separated by whitespace characters
+      if(j == requestParams->command.length ||
+         osIsblank(requestParams->command.value[j]))
+      {
+         //Non-empty string?
+         if(i < j)
+         {
+            //Matching index?
+            if(n++ == index)
+            {
+               //Point to first character of the argument
+               arg->value = requestParams->command.value + i;
+               //Determine the length of the argument
+               arg->length = j - i;
+
+               //The index is valid
+               return TRUE;
+            }
+         }
+
+         //Point to the next argument of the list
+         i = j + 1;
+      }
+   }
+
+   //The index is out of range
+   return FALSE;
 }
 
 
@@ -1432,10 +1515,10 @@ error_t sshParseWindowChangeReqParams(const uint8_t *p, size_t length,
    requestParams->termHeightPixels = LOAD32BE(p);
 
    //Debug message
-   TRACE_INFO("  Term Width (chars) = %u\r\n", requestParams->termWidthChars);
-   TRACE_INFO("  Term Height (rows) = %u\r\n", requestParams->termHeightRows);
-   TRACE_INFO("  Term Width (pixels) = %u\r\n", requestParams->termWidthPixels);
-   TRACE_INFO("  Term Height (pixels) = %u\r\n", requestParams->termHeightPixels);
+   TRACE_INFO("  Term Width (chars) = %" PRIu32 "\r\n", requestParams->termWidthChars);
+   TRACE_INFO("  Term Height (rows) = %" PRIu32 "\r\n", requestParams->termHeightRows);
+   TRACE_INFO("  Term Width (pixels) = %" PRIu32 "\r\n", requestParams->termWidthPixels);
+   TRACE_INFO("  Term Height (pixels) = %" PRIu32 "\r\n", requestParams->termHeightPixels);
 
    //Successful processing
    return NO_ERROR;
@@ -1469,6 +1552,31 @@ error_t sshParseSignalReqParams(const uint8_t *p, size_t length,
    return NO_ERROR;
 }
 
+
+/**
+ * @brief Parse "exit-status" request specific data
+ * @param[in] p Pointer to the request type specific data
+ * @param[in] length Length of the request specific data, in bytes
+ * @param[out] requestParams Information resulting from the parsing process
+ * @return Error code
+ **/
+
+error_t sshParseExitStatusReqParams(const uint8_t *p, size_t length,
+   SshExitStatusReqParams *requestParams)
+{
+   //Malformed request?
+   if(length != sizeof(uint32_t))
+      return ERROR_INVALID_MESSAGE;
+
+   //Get exit status
+   requestParams->exitStatus = LOAD32BE(p);
+
+   //Debug message
+   TRACE_INFO("  Exit status = %" PRIu32 "\r\n", requestParams->exitStatus);
+
+   //Successful processing
+   return NO_ERROR;
+}
 
 /**
  * @brief Parse "break" request specific data
@@ -1537,7 +1645,7 @@ error_t sshParseChannelSuccess(SshConnection *connection,
    recipientChannel = LOAD32BE(p);
 
    //Debug message
-   TRACE_INFO("  Recipient Channel = %u\r\n", recipientChannel);
+   TRACE_INFO("  Recipient Channel = %" PRIu32 "\r\n", recipientChannel);
 
    //Acquire exclusive access to the SSH context
    osAcquireMutex(&connection->context->mutex);
@@ -1557,7 +1665,7 @@ error_t sshParseChannelSuccess(SshConnection *connection,
             //Update channel request state
             channel->requestState = SSH_REQUEST_STATE_SUCCESS;
 
-            //Sucessfull processing
+            //Successfull processing
             error = NO_ERROR;
          }
          else
@@ -1627,7 +1735,7 @@ error_t sshParseChannelFailure(SshConnection *connection,
    recipientChannel = LOAD32BE(p);
 
    //Debug message
-   TRACE_INFO("  Recipient Channel = %u\r\n", recipientChannel);
+   TRACE_INFO("  Recipient Channel = %" PRIu32 "\r\n", recipientChannel);
 
    //Acquire exclusive access to the SSH context
    osAcquireMutex(&connection->context->mutex);
@@ -1647,7 +1755,7 @@ error_t sshParseChannelFailure(SshConnection *connection,
             //Update channel request state
             channel->requestState = SSH_REQUEST_STATE_FAILURE;
 
-            //Sucessfull processing
+            //Successfull processing
             error = NO_ERROR;
          }
          else

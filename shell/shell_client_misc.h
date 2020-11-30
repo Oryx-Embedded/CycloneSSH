@@ -1,6 +1,6 @@
 /**
- * @file sftp_server_directory.h
- * @brief Directory operations
+ * @file shell_client_misc.h
+ * @brief Helper functions for SSH secure shell client
  *
  * @section License
  *
@@ -28,35 +28,31 @@
  * @version 2.0.0
  **/
 
-#ifndef _SFTP_SERVER_DIRECTORY_H
-#define _SFTP_SERVER_DIRECTORY_H
+#ifndef _SHELL_CLIENT_MISC_H
+#define _SHELL_CLIENT_MISC_H
 
 //Dependencies
-#include "sftp/sftp_server.h"
+#include "shell/shell_client.h"
 
 //C++ guard
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-//SFTP server related functions
-error_t sftpServerCreateDir(SftpServerSession *session,
-   const SshString *path, const SftpFileAttrs *attributes);
+//Shell client related functions
+void shellClientChangeState(ShellClientContext *context,
+   ShellClientState newState);
 
-error_t sftpServerRemoveDir(SftpServerSession *session,
-   const SshString *path);
+error_t shellClientChannelRequestCallback(SshChannel *channel,
+   const SshString *type, const uint8_t *data, size_t length,
+   void *param);
 
-error_t sftpServerOpenDir(SftpServerSession *session,
-   const SshString *path, uint32_t *handle);
+error_t shellClientOpenConnection(ShellClientContext *context);
+error_t shellClientEstablishConnection(ShellClientContext *context);
+void shellClientCloseConnection(ShellClientContext *context);
 
-error_t sftpServerReadDir(SftpServerSession *session,
-   const SshBinaryString *handle, SftpName *name);
-
-error_t sftpServerCloseDir(SftpServerSession *session,
-   const SshBinaryString *handle);
-
-SftpFileObject *sftpServerFindDir(SftpServerSession *session,
-   const SshBinaryString *handle);
+error_t shellClientProcessEvents(ShellClientContext *context);
+error_t shellClientCheckTimeout(ShellClientContext *context);
 
 //C++ guard
 #ifdef __cplusplus

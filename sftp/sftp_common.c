@@ -147,49 +147,49 @@ error_t sftpFormatLongFilename(const SshString *filename,
       }
 
       //Check user permissions
-      if((attributes->permissions & S_IRUSR) != 0)
+      if((attributes->permissions & SFTP_MODE_IRUSR) != 0)
       {
          p[1] = 'r';
       }
 
-      if((attributes->permissions & S_IWUSR) != 0)
+      if((attributes->permissions & SFTP_MODE_IWUSR) != 0)
       {
          p[2] = 'w';
       }
 
-      if((attributes->permissions & S_IXUSR) != 0)
+      if((attributes->permissions & SFTP_MODE_IXUSR) != 0)
       {
          p[3] = 'x';
       }
 
       //Check group permissions
-      if((attributes->permissions & S_IRGRP) != 0)
+      if((attributes->permissions & SFTP_MODE_IRGRP) != 0)
       {
          p[4] = 'r';
       }
 
-      if((attributes->permissions & S_IWGRP) != 0)
+      if((attributes->permissions & SFTP_MODE_IWGRP) != 0)
       {
          p[5] = 'w';
       }
 
-      if((attributes->permissions & S_IXGRP) != 0)
+      if((attributes->permissions & SFTP_MODE_IXGRP) != 0)
       {
          p[6] = 'x';
       }
 
       //Check other (everyone) permissions
-      if((attributes->permissions & S_IROTH) != 0)
+      if((attributes->permissions & SFTP_MODE_IROTH) != 0)
       {
          p[7] = 'r';
       }
 
-      if((attributes->permissions & S_IWOTH) != 0)
+      if((attributes->permissions & SFTP_MODE_IWOTH) != 0)
       {
          p[8] = 'w';
       }
 
-      if((attributes->permissions & S_IXOTH) != 0)
+      if((attributes->permissions & SFTP_MODE_IXOTH) != 0)
       {
          p[9] = 'x';
       }
@@ -305,7 +305,7 @@ error_t sftpFormatAttributes(SftpVersion version,
    if((attributes->flags & SSH_FILEXFER_ATTR_PERMISSIONS) != 0)
    {
       //The 'permissions' field contains a bit mask of file permissions
-      permissions = attributes->permissions & ~S_IFMT;
+      permissions = attributes->permissions & ~SFTP_MODE_IFMT;
 
       //Check SFTP protocol version
       if(version <= SFTP_VERSION_3)
@@ -650,33 +650,33 @@ SftpFileType sftpConvertPermToFileType(uint32_t permissions)
    SftpFileType type;
 
    //Check permission bits
-   switch(permissions & S_IFMT)
+   switch(permissions & SFTP_MODE_IFMT)
    {
-   case S_IFREG:
+   case SFTP_MODE_IFREG:
       //The file is a regular file
       type = SSH_FILEXFER_TYPE_REGULAR;
       break;
-   case S_IFDIR:
+   case SFTP_MODE_IFDIR:
       //The file is a directory
       type = SSH_FILEXFER_TYPE_DIRECTORY;
       break;
-   case S_IFLNK:
+   case SFTP_MODE_IFLNK:
       //The file is a symbolic link
       type = SSH_FILEXFER_TYPE_SYMLINK;
       break;
-   case S_IFSOCK:
+   case SFTP_MODE_IFSOCK:
       //The file is a socket
       type = SSH_FILEXFER_TYPE_SOCKET;
       break;
-   case S_IFCHR:
+   case SFTP_MODE_IFCHR:
       //The file is a character special file
       type = SSH_FILEXFER_TYPE_CHAR_DEVICE;
       break;
-   case S_IFBLK:
+   case SFTP_MODE_IFBLK:
       //The file is a block special file
       type = SSH_FILEXFER_TYPE_BLOCK_DEVICE;
       break;
-   case S_IFIFO:
+   case SFTP_MODE_IFIFO:
       //The file is a FIFO special file or a pipe
       type = SSH_FILEXFER_TYPE_FIFO;
       break;
@@ -706,31 +706,31 @@ uint32_t sftpConvertFileTypeToPerm(SftpFileType type)
    {
    case SSH_FILEXFER_TYPE_REGULAR:
       //The file is a regular file
-      permissions = S_IFREG;
+      permissions = SFTP_MODE_IFREG;
       break;
    case SSH_FILEXFER_TYPE_DIRECTORY:
       //The file is a directory
-      permissions = S_IFDIR;
+      permissions = SFTP_MODE_IFDIR;
       break;
    case SSH_FILEXFER_TYPE_SYMLINK:
       //The file is a symbolic link
-      permissions = S_IFLNK;
+      permissions = SFTP_MODE_IFLNK;
       break;
    case SSH_FILEXFER_TYPE_SOCKET:
       //The file is a socket
-      permissions = S_IFSOCK;
+      permissions = SFTP_MODE_IFSOCK;
       break;
    case SSH_FILEXFER_TYPE_CHAR_DEVICE:
       //The file is a character special file
-      permissions = S_IFCHR;
+      permissions = SFTP_MODE_IFCHR;
       break;
    case SSH_FILEXFER_TYPE_BLOCK_DEVICE:
       //The file is a block special file
-      permissions = S_IFBLK;
+      permissions = SFTP_MODE_IFBLK;
       break;
    case SSH_FILEXFER_TYPE_FIFO:
       //The file is a FIFO special file or a pipe
-      permissions = S_IFIFO;
+      permissions = SFTP_MODE_IFIFO;
       break;
    default:
       //The file type is unknown

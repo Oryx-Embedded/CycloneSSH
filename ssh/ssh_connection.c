@@ -791,9 +791,9 @@ error_t sshParseChannelOpen(SshConnection *connection,
    maxPacketSize = LOAD32BE(p);
 
    //Debug message
-   TRACE_DEBUG("  Sender Channel = %u\r\n", senderChannel);
-   TRACE_DEBUG("  Initial Window Size = %u\r\n", initialWindowSize);
-   TRACE_DEBUG("  Max Packet Size = %u\r\n", maxPacketSize);
+   TRACE_DEBUG("  Sender Channel = %" PRIu32 "\r\n", senderChannel);
+   TRACE_DEBUG("  Initial Window Size = %" PRIu32 "\r\n", initialWindowSize);
+   TRACE_DEBUG("  Max Packet Size = %" PRIu32 "\r\n", maxPacketSize);
 
    //Sanity check
    if(maxPacketSize == 0)
@@ -866,6 +866,7 @@ error_t sshParseChannelOpen(SshConnection *connection,
 error_t sshParseChannelOpenConfirmation(SshConnection *connection,
    const uint8_t *message, size_t length)
 {
+#if (SSH_CLIENT_SUPPORT == ENABLED)
    error_t error;
    const uint8_t *p;
    uint32_t recipientChannel;
@@ -936,10 +937,10 @@ error_t sshParseChannelOpenConfirmation(SshConnection *connection,
    maxPacketSize = LOAD32BE(p);
 
    //Debug message
-   TRACE_DEBUG("  Recipient Channel = %u\r\n", recipientChannel);
-   TRACE_DEBUG("  Sender Channel = %u\r\n", senderChannel);
-   TRACE_DEBUG("  Initial Window Size = %u\r\n", initialWindowSize);
-   TRACE_DEBUG("  Max Packet Size = %u\r\n", maxPacketSize);
+   TRACE_DEBUG("  Recipient Channel = %" PRIu32 "\r\n", recipientChannel);
+   TRACE_DEBUG("  Sender Channel = %" PRIu32 "\r\n", senderChannel);
+   TRACE_DEBUG("  Initial Window Size = %" PRIu32 "\r\n", initialWindowSize);
+   TRACE_DEBUG("  Max Packet Size = %" PRIu32 "\r\n", maxPacketSize);
 
    //Sanity check
    if(maxPacketSize == 0)
@@ -972,7 +973,7 @@ error_t sshParseChannelOpenConfirmation(SshConnection *connection,
             //Update channel related events
             sshUpdateChannelEvents(channel);
 
-            //Sucessfull processing
+            //Successfull processing
             error = NO_ERROR;
          }
          else
@@ -998,6 +999,10 @@ error_t sshParseChannelOpenConfirmation(SshConnection *connection,
 
    //Return status code
    return error;
+#else
+   //Client operation mode is not implemented
+   return ERROR_NOT_IMPLEMENTED;
+#endif
 }
 
 
@@ -1012,6 +1017,7 @@ error_t sshParseChannelOpenConfirmation(SshConnection *connection,
 error_t sshParseChannelOpenFailure(SshConnection *connection,
    const uint8_t *message, size_t length)
 {
+#if (SSH_CLIENT_SUPPORT == ENABLED)
    error_t error;
    const uint8_t *p;
    uint32_t recipientChannel;
@@ -1106,7 +1112,7 @@ error_t sshParseChannelOpenFailure(SshConnection *connection,
          //Update channel related events
          sshUpdateChannelEvents(channel);
 
-         //Sucessfull processing
+         //Successfull processing
          error = NO_ERROR;
       }
       else
@@ -1126,6 +1132,10 @@ error_t sshParseChannelOpenFailure(SshConnection *connection,
 
    //Return status code
    return error;
+#else
+   //Client operation mode is not implemented
+   return ERROR_NOT_IMPLEMENTED;
+#endif
 }
 
 
@@ -1208,7 +1218,7 @@ error_t sshParseChannelWindowAdjust(SshConnection *connection,
             //Check whether another SSH_MSG_CHANNEL_DATA message can be sent
             sshNotifyEvent(context);
 
-            //Sucessfull processing
+            //Successfull processing
             error = NO_ERROR;
          }
          else
@@ -1500,7 +1510,7 @@ error_t sshParseChannelEof(SshConnection *connection,
          //Update channel related events
          sshUpdateChannelEvents(channel);
 
-         //Sucessfull processing
+         //Successfull processing
          error = NO_ERROR;
       }
       else

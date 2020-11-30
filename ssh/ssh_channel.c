@@ -424,7 +424,8 @@ void sshUpdateChannelEvents(SshChannel *channel)
       else if(channel->state == SSH_CHANNEL_STATE_OPEN)
       {
          //Any data pending in the receive buffer?
-         if(channel->rxBuffer.length > channel->rxBuffer.threshold)
+         if(channel->rxBuffer.length > channel->rxBuffer.threshold ||
+            channel->eofReceived)
          {
             channel->eventFlags |= SSH_CHANNEL_EVENT_RX_READY;
          }

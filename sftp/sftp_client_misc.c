@@ -35,7 +35,6 @@
 #include "ssh/ssh.h"
 #include "ssh/ssh_connection.h"
 #include "ssh/ssh_request.h"
-#include "ssh/ssh_channel.h"
 #include "ssh/ssh_misc.h"
 #include "sftp/sftp_client.h"
 #include "sftp/sftp_client_packet.h"
@@ -231,8 +230,8 @@ error_t sftpClientEstablishConnection(SftpClientContext *context)
          requestParams.subsystemName.length = osStrlen("sftp");
 
          //Send an SSH_MSG_CHANNEL_REQUEST message to the server
-         error = sshSendChannelRequest(channel, "subsystem",
-            &requestParams, TRUE);
+         error = sshSendChannelRequest(channel, "subsystem", &requestParams,
+            TRUE);
 
          //Check status code
          if(!error)
@@ -642,7 +641,7 @@ error_t sftpClientCheckTimeout(SftpClientContext *context)
    else
    {
 #if (NET_RTOS_SUPPORT == ENABLED)
-      //Catch exception
+      //Successful operation
       error = NO_ERROR;
 #else
       //The operation would block

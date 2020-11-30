@@ -419,7 +419,7 @@ error_t sshFormatUserAuthRequest(SshConnection *connection, uint8_t *message,
    //Return status code
    return error;
 #else
-   //Not implemented
+   //Client operation mode is not implemented
    return ERROR_NOT_IMPLEMENTED;
 #endif
 }
@@ -606,6 +606,7 @@ error_t sshFormatUserAuthMethods(SshConnection *connection, uint8_t *p,
 error_t sshParseUserAuthBanner(SshConnection *connection,
    const uint8_t *message, size_t length)
 {
+#if (SSH_CLIENT_SUPPORT == ENABLED)
    error_t error;
    const uint8_t *p;
    SshString banner;
@@ -661,6 +662,10 @@ error_t sshParseUserAuthBanner(SshConnection *connection,
 
    //Successful processing
    return NO_ERROR;
+#else
+   //Client operation mode is not implemented
+   return ERROR_UNEXPECTED_MESSAGE;
+#endif
 }
 
 
@@ -675,6 +680,7 @@ error_t sshParseUserAuthBanner(SshConnection *connection,
 error_t sshParseUserAuthRequest(SshConnection *connection,
    const uint8_t *message, size_t length)
 {
+#if (SSH_SERVER_SUPPORT == ENABLED)
    error_t error;
    const uint8_t *p;
    SshString userName;
@@ -757,8 +763,7 @@ error_t sshParseUserAuthRequest(SshConnection *connection,
       {
          //A client may request a list of authentication method name values
          //that may continue by using the "none" authentication method name
-         error = sshParseNoneAuthParams(connection, &userName, p,
-            length);
+         error = sshParseNoneAuthParams(connection, &userName, p, length);
       }
 #if (SSH_PUBLIC_KEY_AUTH_SUPPORT == ENABLED)
       //Public key authentication request?
@@ -774,8 +779,7 @@ error_t sshParseUserAuthRequest(SshConnection *connection,
       else if(sshCompareString(&methodName, "password"))
       {
          //Parse "password" method specific fields
-         error = sshParsePasswordAuthParams(connection, &userName, p,
-            length);
+         error = sshParsePasswordAuthParams(connection, &userName, p, length);
       }
 #endif
       //Unknown authentication request?
@@ -798,6 +802,10 @@ error_t sshParseUserAuthRequest(SshConnection *connection,
 
    //Return status code
    return error;
+#else
+   //Server operation mode is not implemented
+   return ERROR_UNEXPECTED_MESSAGE;
+#endif
 }
 
 
@@ -881,6 +889,7 @@ error_t sshParseNoneAuthParams(SshConnection *connection,
 error_t sshParseUserAuthSuccess(SshConnection *connection,
    const uint8_t *message, size_t length)
 {
+#if (SSH_CLIENT_SUPPORT == ENABLED)
    //Debug message
    TRACE_INFO("SSH_MSG_USERAUTH_SUCCESS message received (%" PRIuSIZE " bytes)...\r\n", length);
    TRACE_VERBOSE_ARRAY("  ", message, length);
@@ -909,6 +918,10 @@ error_t sshParseUserAuthSuccess(SshConnection *connection,
 
    //Successful processing
    return NO_ERROR;
+#else
+   //Client operation mode is not implemented
+   return ERROR_UNEXPECTED_MESSAGE;
+#endif
 }
 
 
@@ -923,6 +936,7 @@ error_t sshParseUserAuthSuccess(SshConnection *connection,
 error_t sshParseUserAuthFailure(SshConnection *connection,
    const uint8_t *message, size_t length)
 {
+#if (SSH_CLIENT_SUPPORT == ENABLED)
    error_t error;
    const uint8_t *p;
    SshNameList authList;
@@ -996,6 +1010,10 @@ error_t sshParseUserAuthFailure(SshConnection *connection,
 
    //Return status code
    return error;
+#else
+   //Client operation mode is not implemented
+   return ERROR_UNEXPECTED_MESSAGE;
+#endif
 }
 
 
@@ -1023,8 +1041,8 @@ error_t sshParseUserAuthMessage(SshConnection *connection, uint8_t type,
          //Check message type
          if(type == SSH_MSG_USERAUTH_PK_OK)
          {
-            //The server must respond to the SSH_MSG_USERAUTH_REQUEST message with
-            //either SSH_MSG_USERAUTH_FAILURE or SSH_MSG_USERAUTH_PK_OK
+            //The server must respond to the SSH_MSG_USERAUTH_REQUEST message
+            //with either SSH_MSG_USERAUTH_FAILURE or SSH_MSG_USERAUTH_PK_OK
             error = sshParseUserAuthPkOk(connection, message, length);
          }
          else
@@ -1046,7 +1064,8 @@ error_t sshParseUserAuthMessage(SshConnection *connection, uint8_t type,
             //message with success or failure. However, if the password has
             //expired, the server should indicate this by responding with
             //SSH_MSG_USERAUTH_PASSWD_CHANGEREQ
-            error = sshParseUserAuthPasswdChangeReq(connection, message, length);
+            error = sshParseUserAuthPasswdChangeReq(connection, message,
+               length);
          }
          else
          {
@@ -1105,7 +1124,7 @@ SshAuthMethod sshGetAuthMethod(SshConnection *connection)
    //Return the current authentication method
    return authMethod;
 #else
-   //Not implemented
+   //Client operation mode is not implemented
    return SSH_AUTH_METHOD_NONE;
 #endif
 }

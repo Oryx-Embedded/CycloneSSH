@@ -271,6 +271,9 @@ error_t sshFormatWindowChangeReqParams(const SshWindowChangeReqParams *requestPa
 error_t sshFormatSignalReqParams(const SshSignalReqParams *requestParams,
    uint8_t *p, size_t *written);
 
+error_t sshFormatExitStatusReqParams(const SshExitStatusReqParams *requestParams,
+   uint8_t *p, size_t *written);
+
 error_t sshFormatBreakReqParams(const SshBreakReqParams *requestParams,
    uint8_t *p, size_t *written);
 
@@ -298,6 +301,9 @@ error_t sshParsePtyReqParams(const uint8_t *p, size_t length,
 error_t sshParseExecReqParams(const uint8_t *p, size_t length,
    SshExecReqParams *requestParams);
 
+bool_t sshGetExecReqArg(const SshExecReqParams *requestParams, uint_t index,
+   SshString *arg);
+
 error_t sshParseSubsystemReqParams(const uint8_t *p, size_t length,
    SshSubsystemReqParams *requestParams);
 
@@ -306,6 +312,9 @@ error_t sshParseWindowChangeReqParams(const uint8_t *p, size_t length,
 
 error_t sshParseSignalReqParams(const uint8_t *p, size_t length,
    SshSignalReqParams *requestParams);
+
+error_t sshParseExitStatusReqParams(const uint8_t *p, size_t length,
+   SshExitStatusReqParams *requestParams);
 
 error_t sshParseBreakReqParams(const uint8_t *p, size_t length,
    SshBreakReqParams *requestParams);

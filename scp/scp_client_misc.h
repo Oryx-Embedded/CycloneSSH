@@ -1,6 +1,6 @@
 /**
- * @file sftp_server_directory.h
- * @brief Directory operations
+ * @file scp_client.h
+ * @brief SCP client
  *
  * @section License
  *
@@ -28,35 +28,33 @@
  * @version 2.0.0
  **/
 
-#ifndef _SFTP_SERVER_DIRECTORY_H
-#define _SFTP_SERVER_DIRECTORY_H
+#ifndef _SCP_CLIENT_MISC_H
+#define _SCP_CLIENT_MISC_H
 
 //Dependencies
-#include "sftp/sftp_server.h"
+#include "scp/scp_client.h"
 
 //C++ guard
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-//SFTP server related functions
-error_t sftpServerCreateDir(SftpServerSession *session,
-   const SshString *path, const SftpFileAttrs *attributes);
+//SCP client related functions
+void scpClientChangeState(ScpClientContext *context,
+   ScpClientState newState);
 
-error_t sftpServerRemoveDir(SftpServerSession *session,
-   const SshString *path);
+error_t scpClientOpenConnection(ScpClientContext *context);
+error_t scpClientEstablishConnection(ScpClientContext *context);
+void scpClientCloseConnection(ScpClientContext *context);
 
-error_t sftpServerOpenDir(SftpServerSession *session,
-   const SshString *path, uint32_t *handle);
+error_t scpClientSendDirective(ScpClientContext *context,
+   const ScpDirective *directive);
 
-error_t sftpServerReadDir(SftpServerSession *session,
-   const SshBinaryString *handle, SftpName *name);
+error_t scpClientReceiveDirective(ScpClientContext *context,
+   ScpDirective *directive);
 
-error_t sftpServerCloseDir(SftpServerSession *session,
-   const SshBinaryString *handle);
-
-SftpFileObject *sftpServerFindDir(SftpServerSession *session,
-   const SshBinaryString *handle);
+error_t scpClientProcessEvents(ScpClientContext *context);
+error_t scpClientCheckTimeout(ScpClientContext *context);
 
 //C++ guard
 #ifdef __cplusplus

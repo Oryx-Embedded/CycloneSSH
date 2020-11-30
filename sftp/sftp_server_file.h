@@ -39,7 +39,7 @@
 extern "C" {
 #endif
 
-//SFTP related functions
+//SFTP server related functions
 error_t sftpServerGetRealPath(SftpServerSession *session,
    const SshString *path, SftpName *name);
 

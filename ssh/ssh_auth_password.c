@@ -90,7 +90,7 @@ error_t sshFormatPasswordAuthParams(SshConnection *connection, uint8_t *p,
    //Successful processing
    return NO_ERROR;
 #else
-   //Not implemented
+   //Client operation mode is not implemented
    return ERROR_NOT_IMPLEMENTED;
 #endif
 }
@@ -208,7 +208,7 @@ error_t sshParsePasswordAuthParams(SshConnection *connection,
    //Return status code
    return error;
 #else
-   //Not implemented
+   //Server operation mode is not implemented
    return ERROR_NOT_IMPLEMENTED;
 #endif
 }
@@ -280,8 +280,8 @@ error_t sshParseUserAuthPasswdChangeReq(SshConnection *connection,
    //the password has expired
    return ERROR_AUTHENTICATION_FAILED;
 #else
-   //Not implemented
-   return ERROR_NOT_IMPLEMENTED;
+   //Client operation mode is not implemented
+   return ERROR_UNEXPECTED_MESSAGE;
 #endif
 }
 

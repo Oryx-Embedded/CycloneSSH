@@ -229,8 +229,8 @@ struct _SftpServerSession
    FsFile *file;                                     ///<File pointer
    size_t dataLen;                                   ///<Length of the data payload
    uint8_t buffer[SFTP_SERVER_BUFFER_SIZE];          ///<Memory buffer for input/output operations
-   size_t bufferPos;
-   size_t bufferLen;
+   size_t bufferPos;                                 ///<Current position in the buffer
+   size_t bufferLen;                                 ///<Actual length of the buffer, in bytes
    size_t totalLen;
    uint32_t handle;                                  ///<File or directory handle
 };
@@ -258,7 +258,7 @@ struct _SftpServerContext
 };
 
 
-//SFTP related functions
+//SFTP server related functions
 void sftpServerGetDefaultSettings(SftpServerSettings *settings);
 
 error_t sftpServerInit(SftpServerContext *context,

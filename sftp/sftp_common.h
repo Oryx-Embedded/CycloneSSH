@@ -80,26 +80,29 @@
 #define SSH_FILEXFER_ATTR_FLAGS_TRANSLATION_ERR  0x00000800
 
 //File permissions
-#define S_IXOTH  0x0001
-#define S_IWOTH  0x0002
-#define S_IROTH  0x0004
-#define S_IXGRP  0x0008
-#define S_IWGRP  0x0010
-#define S_IRGRP  0x0020
-#define S_IXUSR  0x0040
-#define S_IWUSR  0x0080
-#define S_IRUSR  0x0100
-#define S_ISVTX  0x0200
-#define S_ISGID  0x0400
-#define S_ISUID  0x0800
-#define S_IFMT   0xF000
-#define S_IFIFO  0x1000
-#define S_IFCHR  0x2000
-#define S_IFDIR  0x4000
-#define S_IFBLK  0x6000
-#define S_IFREG  0x8000
-#define S_IFLNK  0xA000
-#define S_IFSOCK 0xC000
+#define SFTP_MODE_IXOTH  0x0001
+#define SFTP_MODE_IWOTH  0x0002
+#define SFTP_MODE_IROTH  0x0004
+#define SFTP_MODE_IRWXO  0x0007 
+#define SFTP_MODE_IXGRP  0x0008
+#define SFTP_MODE_IWGRP  0x0010
+#define SFTP_MODE_IRGRP  0x0020
+#define SFTP_MODE_IRWXG  0x0038
+#define SFTP_MODE_IXUSR  0x0040
+#define SFTP_MODE_IWUSR  0x0080
+#define SFTP_MODE_IRUSR  0x0100
+#define SFTP_MODE_IRWXU  0x01C0
+#define SFTP_MODE_ISVTX  0x0200
+#define SFTP_MODE_ISGID  0x0400
+#define SFTP_MODE_ISUID  0x0800
+#define SFTP_MODE_IFMT   0xF000
+#define SFTP_MODE_IFIFO  0x1000
+#define SFTP_MODE_IFCHR  0x2000
+#define SFTP_MODE_IFDIR  0x4000
+#define SFTP_MODE_IFBLK  0x6000
+#define SFTP_MODE_IFREG  0x8000
+#define SFTP_MODE_IFLNK  0xA000
+#define SFTP_MODE_IFSOCK 0xC000
 
 //C++ guard
 #ifdef __cplusplus

@@ -535,6 +535,7 @@ error_t sshParseIdString(SshConnection *connection, const uint8_t *id,
 error_t sshParseServiceRequest(SshConnection *connection, const uint8_t *message,
    size_t length)
 {
+#if (SSH_SERVER_SUPPORT == ENABLED)
    error_t error;
    const uint8_t *p;
    SshString serviceName;
@@ -591,6 +592,10 @@ error_t sshParseServiceRequest(SshConnection *connection, const uint8_t *message
 
    //Return status code
    return error;
+#else
+   //Server operation mode is not implemented
+   return ERROR_NOT_IMPLEMENTED;
+#endif
 }
 
 
@@ -605,6 +610,7 @@ error_t sshParseServiceRequest(SshConnection *connection, const uint8_t *message
 error_t sshParseServiceAccept(SshConnection *connection, const uint8_t *message,
    size_t length)
 {
+#if (SSH_CLIENT_SUPPORT == ENABLED)
    error_t error;
    const uint8_t *p;
    SshString serviceName;
@@ -654,6 +660,10 @@ error_t sshParseServiceAccept(SshConnection *connection, const uint8_t *message,
 
    //Successful processing
    return NO_ERROR;
+#else
+   //Client operation mode is not implemented
+   return ERROR_NOT_IMPLEMENTED;
+#endif
 }
 
 

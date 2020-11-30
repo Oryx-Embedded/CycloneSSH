@@ -39,7 +39,7 @@
 extern "C" {
 #endif
 
-//SFTP related functions
+//SFTP client related functions
 error_t sftpClientFormatFxpInit(SftpClientContext *context,
    uint32_t version);
 

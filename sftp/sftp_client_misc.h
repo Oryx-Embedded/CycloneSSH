@@ -39,7 +39,7 @@
 extern "C" {
 #endif
 
-//SFTP related functions
+//SFTP client related functions
 void sftpClientChangeState(SftpClientContext *context,
    SftpClientState newState);
 

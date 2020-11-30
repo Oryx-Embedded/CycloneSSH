@@ -187,7 +187,7 @@ typedef struct
 } SftpDirEntry;
 
 
-//SFTP related functions
+//SFTP client related functions
 error_t sftpClientInit(SftpClientContext *context);
 
 error_t sftpClientRegisterSshInitCallback(SftpClientContext *context,

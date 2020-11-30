@@ -83,7 +83,7 @@ error_t sshSendUserAuthPkOk(SshConnection *connection,
    //Return status code
    return error;
 #else
-   //Not implemented
+   //Server operation mode is not implemented
    return ERROR_NOT_IMPLEMENTED;
 #endif
 }
@@ -187,7 +187,7 @@ error_t sshFormatPublicKeyAuthParams(SshConnection *connection,
    //Successful processing
    return NO_ERROR;
 #else
-   //Not implemented
+   //Client operation mode is not implemented
    return ERROR_NOT_IMPLEMENTED;
 #endif
 }
@@ -244,7 +244,7 @@ error_t sshFormatUserAuthPkOk(SshConnection *connection,
    //Successful processing
    return NO_ERROR;
 #else
-   //Not implemented
+   //Server operation mode is not implemented
    return ERROR_NOT_IMPLEMENTED;
 #endif
 }
@@ -411,7 +411,7 @@ error_t sshParsePublicKeyAuthParams(SshConnection *connection,
    //Return status code
    return error;
 #else
-   //Not implemented
+   //Server operation mode is not implemented
    return ERROR_NOT_IMPLEMENTED;
 #endif
 }
@@ -499,8 +499,8 @@ error_t sshParseUserAuthPkOk(SshConnection *connection,
    //Successful processing
    return NO_ERROR;
 #else
-   //Not implemented
-   return ERROR_NOT_IMPLEMENTED;
+   //Client operation mode is not implemented
+   return ERROR_UNEXPECTED_MESSAGE;
 #endif
 }
 

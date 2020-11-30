@@ -1,6 +1,6 @@
 /**
- * @file sftp_server.h
- * @brief SFTP server
+ * @file scp_server.h
+ * @brief SCP server
  *
  * @section License
  *
@@ -28,52 +28,57 @@
  * @version 2.0.0
  **/
 
-#ifndef _SFTP_SERVER_MISC_H
-#define _SFTP_SERVER_MISC_H
+#ifndef _SCP_SERVER_MISC_H
+#define _SCP_SERVER_MISC_H
 
 //Dependencies
-#include "sftp/sftp_server.h"
+#include "scp/scp_server.h"
+#include "ssh/ssh_request.h"
 
 //C++ guard
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-//SFTP server related functions
-void sftpServerTick(SftpServerContext *context);
+//SCP server related functions
+void scpServerTick(ScpServerContext *context);
 
-error_t sftpServerChannelRequestCallback(SshChannel *channel,
+error_t scpServerChannelRequestCallback(SshChannel *channel,
    const SshString *type, const uint8_t *data, size_t length,
    void *param);
 
-SftpServerSession *sftpServerFindSession(SftpServerContext *context,
+void scpParseCommandLine(ScpServerSession *session,
+   const SshExecReqParams *requestParams);
+
+ScpServerSession *scpServerFindSession(ScpServerContext *context,
    SshChannel *channel);
 
-SftpServerSession *sftpServerOpenSession(SftpServerContext *context,
+ScpServerSession *scpServerOpenSession(ScpServerContext *context,
    SshChannel *channel);
 
-void sftpServerCloseSession(SftpServerSession *session);
+void scpServerCloseSession(ScpServerSession *session);
 
-void sftpServerRegisterSessionEvents(SftpServerSession *session,
+void scpServerRegisterSessionEvents(ScpServerSession *session,
    SshChannelEventDesc *eventDesc);
 
-void sftpServerProcessSessionEvents(SftpServerSession *session);
+void scpServerProcessSessionEvents(ScpServerSession *session);
 
-error_t sftpServerParsePacketLength(SftpServerSession *session,
-   const uint8_t *packet);
+error_t scpServerSendDirective(ScpServerSession *session,
+   const ScpDirective *directive);
 
-error_t sftpServerParsePacket(SftpServerSession *session,
-   const uint8_t *packet, size_t fragLen, size_t totalLen);
+error_t scpServerReceiveDirective(ScpServerSession *session,
+   ScpDirective *directive);
 
-uint32_t sftpServerGenerateHandle(SftpServerSession *session);
+void scpServerProcessDirective(ScpServerSession *session,
+   const ScpDirective *directive);
 
-uint_t sftpServerGetFilePermissions(SftpServerSession *session,
+uint_t scpServerGetFilePermissions(ScpServerSession *session,
    const char_t *path);
 
-error_t sftpServerGetPath(SftpServerSession *session, const SshString *path,
+error_t scpServerGetPath(ScpServerSession *session, const SshString *path,
    char_t *fullPath, size_t maxLen);
 
-const char_t *sftpServerStripRootDir(SftpServerSession *session,
+const char_t *scpServerStripRootDir(ScpServerSession *session,
    const char_t *path);
 
 //C++ guard

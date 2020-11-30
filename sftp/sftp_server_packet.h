@@ -39,7 +39,7 @@
 extern "C" {
 #endif
 
-//SFTP related functions
+//SFTP server related functions
 error_t sftpServerParseFxpInit(SftpServerSession *session,
    const uint8_t *packet, size_t length);
 

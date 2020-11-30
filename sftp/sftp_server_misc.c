@@ -107,7 +107,7 @@ error_t sftpServerChannelRequestCallback(SshChannel *channel,
          if(session != NULL)
          {
             //Only one of the "shell", "exec" and "subsystem" requests can
-            //succeed per channel
+            //succeed per channel (refer to RFC 4254, section 6.5)
             return ERROR_WRONG_STATE;
          }
          else
@@ -317,7 +317,7 @@ void sftpServerRegisterSessionEvents(SftpServerSession *session,
       }
       else
       {
-         eventDesc->eventFlags |= SOCKET_EVENT_RX_READY;
+         eventDesc->eventFlags |= SSH_CHANNEL_EVENT_RX_READY;
       }
    }
    else if(session->state == SFTP_SERVER_SESSION_STATE_SENDING)
@@ -329,7 +329,7 @@ void sftpServerRegisterSessionEvents(SftpServerSession *session,
       }
       else
       {
-         eventDesc->eventFlags |= SOCKET_EVENT_TX_READY;
+         eventDesc->eventFlags |= SSH_CHANNEL_EVENT_TX_READY;
       }
    }
    else if(session->state == SFTP_SERVER_SESSION_STATE_RECEIVING_DATA)
@@ -341,7 +341,7 @@ void sftpServerRegisterSessionEvents(SftpServerSession *session,
       }
       else
       {
-         eventDesc->eventFlags |= SOCKET_EVENT_RX_READY;
+         eventDesc->eventFlags |= SSH_CHANNEL_EVENT_RX_READY;
       }
    }
    else if(session->state == SFTP_SERVER_SESSION_STATE_SENDING_DATA)
@@ -353,8 +353,12 @@ void sftpServerRegisterSessionEvents(SftpServerSession *session,
       }
       else
       {
-         eventDesc->eventFlags |= SOCKET_EVENT_TX_READY;
+         eventDesc->eventFlags |= SSH_CHANNEL_EVENT_TX_READY;
       }
+   }
+   else
+   {
+      //Just for sanity
    }
 }
 

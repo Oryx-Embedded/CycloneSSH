@@ -245,7 +245,7 @@ error_t sftpServerReadDir(SftpServerSession *session,
    if(fileObject == NULL)
       return ERROR_INVALID_HANDLE;
 
-   //Loop through directory entries
+   //Loop through the directory
    while(!error)
    {
       //Read a new entry from the directory
@@ -288,11 +288,11 @@ error_t sftpServerReadDir(SftpServerSession *session,
             //File permissions
             if((dirEntry.attributes & FS_FILE_ATTR_READ_ONLY) != 0)
             {
-               name->attributes.permissions = S_IRUSR;
+               name->attributes.permissions = SFTP_MODE_IRUSR;
             }
             else
             {
-               name->attributes.permissions = S_IRUSR | S_IWUSR;
+               name->attributes.permissions = SFTP_MODE_IRUSR | SFTP_MODE_IWUSR;
             }
 
             //Modification time

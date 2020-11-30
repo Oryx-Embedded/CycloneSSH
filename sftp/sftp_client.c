@@ -290,7 +290,7 @@ error_t sftpClientConnect(SftpClientContext *context,
    {
       //Clean up side effects
       sftpClientCloseConnection(context);
-      //Update SFTP connection state
+      //Update SFTP client state
       sftpClientChangeState(context, SFTP_CLIENT_STATE_DISCONNECTED);
    }
 
@@ -428,7 +428,7 @@ error_t sftpClientChangeWorkingDir(SftpClientContext *context,
 
 error_t sftpClientChangeToParentDir(SftpClientContext *context)
 {
-   //Change to parent directory
+   //Change to the parent directory
    return sftpClientChangeWorkingDir(context, "..");
 }
 
@@ -921,7 +921,6 @@ error_t sftpClientWriteFile(SftpClientContext *context, const void *data,
 
    //Initialize status code
    error = NO_ERROR;
-
    //Actual number of bytes written
    totalLength = 0;
 
@@ -999,6 +998,8 @@ error_t sftpClientWriteFile(SftpClientContext *context, const void *data,
                      data = (uint8_t *) data + n;
                      totalLength += n;
                      context->dataLen -= n;
+
+                     //Increment file offset
                      context->fileOffset += n;
 
                      //Save current time
@@ -1072,7 +1073,6 @@ error_t sftpClientReadFile(SftpClientContext *context, void *data, size_t size,
 
    //Initialize status code
    error = NO_ERROR;
-
    //No data has been read yet
    *received = 0;
 
@@ -1163,6 +1163,8 @@ error_t sftpClientReadFile(SftpClientContext *context, void *data, size_t size,
                data = (uint8_t *) data + n;
                *received += n;
                context->dataLen -= n;
+
+               //Increment file offset
                context->fileOffset += n;
 
                //Save current time
