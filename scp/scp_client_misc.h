@@ -1,12 +1,12 @@
 /**
- * @file scp_client.h
- * @brief SCP client
+ * @file scp_client_misc.h
+ * @brief Helper functions for SCP client
  *
  * @section License
  *
  * SPDX-License-Identifier: GPL-2.0-or-later
  *
- * Copyright (C) 2019-2020 Oryx Embedded SARL. All rights reserved.
+ * Copyright (C) 2019-2021 Oryx Embedded SARL. All rights reserved.
  *
  * This file is part of CycloneSSH Open.
  *
@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.0.0
+ * @version 2.0.2
  **/
 
 #ifndef _SCP_CLIENT_MISC_H

@@ -6,7 +6,7 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later
  *
- * Copyright (C) 2019-2020 Oryx Embedded SARL. All rights reserved.
+ * Copyright (C) 2019-2021 Oryx Embedded SARL. All rights reserved.
  *
  * This file is part of CycloneSSH Open.
  *
@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.0.0
+ * @version 2.0.2
  **/
 
 //Switch to the appropriate trace level
@@ -202,17 +202,32 @@ const char_t *sshSupportedEncAlgos[] =
 
 const char_t *sshSupportedMacAlgos[] =
 {
+#if (SSH_SHA256_SUPPORT == ENABLED && SSH_ETM_SUPPORT == ENABLED)
+   "hmac-sha2-256-etm@openssh.com",
+#endif
 #if (SSH_SHA256_SUPPORT == ENABLED)
    "hmac-sha2-256",
+#endif
+#if (SSH_SHA512_SUPPORT == ENABLED && SSH_ETM_SUPPORT == ENABLED)
+   "hmac-sha2-512-etm@openssh.com",
 #endif
 #if (SSH_SHA512_SUPPORT == ENABLED)
    "hmac-sha2-512",
 #endif
+#if (SSH_SHA1_SUPPORT == ENABLED && SSH_ETM_SUPPORT == ENABLED)
+   "hmac-sha1-etm@openssh.com",
+#endif
 #if (SSH_SHA1_SUPPORT == ENABLED)
    "hmac-sha1",
 #endif
+#if (SSH_RIPEMD160_SUPPORT == ENABLED && SSH_ETM_SUPPORT == ENABLED)
+   "hmac-ripemd160-etm@openssh.com",
+#endif
 #if (SSH_RIPEMD160_SUPPORT == ENABLED)
    "hmac-ripemd160@openssh.com",
+#endif
+#if (SSH_MD5_SUPPORT == ENABLED && SSH_ETM_SUPPORT == ENABLED)
+   "hmac-md5-etm@openssh.com",
 #endif
 #if (SSH_MD5_SUPPORT == ENABLED)
    "hmac-md5",

@@ -6,7 +6,7 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later
  *
- * Copyright (C) 2019-2020 Oryx Embedded SARL. All rights reserved.
+ * Copyright (C) 2019-2021 Oryx Embedded SARL. All rights reserved.
  *
  * This file is part of CycloneSSH Open.
  *
@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.0.0
+ * @version 2.0.2
  **/
 
 //Switch to the appropriate trace level
@@ -482,7 +482,7 @@ error_t shellClientWriteStream(ShellClientContext *context, const void *data,
       //Check the state of the shell client
       if(context->state == SHELL_CLIENT_STATE_CHANNEL_DATA)
       {
-         //Write data to stdin strean
+         //Write data to stdin stream
          error = sshWriteChannel(&context->sshChannel, data, length, &n, flags);
 
          //Check status code
@@ -543,7 +543,7 @@ error_t shellClientWriteStream(ShellClientContext *context, const void *data,
 
 
 /**
- * @brief Flush stdin stream 
+ * @brief Flush stdin stream
  * @param[in] context Pointer to the shell client context
  * @return Error code
  **/

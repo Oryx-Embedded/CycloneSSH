@@ -6,7 +6,7 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later
  *
- * Copyright (C) 2019-2020 Oryx Embedded SARL. All rights reserved.
+ * Copyright (C) 2019-2021 Oryx Embedded SARL. All rights reserved.
  *
  * This file is part of CycloneSSH Open.
  *
@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.0.0
+ * @version 2.0.2
  **/
 
 //Switch to the appropriate trace level
@@ -64,9 +64,9 @@ void sftpServerGetDefaultSettings(SftpServerSettings *settings)
    settings->rootDir = NULL;
 
    //User verification callback function
-   settings->checkUserCallback = 0;
+   settings->checkUserCallback = NULL;
    //Callback used to retrieve file permissions
-   settings->getFilePermCallback = 0;
+   settings->getFilePermCallback = NULL;
 }
 
 

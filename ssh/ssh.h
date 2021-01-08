@@ -6,7 +6,7 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later
  *
- * Copyright (C) 2019-2020 Oryx Embedded SARL. All rights reserved.
+ * Copyright (C) 2019-2021 Oryx Embedded SARL. All rights reserved.
  *
  * This file is part of CycloneSSH Open.
  *
@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.0.0
+ * @version 2.0.2
  **/
 
 #ifndef _SSH_H
@@ -76,13 +76,13 @@
 #endif
 
 //Version string
-#define CYCLONE_SSH_VERSION_STRING "2.0.0"
+#define CYCLONE_SSH_VERSION_STRING "2.0.2"
 //Major version
 #define CYCLONE_SSH_MAJOR_VERSION 2
 //Minor version
 #define CYCLONE_SSH_MINOR_VERSION 0
 //Revision number
-#define CYCLONE_SSH_REV_NUMBER 0
+#define CYCLONE_SSH_REV_NUMBER 2
 
 //SSH support
 #ifndef SSH_SUPPORT
@@ -180,6 +180,13 @@
    #define SSH_MAX_PASSWORD_LEN 32
 #elif (SSH_MAX_PASSWORD_LEN < 0)
    #error SSH_MAX_PASSWORD_LEN parameter is not valid
+#endif
+
+//Encrypt-then-MAC mode support
+#ifndef SSH_ETM_SUPPORT
+   #define SSH_ETM_SUPPORT DISABLED
+#elif (SSH_ETM_SUPPORT != ENABLED && SSH_ETM_SUPPORT != DISABLED)
+   #error SSH_ETM_SUPPORT parameter is not valid
 #endif
 
 //Stream cipher support (insecure)
@@ -860,6 +867,7 @@ typedef struct
    uint8_t cipherContext[SSH_MAX_CIPHER_CONTEXT_SIZE]; ///<Cipher context
    const HashAlgo *hashAlgo;                           ///<Hash algorithm for MAC operations
    HmacContext *hmacContext;                           ///<HMAC context
+   bool_t etm;                                         ///<Encrypt-then-MAC
    uint8_t iv[SSH_MAX_CIPHER_BLOCK_SIZE];              ///<Initialization vector
    uint8_t encKey[SSH_MAX_ENC_KEY_SIZE];               ///<Encryption key
    size_t encKeyLen;                                   ///<Length of the encryption key, in bytes

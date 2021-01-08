@@ -1,6 +1,6 @@
 /**
- * @file ssh_kex_dh.h
- * @brief Diffie-Hellman key exchange
+ * @file shell_server_misc.h
+ * @brief Helper functions for SSH secure shell server
  *
  * @section License
  *
@@ -28,37 +28,38 @@
  * @version 2.0.2
  **/
 
-#ifndef _SSH_KEX_DH_H
-#define _SSH_KEX_DH_H
+#ifndef _SHELL_SERVER_MISC_H
+#define _SHELL_SERVER_MISC_H
 
 //Dependencies
-#include "ssh/ssh.h"
+#include "shell/shell_server.h"
+#include "ssh/ssh_request.h"
 
 //C++ guard
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-//SSH related functions
-error_t sshSendKexDhInit(SshConnection *connection);
-error_t sshSendKexDhReply(SshConnection *connection);
+//Shell server related functions
+void shellServerTick(ShellServerContext *context);
 
-error_t sshFormatKexDhInit(SshConnection *connection, uint8_t *p,
-   size_t *length);
+error_t shellServerChannelRequestCallback(SshChannel *channel,
+   const SshString *type, const uint8_t *data, size_t length,
+   void *param);
 
-error_t sshFormatKexDhReply(SshConnection *connection, uint8_t *p,
-   size_t *length);
+ShellServerSession *shellServerFindSession(ShellServerContext *context,
+   SshChannel *channel);
 
-error_t sshParseKexDhInit(SshConnection *connection, const uint8_t *message,
-   size_t length);
+ShellServerSession *shellServerOpenSession(ShellServerContext *context,
+   SshChannel *channel);
 
-error_t sshParseKexDhReply(SshConnection *connection, const uint8_t *message,
-   size_t length);
+void shellServerCloseSession(ShellServerSession *session);
 
-error_t sshParseKexDhMessage(SshConnection *connection, uint8_t type,
-   const uint8_t *message, size_t length);
+error_t shellServerParseTermModes(ShellServerSession *session,
+   const uint8_t *termModes, size_t length);
 
-error_t sshDigestClientDhPublicKey(SshConnection *connection);
+error_t shellServerProcessCommandLine(ShellServerSession *session,
+   char_t *commandLine);
 
 //C++ guard
 #ifdef __cplusplus

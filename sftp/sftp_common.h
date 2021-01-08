@@ -6,7 +6,7 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later
  *
- * Copyright (C) 2019-2020 Oryx Embedded SARL. All rights reserved.
+ * Copyright (C) 2019-2021 Oryx Embedded SARL. All rights reserved.
  *
  * This file is part of CycloneSSH Open.
  *
@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.0.0
+ * @version 2.0.2
  **/
 
 #ifndef _SFTP_COMMON_H
@@ -83,7 +83,7 @@
 #define SFTP_MODE_IXOTH  0x0001
 #define SFTP_MODE_IWOTH  0x0002
 #define SFTP_MODE_IROTH  0x0004
-#define SFTP_MODE_IRWXO  0x0007 
+#define SFTP_MODE_IRWXO  0x0007
 #define SFTP_MODE_IXGRP  0x0008
 #define SFTP_MODE_IWGRP  0x0010
 #define SFTP_MODE_IRGRP  0x0020

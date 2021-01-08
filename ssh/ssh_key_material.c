@@ -6,7 +6,7 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later
  *
- * Copyright (C) 2019-2020 Oryx Embedded SARL. All rights reserved.
+ * Copyright (C) 2019-2021 Oryx Embedded SARL. All rights reserved.
  *
  * This file is part of CycloneSSH Open.
  *
@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.0.0
+ * @version 2.0.2
  **/
 
 //Switch to the appropriate trace level
@@ -511,6 +511,7 @@ error_t sshSelectHashAlgo(SshEncryptionEngine *encryptionEngine,
    {
       //AEAD algorithms offer both encryption and authentication
       encryptionEngine->hashAlgo = NULL;
+      encryptionEngine->etm = FALSE;
    }
    else
 #endif
@@ -520,6 +521,7 @@ error_t sshSelectHashAlgo(SshEncryptionEngine *encryptionEngine,
    {
       //AEAD algorithms offer both encryption and authentication
       encryptionEngine->hashAlgo = NULL;
+      encryptionEngine->etm = FALSE;
    }
    else
 #endif
@@ -527,8 +529,15 @@ error_t sshSelectHashAlgo(SshEncryptionEngine *encryptionEngine,
    //HMAC with MD5 integrity algorithm?
    if(sshCompareAlgo(macAlgo, "hmac-md5"))
    {
-      //Select the relevant hash algorithm
+      //Select MAC-then-encrypt mode
       encryptionEngine->hashAlgo = MD5_HASH_ALGO;
+      encryptionEngine->etm = FALSE;
+   }
+   else if(sshCompareAlgo(macAlgo, "hmac-md5-etm@openssh.com"))
+   {
+      //Select encrypt-then-MAC mode
+      encryptionEngine->hashAlgo = MD5_HASH_ALGO;
+      encryptionEngine->etm = TRUE;
    }
    else
 #endif
@@ -536,8 +545,15 @@ error_t sshSelectHashAlgo(SshEncryptionEngine *encryptionEngine,
    //HMAC with RIPEMD-160 integrity algorithm?
    if(sshCompareAlgo(macAlgo, "hmac-ripemd160@openssh.com"))
    {
-      //Select the relevant hash algorithm
+      //Select MAC-then-encrypt mode
       encryptionEngine->hashAlgo = RIPEMD160_HASH_ALGO;
+      encryptionEngine->etm = FALSE;
+   }
+   else if(sshCompareAlgo(macAlgo, "hmac-ripemd160-etm@openssh.com"))
+   {
+      //Select encrypt-then-MAC mode
+      encryptionEngine->hashAlgo = RIPEMD160_HASH_ALGO;
+      encryptionEngine->etm = TRUE;
    }
    else
 #endif
@@ -545,8 +561,15 @@ error_t sshSelectHashAlgo(SshEncryptionEngine *encryptionEngine,
    //HMAC with SHA-1 integrity algorithm?
    if(sshCompareAlgo(macAlgo, "hmac-sha1"))
    {
-      //Select the relevant hash algorithm
+      //Select MAC-then-encrypt mode
       encryptionEngine->hashAlgo = SHA1_HASH_ALGO;
+      encryptionEngine->etm = FALSE;
+   }
+   else if(sshCompareAlgo(macAlgo, "hmac-sha1-etm@openssh.com"))
+   {
+      //Select encrypt-then-MAC mode
+      encryptionEngine->hashAlgo = SHA1_HASH_ALGO;
+      encryptionEngine->etm = TRUE;
    }
    else
 #endif
@@ -554,8 +577,15 @@ error_t sshSelectHashAlgo(SshEncryptionEngine *encryptionEngine,
    //HMAC with SHA-256 integrity algorithm?
    if(sshCompareAlgo(macAlgo, "hmac-sha2-256"))
    {
-      //Select the relevant hash algorithm
+      //Select MAC-then-encrypt mode
       encryptionEngine->hashAlgo = SHA256_HASH_ALGO;
+      encryptionEngine->etm = FALSE;
+   }
+   else if(sshCompareAlgo(macAlgo, "hmac-sha2-256-etm@openssh.com"))
+   {
+      //Select encrypt-then-MAC mode
+      encryptionEngine->hashAlgo = SHA256_HASH_ALGO;
+      encryptionEngine->etm = TRUE;
    }
    else
 #endif
@@ -563,8 +593,15 @@ error_t sshSelectHashAlgo(SshEncryptionEngine *encryptionEngine,
    //HMAC with SHA-512 integrity algorithm?
    if(sshCompareAlgo(macAlgo, "hmac-sha2-512"))
    {
-      //Select the relevant hash algorithm
+      //Select MAC-then-encrypt mode
       encryptionEngine->hashAlgo = SHA512_HASH_ALGO;
+      encryptionEngine->etm = FALSE;
+   }
+   else if(sshCompareAlgo(macAlgo, "hmac-sha2-512-etm@openssh.com"))
+   {
+      //Select encrypt-then-MAC mode
+      encryptionEngine->hashAlgo = SHA512_HASH_ALGO;
+      encryptionEngine->etm = TRUE;
    }
    else
 #endif

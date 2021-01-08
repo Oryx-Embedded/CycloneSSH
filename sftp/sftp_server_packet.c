@@ -6,7 +6,7 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later
  *
- * Copyright (C) 2019-2020 Oryx Embedded SARL. All rights reserved.
+ * Copyright (C) 2019-2021 Oryx Embedded SARL. All rights reserved.
  *
  * This file is part of CycloneSSH Open.
  *
@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.0.0
+ * @version 2.0.2
  **/
 
 //Switch to the appropriate trace level
@@ -1286,7 +1286,7 @@ error_t sftpServerParseFxpExtended(SftpServerSession *session,
    length -= sizeof(uint32_t);
 
    //The 'extended-request' field is a string of the format "name@domain", where
-   //domain is an internet domain name of the vendor defining the request
+   //domain is an Internet domain name of the vendor defining the request
    error = sshParseString(p, length, &extendedRequest);
    //Any error to report?
    if(error)

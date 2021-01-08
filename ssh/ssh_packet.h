@@ -6,7 +6,7 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later
  *
- * Copyright (C) 2019-2020 Oryx Embedded SARL. All rights reserved.
+ * Copyright (C) 2019-2021 Oryx Embedded SARL. All rights reserved.
  *
  * This file is part of CycloneSSH Open.
  *
@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.0.0
+ * @version 2.0.2
  **/
 
 #ifndef _SSH_PACKET_H
@@ -91,6 +91,12 @@ error_t sshDecryptPacketLength(SshConnection *connection, uint8_t *packet);
 
 error_t sshParseMessage(SshConnection *connection, const uint8_t *message,
    size_t length);
+
+void sshAppendMessageAuthCode(SshEncryptionEngine *encryptionEngine,
+   uint8_t *packet, size_t length);
+
+error_t sshVerifyMessageAuthCode(SshEncryptionEngine *decryptionEngine,
+   const uint8_t *packet, size_t length);
 
 void sshIncSequenceNumber(uint8_t *seqNum);
 void sshIncInvocationCounter(uint8_t *iv);

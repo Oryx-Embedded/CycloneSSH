@@ -6,7 +6,7 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later
  *
- * Copyright (C) 2019-2020 Oryx Embedded SARL. All rights reserved.
+ * Copyright (C) 2019-2021 Oryx Embedded SARL. All rights reserved.
  *
  * This file is part of CycloneSSH Open.
  *
@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.0.0
+ * @version 2.0.2
  **/
 
 //Switch to the appropriate trace level
@@ -473,7 +473,7 @@ void scpServerRegisterSessionEvents(ScpServerSession *session,
          eventDesc->eventFlags |= SSH_CHANNEL_EVENT_TX_READY;
       }
    }
-   else if(session->state == SCP_SERVER_SESSION_STATE_CHANNEL_CLOSE)
+   else if(session->state == SCP_SERVER_SESSION_STATE_CLOSING)
    {
       eventDesc->eventFlags |= SSH_CHANNEL_EVENT_TX_READY;
    }
@@ -560,7 +560,7 @@ void scpServerProcessSessionEvents(ScpServerSession *session)
          else
          {
             //A warning or error directive has been received
-            session->state = SCP_SERVER_SESSION_STATE_CHANNEL_CLOSE;
+            session->state = SCP_SERVER_SESSION_STATE_CLOSING;
          }
       }
    }
@@ -583,7 +583,7 @@ void scpServerProcessSessionEvents(ScpServerSession *session)
          else
          {
             //A single file is transferred by the client
-            session->state = SCP_SERVER_SESSION_STATE_CHANNEL_CLOSE;
+            session->state = SCP_SERVER_SESSION_STATE_CLOSING;
          }
       }
    }
@@ -629,7 +629,7 @@ void scpServerProcessSessionEvents(ScpServerSession *session)
          else
          {
             //A warning or an error message has been received
-            session->state = SCP_SERVER_SESSION_STATE_CHANNEL_CLOSE;
+            session->state = SCP_SERVER_SESSION_STATE_CLOSING;
          }
       }
    }
@@ -706,14 +706,14 @@ void scpServerProcessSessionEvents(ScpServerSession *session)
                else
                {
                   //The copy operation is complete
-                  session->state = SCP_SERVER_SESSION_STATE_CHANNEL_CLOSE;
+                  session->state = SCP_SERVER_SESSION_STATE_CLOSING;
                }
             }
          }
          else
          {
             //A warning or an error message has been received
-            session->state = SCP_SERVER_SESSION_STATE_CHANNEL_CLOSE;
+            session->state = SCP_SERVER_SESSION_STATE_CLOSING;
          }
       }
    }
@@ -753,7 +753,7 @@ void scpServerProcessSessionEvents(ScpServerSession *session)
          else
          {
             //Update SCP session state
-            session->state = SCP_SERVER_SESSION_STATE_CHANNEL_CLOSE;
+            session->state = SCP_SERVER_SESSION_STATE_CLOSING;
          }
       }
    }
@@ -769,7 +769,7 @@ void scpServerProcessSessionEvents(ScpServerSession *session)
       }
       else if(session->statusCode == ERROR_INVALID_PATH)
       {
-         directive.message = "Invalid file name";
+         directive.message = "Invalid path";
       }
       else if(session->statusCode == ERROR_FILE_NOT_FOUND)
       {
@@ -795,10 +795,10 @@ void scpServerProcessSessionEvents(ScpServerSession *session)
       if(!error)
       {
          //Update SCP session state
-         session->state = SCP_SERVER_SESSION_STATE_CHANNEL_CLOSE;
+         session->state = SCP_SERVER_SESSION_STATE_CLOSING;
       }
    }
-   else if(session->state == SCP_SERVER_SESSION_STATE_CHANNEL_CLOSE)
+   else if(session->state == SCP_SERVER_SESSION_STATE_CLOSING)
    {
       //Close SCP session
       scpServerCloseSession(session);
@@ -995,7 +995,6 @@ error_t scpServerReceiveDirective(ScpServerSession *session,
  * @brief Process SCP directive
  * @param[in] session Handle referencing an SCP session
  * @param[in] directive SCP directive sent by the client
- * @return Error code
  **/
 
 void scpServerProcessDirective(ScpServerSession *session,
@@ -1103,7 +1102,7 @@ void scpServerProcessDirective(ScpServerSession *session,
    else
    {
       //A warning or an error message has been received
-      session->state = SCP_SERVER_SESSION_STATE_CHANNEL_CLOSE;
+      session->state = SCP_SERVER_SESSION_STATE_CLOSING;
    }
 }
 

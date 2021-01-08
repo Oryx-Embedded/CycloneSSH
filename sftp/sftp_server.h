@@ -6,7 +6,7 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later
  *
- * Copyright (C) 2019-2020 Oryx Embedded SARL. All rights reserved.
+ * Copyright (C) 2019-2021 Oryx Embedded SARL. All rights reserved.
  *
  * This file is part of CycloneSSH Open.
  *
@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.0.0
+ * @version 2.0.2
  **/
 
 #ifndef _SFTP_SERVER_H
@@ -90,14 +90,14 @@
    #error SFTP_SERVER_BUFFER_SIZE parameter is not valid
 #endif
 
-//Maximum size of root directory
+//Maximum length of root directory
 #ifndef SFTP_SERVER_MAX_ROOT_DIR_LEN
    #define SFTP_SERVER_MAX_ROOT_DIR_LEN 63
 #elif (SFTP_SERVER_MAX_ROOT_DIR_LEN < 7)
    #error SFTP_SERVER_MAX_ROOT_DIR_LEN parameter is not valid
 #endif
 
-//Maximum size of home directory
+//Maximum length of home directory
 #ifndef SFTP_SERVER_MAX_HOME_DIR_LEN
    #define SFTP_SERVER_MAX_HOME_DIR_LEN 63
 #elif (SFTP_SERVER_MAX_HOME_DIR_LEN < 7)
