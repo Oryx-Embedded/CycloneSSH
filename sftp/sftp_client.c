@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.0.2
+ * @version 2.0.4
  **/
 
 //Switch to the appropriate trace level
@@ -178,17 +178,22 @@ error_t sftpClientConnect(SftpClientContext *context,
             serverPort);
 
          //Check status code
-         if(!error)
+         if(error == NO_ERROR)
          {
             //Force the socket to operate in non-blocking mode
-            error = socketSetTimeout(context->sshConnection.socket, 0);
-         }
+            socketSetTimeout(context->sshConnection.socket, 0);
 
-         //Check status code
-         if(!error)
-         {
             //Update SFTP client state
             sftpClientChangeState(context, SFTP_CLIENT_STATE_CHANNEL_OPEN);
+         }
+         else if(error == ERROR_WOULD_BLOCK || error == ERROR_TIMEOUT)
+         {
+            //Check whether the timeout has elapsed
+            error = sftpClientCheckTimeout(context);
+         }
+         else
+         {
+            //Communication error
          }
       }
       else if(context->state == SFTP_CLIENT_STATE_CHANNEL_OPEN ||

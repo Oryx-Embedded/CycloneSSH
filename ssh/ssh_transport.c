@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.0.2
+ * @version 2.0.4
  **/
 
 //Switch to the appropriate trace level
@@ -228,6 +228,9 @@ error_t sshSendDisconnect(SshConnection *connection,
    //Check status code
    if(!error)
    {
+      //An SSH_MSG_DISCONNECT message has been successfully sent
+      connection->disconnectSent = TRUE;
+
       //This message causes immediate termination of the connection
       connection->state = SSH_CONN_STATE_DISCONNECT;
    }
@@ -856,6 +859,9 @@ error_t sshParseDisconnect(SshConnection *connection, const uint8_t *message,
    //Malformed message?
    if(length != 0)
       return ERROR_INVALID_MESSAGE;
+
+   //An SSH_MSG_DISCONNECT message has been successfully received
+   connection->disconnectReceived = TRUE;
 
    //This message causes immediate termination of the connection
    connection->state = SSH_CONN_STATE_DISCONNECT;

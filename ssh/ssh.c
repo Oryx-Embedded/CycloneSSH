@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.0.2
+ * @version 2.0.4
  **/
 
 //Switch to the appropriate trace level
@@ -1191,7 +1191,8 @@ error_t sshReadChannel(SshChannel *channel, void *data, size_t size,
          {
             //Check whether an SSH_MSG_CHANNEL_EOF or SSH_MSG_CHANNEL_CLOSE
             //message has been received
-            if(channel->closeReceived || channel->eofReceived)
+            if(channel->closeReceived || channel->eofReceived ||
+               channel->connection->disconnectReceived)
             {
                //The peer will no longer send data to the channel
                error = ERROR_END_OF_STREAM;
@@ -1213,7 +1214,19 @@ error_t sshReadChannel(SshChannel *channel, void *data, size_t size,
          else if(channel->state == SSH_CHANNEL_STATE_CLOSED)
          {
             //The peer will no longer send data to the channel
-            error = ERROR_END_OF_STREAM;
+            if(channel->closeReceived || channel->eofReceived ||
+               channel->connection->disconnectReceived)
+            {
+               error = ERROR_END_OF_STREAM;
+            }
+            else if(channel->connection->disconnectSent)
+            {
+               error = ERROR_CONNECTION_CLOSING;
+            }
+            else
+            {
+               error = ERROR_READ_FAILED;
+            }
          }
          else
          {

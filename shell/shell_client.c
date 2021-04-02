@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.0.2
+ * @version 2.0.4
  **/
 
 //Switch to the appropriate trace level
@@ -178,17 +178,22 @@ error_t shellClientConnect(ShellClientContext *context,
             serverPort);
 
          //Check status code
-         if(!error)
+         if(error == NO_ERROR)
          {
             //Force the socket to operate in non-blocking mode
-            error = socketSetTimeout(context->sshConnection.socket, 0);
-         }
+            socketSetTimeout(context->sshConnection.socket, 0);
 
-         //Check status code
-         if(!error)
-         {
             //Update shell client state
             shellClientChangeState(context, SHELL_CLIENT_STATE_CONNECTING_2);
+         }
+         else if(error == ERROR_WOULD_BLOCK || error == ERROR_TIMEOUT)
+         {
+            //Check whether the timeout has elapsed
+            error = shellClientCheckTimeout(context);
+         }
+         else
+         {
+            //Communication error
          }
       }
       else if(context->state == SHELL_CLIENT_STATE_CONNECTING_2)
@@ -223,33 +228,26 @@ error_t shellClientConnect(ShellClientContext *context,
 
 
 /**
- * @brief Execute a command line
+ * @brief Format a command line
  * @param[in] context Pointer to the shell client context
  * @param[in] command NULL-terminating string containing the command line
  * @param[in] ... Optional arguments
  * @return Error code
  **/
 
-error_t shellClientExecuteCommand(ShellClientContext *context,
+error_t shellClientFormatCommand(ShellClientContext *context,
    const char_t *command, ...)
 {
    error_t error;
-   SshConnection *connection;
-   SshChannel *channel;
 
    //Check parameters
    if(context == NULL || command == NULL)
       return ERROR_INVALID_PARAMETER;
 
-   //Point to the SSH connection
-   connection = &context->sshConnection;
-   //Point to the SSH channel
-   channel = &context->sshChannel;
-
    //Initialize status code
    error = NO_ERROR;
 
-   //Open the specified file for writing
+   //Execute the command line
    while(!error)
    {
       //Check the state of the shell client
@@ -280,6 +278,69 @@ error_t shellClientExecuteCommand(ShellClientContext *context,
             //output was truncated
             error = ERROR_BUFFER_OVERFLOW;
          }
+      }
+      else if(context->state == SHELL_CLIENT_STATE_CHANNEL_INIT ||
+         context->state == SHELL_CLIENT_STATE_CHANNEL_OPEN ||
+         context->state == SHELL_CLIENT_STATE_CHANNEL_REQUEST ||
+         context->state == SHELL_CLIENT_STATE_CHANNEL_REPLY ||
+         context->state == SHELL_CLIENT_STATE_CHANNEL_CLOSE)
+      {
+         //Send the "exec" request
+         error = shellClientExecuteCommand(context, context->buffer);
+      }
+      else if(context->state == SHELL_CLIENT_STATE_CHANNEL_DATA)
+      {
+         //An SSH_MSG_CHANNEL_SUCCESS message has been received
+         shellClientChangeState(context, SHELL_CLIENT_STATE_CHANNEL_DATA);
+         //We are done
+         break;
+      }
+      else
+      {
+         //Invalid state
+         error = ERROR_WRONG_STATE;
+      }
+   }
+
+   //Return status code
+   return error;
+}
+
+
+/**
+ * @brief Execute a command line
+ * @param[in] context Pointer to the shell client context
+ * @param[in] command NULL-terminating string containing the command line
+ * @return Error code
+ **/
+
+error_t shellClientExecuteCommand(ShellClientContext *context,
+   const char_t *command)
+{
+   error_t error;
+   SshConnection *connection;
+   SshChannel *channel;
+
+   //Check parameters
+   if(context == NULL || command == NULL)
+      return ERROR_INVALID_PARAMETER;
+
+   //Point to the SSH connection
+   connection = &context->sshConnection;
+   //Point to the SSH channel
+   channel = &context->sshChannel;
+
+   //Initialize status code
+   error = NO_ERROR;
+
+   //Execute the command line
+   while(!error)
+   {
+      //Check the state of the shell client
+      if(context->state == SHELL_CLIENT_STATE_CONNECTED)
+      {
+         //Update shell client state
+         shellClientChangeState(context, SHELL_CLIENT_STATE_CHANNEL_INIT);
       }
       else if(context->state == SHELL_CLIENT_STATE_CHANNEL_INIT)
       {
@@ -354,8 +415,8 @@ error_t shellClientExecuteCommand(ShellClientContext *context,
          SshExecReqParams requestParams;
 
          //Set "exec" request parameters
-         requestParams.command.value = context->buffer;
-         requestParams.command.length = osStrlen(context->buffer);
+         requestParams.command.value = command;
+         requestParams.command.length = osStrlen(command);
 
          //Send an SSH_MSG_CHANNEL_REQUEST message to the server
          error = sshSendChannelRequest(channel, "exec", &requestParams, TRUE);

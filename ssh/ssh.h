@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.0.2
+ * @version 2.0.4
  **/
 
 #ifndef _SSH_H
@@ -76,13 +76,13 @@
 #endif
 
 //Version string
-#define CYCLONE_SSH_VERSION_STRING "2.0.2"
+#define CYCLONE_SSH_VERSION_STRING "2.0.4"
 //Major version
 #define CYCLONE_SSH_MAJOR_VERSION 2
 //Minor version
 #define CYCLONE_SSH_MINOR_VERSION 0
 //Revision number
-#define CYCLONE_SSH_REV_NUMBER 2
+#define CYCLONE_SSH_REV_NUMBER 4
 
 //SSH support
 #ifndef SSH_SUPPORT
@@ -493,6 +493,8 @@
 //Maximum context size (MAC algorithms)
 #if (SSH_SHA512_SUPPORT == ENABLED)
    #define SSH_MAX_HASH_CONTEXT_SIZE sizeof(Sha512Context)
+#elif (SSH_SHA384_SUPPORT == ENABLED)
+   #define SSH_MAX_HASH_CONTEXT_SIZE sizeof(Sha384Context)
 #elif (SSH_SHA256_SUPPORT == ENABLED)
    #define SSH_MAX_HASH_CONTEXT_SIZE sizeof(Sha256Context)
 #elif (SSH_SHA1_SUPPORT == ENABLED)
@@ -506,6 +508,8 @@
 //Maximum digest size (MAC algorithms)
 #if (SSH_SHA512_SUPPORT == ENABLED)
    #define SSH_MAX_HASH_DIGEST_SIZE SHA512_DIGEST_SIZE
+#elif (SSH_SHA384_SUPPORT == ENABLED)
+   #define SSH_MAX_HASH_DIGEST_SIZE SHA384_DIGEST_SIZE
 #elif (SSH_SHA256_SUPPORT == ENABLED)
    #define SSH_MAX_HASH_DIGEST_SIZE SHA256_DIGEST_SIZE
 #elif (SSH_SHA1_SUPPORT == ENABLED)
@@ -980,6 +984,8 @@ struct _SshConnection
    bool_t kexInitReceived;                         ///<An SSH_MSG_KEXINIT message has been received
    bool_t newKeysSent;                             ///<An SSH_MSG_NEWKEYS message has been sent
    bool_t newKeysReceived;                         ///<An SSH_MSG_NEWKEYS message has been received
+   bool_t disconnectSent;                          ///<An SSH_MSG_DISCONNECT message has been sent
+   bool_t disconnectReceived;                      ///<An SSH_MSG_DISCONNECT message has been received
    bool_t wrongGuess;                              ///<A wrong guessed key exchange packet follows
    uint_t authAttempts;                            ///<Number of authentication attempts
    bool_t publicKeyOk;                             ///<The provided host key is acceptable

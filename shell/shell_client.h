@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.0.2
+ * @version 2.0.4
  **/
 
 #ifndef _SHELL_CLIENT_H
@@ -129,8 +129,11 @@ error_t shellClientBindToInterface(ShellClientContext *context,
 error_t shellClientConnect(ShellClientContext *context,
    const IpAddr *serverIpAddr, uint16_t serverPort);
 
-error_t shellClientExecuteCommand(ShellClientContext *context,
+error_t shellClientFormatCommand(ShellClientContext *context,
    const char_t *command, ...);
+
+error_t shellClientExecuteCommand(ShellClientContext *context,
+   const char_t *command);
 
 error_t shellClientWriteStream(ShellClientContext *context, const void *data,
    size_t length, size_t *written, uint_t flags);
