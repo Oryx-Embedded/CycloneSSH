@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.0.4
+ * @version 2.1.0
  **/
 
 //Switch to the appropriate trace level
@@ -141,28 +141,46 @@ const char_t *sshSupportedEncAlgos[] =
 #if (SSH_CHACHA20_POLY1305_SUPPORT == ENABLED)
    "chacha20-poly1305@openssh.com",
 #endif
-#if (SSH_AES_SUPPORT == ENABLED && SSH_GCM_CIPHER_SUPPORT == ENABLED)
+#if (SSH_AES_128_SUPPORT == ENABLED && SSH_GCM_CIPHER_SUPPORT == ENABLED)
    "aes128-gcm@openssh.com",
+#endif
+#if (SSH_AES_256_SUPPORT == ENABLED && SSH_GCM_CIPHER_SUPPORT == ENABLED)
    "aes256-gcm@openssh.com",
 #endif
-#if (SSH_AES_SUPPORT == ENABLED && SSH_CTR_CIPHER_SUPPORT == ENABLED)
+#if (SSH_AES_128_SUPPORT == ENABLED && SSH_CTR_CIPHER_SUPPORT == ENABLED)
    "aes128-ctr",
+#endif
+#if (SSH_AES_192_SUPPORT == ENABLED && SSH_CTR_CIPHER_SUPPORT == ENABLED)
    "aes192-ctr",
+#endif
+#if (SSH_AES_256_SUPPORT == ENABLED && SSH_CTR_CIPHER_SUPPORT == ENABLED)
    "aes256-ctr",
 #endif
-#if (SSH_AES_SUPPORT == ENABLED && SSH_CBC_CIPHER_SUPPORT == ENABLED)
-   "aes128-cbc",
-   "aes192-cbc",
-   "aes256-cbc",
-#endif
-#if (SSH_CAMELLIA_SUPPORT == ENABLED && SSH_CTR_CIPHER_SUPPORT == ENABLED)
+#if (SSH_CAMELLIA_128_SUPPORT == ENABLED && SSH_CTR_CIPHER_SUPPORT == ENABLED)
    "camellia128-ctr",
+#endif
+#if (SSH_CAMELLIA_192_SUPPORT == ENABLED && SSH_CTR_CIPHER_SUPPORT == ENABLED)
    "camellia192-ctr",
+#endif
+#if (SSH_CAMELLIA_256_SUPPORT == ENABLED && SSH_CTR_CIPHER_SUPPORT == ENABLED)
    "camellia256-ctr",
 #endif
-#if (SSH_CAMELLIA_SUPPORT == ENABLED && SSH_CBC_CIPHER_SUPPORT == ENABLED)
+#if (SSH_AES_128_SUPPORT == ENABLED && SSH_CBC_CIPHER_SUPPORT == ENABLED)
+   "aes128-cbc",
+#endif
+#if (SSH_AES_192_SUPPORT == ENABLED && SSH_CBC_CIPHER_SUPPORT == ENABLED)
+   "aes192-cbc",
+#endif
+#if (SSH_AES_256_SUPPORT == ENABLED && SSH_CBC_CIPHER_SUPPORT == ENABLED)
+   "aes256-cbc",
+#endif
+#if (SSH_CAMELLIA_128_SUPPORT == ENABLED && SSH_CBC_CIPHER_SUPPORT == ENABLED)
    "camellia128-cbc",
+#endif
+#if (SSH_CAMELLIA_192_SUPPORT == ENABLED && SSH_CBC_CIPHER_SUPPORT == ENABLED)
    "camellia192-cbc",
+#endif
+#if (SSH_CAMELLIA_256_SUPPORT == ENABLED && SSH_CBC_CIPHER_SUPPORT == ENABLED)
    "camellia256-cbc",
 #endif
 #if (SSH_SEED_SUPPORT == ENABLED && SSH_CTR_CIPHER_SUPPORT == ENABLED)
@@ -189,8 +207,10 @@ const char_t *sshSupportedEncAlgos[] =
 #if (SSH_IDEA_SUPPORT == ENABLED && SSH_CBC_CIPHER_SUPPORT == ENABLED)
    "idea-cbc",
 #endif
-#if (SSH_RC4_SUPPORT == ENABLED && SSH_STREAM_CIPHER_SUPPORT == ENABLED)
+#if (SSH_RC4_256_SUPPORT == ENABLED && SSH_STREAM_CIPHER_SUPPORT == ENABLED)
    "arcfour256",
+#endif
+#if (SSH_RC4_128_SUPPORT == ENABLED && SSH_STREAM_CIPHER_SUPPORT == ENABLED)
    "arcfour128",
 #endif
 };

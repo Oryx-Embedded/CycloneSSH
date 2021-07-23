@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.0.4
+ * @version 2.1.0
  **/
 
 //Switch to the appropriate trace level
@@ -522,7 +522,7 @@ error_t sshEncryptPacket(SshConnection *connection, uint8_t *packet,
       cipherAlgo = encryptionEngine->cipherAlgo;
 
       //Encrypt the contents of the SSH packet
-      cipherAlgo->encryptStream(encryptionEngine->cipherContext, data,
+      cipherAlgo->encryptStream(&encryptionEngine->cipherContext, data,
          data, dataLen);
 
       //Successful encryption
@@ -536,7 +536,7 @@ error_t sshEncryptPacket(SshConnection *connection, uint8_t *packet,
    {
       //Perform CBC encryption
       error = cbcEncrypt(encryptionEngine->cipherAlgo,
-         encryptionEngine->cipherContext, encryptionEngine->iv, data,
+         &encryptionEngine->cipherContext, encryptionEngine->iv, data,
          data, dataLen);
    }
    else
@@ -552,7 +552,7 @@ error_t sshEncryptPacket(SshConnection *connection, uint8_t *packet,
 
       //Perform CTR encryption
       error = ctrEncrypt(encryptionEngine->cipherAlgo,
-         encryptionEngine->cipherContext, m, encryptionEngine->iv, data,
+         &encryptionEngine->cipherContext, m, encryptionEngine->iv, data,
          data, dataLen);
    }
    else
@@ -788,7 +788,7 @@ error_t sshDecryptPacket(SshConnection *connection, uint8_t *packet,
             cipherAlgo = decryptionEngine->cipherAlgo;
 
             //Decrypt the contents of the SSH packet
-            cipherAlgo->decryptStream(decryptionEngine->cipherContext,
+            cipherAlgo->decryptStream(&decryptionEngine->cipherContext,
                packet + blockSize, packet + blockSize, n - blockSize);
          }
          else
@@ -799,7 +799,7 @@ error_t sshDecryptPacket(SshConnection *connection, uint8_t *packet,
          {
             //Perform CBC decryption
             error = cbcDecrypt(decryptionEngine->cipherAlgo,
-               decryptionEngine->cipherContext, decryptionEngine->iv,
+               &decryptionEngine->cipherContext, decryptionEngine->iv,
                packet + blockSize, packet + blockSize, n - blockSize);
          }
          else
@@ -810,7 +810,7 @@ error_t sshDecryptPacket(SshConnection *connection, uint8_t *packet,
          {
             //Perform CTR decryption
             error = ctrDecrypt(decryptionEngine->cipherAlgo,
-               decryptionEngine->cipherContext, blockSize * 8,
+               &decryptionEngine->cipherContext, blockSize * 8,
                decryptionEngine->iv, packet + blockSize, packet + blockSize,
                n - blockSize);
          }
@@ -1060,7 +1060,7 @@ error_t sshDecryptPacketLength(SshConnection *connection, uint8_t *packet)
          cipherAlgo = decryptionEngine->cipherAlgo;
 
          //Decrypt packet_length field
-         cipherAlgo->decryptStream(decryptionEngine->cipherContext, packet,
+         cipherAlgo->decryptStream(&decryptionEngine->cipherContext, packet,
             packet, blockSize);
       }
    }
@@ -1075,7 +1075,7 @@ error_t sshDecryptPacketLength(SshConnection *connection, uint8_t *packet)
       {
          //Perform CBC decryption
          error = cbcDecrypt(decryptionEngine->cipherAlgo,
-            decryptionEngine->cipherContext, decryptionEngine->iv, packet,
+            &decryptionEngine->cipherContext, decryptionEngine->iv, packet,
             packet, blockSize);
       }
    }
@@ -1090,7 +1090,7 @@ error_t sshDecryptPacketLength(SshConnection *connection, uint8_t *packet)
       {
          //Perform CTR decryption
          error = ctrDecrypt(decryptionEngine->cipherAlgo,
-            decryptionEngine->cipherContext, blockSize * 8,
+            &decryptionEngine->cipherContext, blockSize * 8,
             decryptionEngine->iv, packet, packet, blockSize);
       }
    }

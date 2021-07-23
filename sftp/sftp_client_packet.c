@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.0.4
+ * @version 2.1.0
  **/
 
 //Switch to the appropriate trace level
@@ -332,7 +332,7 @@ error_t sftpClientFormatFxpRead(SftpClientContext *context,
    context->responseLen = 0;
    context->responsePos = 0;
 
-   //Save the the number of data bytes requested in the SSH_FXP_READ packet
+   //Save the number of data bytes requested in the SSH_FXP_READ packet
    context->dataLen = dataLen;
    //Save the SFTP packet type
    context->requestType = (SftpPacketType) header->type;
@@ -422,7 +422,7 @@ error_t sftpClientFormatFxpWrite(SftpClientContext *context,
    context->responseLen = 0;
    context->responsePos = 0;
 
-   //Save the the number of data bytes to be written
+   //Save the number of data bytes to be written
    context->dataLen = dataLen;
    //Save the SFTP packet type
    context->requestType = (SftpPacketType) header->type;
@@ -1168,7 +1168,7 @@ error_t sftpClientParseFxpStatus(SftpClientContext *context,
    if(length != 0)
       return ERROR_INVALID_MESSAGE;
 
-   //Check the the result of the requested operation
+   //Check the result of the requested operation
    if(context->statusCode == SSH_FX_OK)
    {
       //If no data needs to be returned to the client, the SSH_FXP_STATUS
@@ -1348,7 +1348,7 @@ error_t sftpClientParseFxpData(SftpClientContext *context,
    if(data.length > context->dataLen)
       return ERROR_INVALID_LENGTH;
 
-   //Save the the actual number of data bytes in the SSH_FXP_DATA response
+   //Save the actual number of data bytes in the SSH_FXP_DATA response
    context->dataLen = data.length;
 
    //Successful processing

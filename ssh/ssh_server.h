@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.0.4
+ * @version 2.1.0
  **/
 
 #ifndef _SSH_SERVER_H
@@ -72,16 +72,16 @@ extern "C" {
 
 typedef struct
 {
-   NetInterface *interface;                            ///<Underlying network interface
-   uint16_t port;                                      ///<SSH port number
-   uint_t numConnections;                              ///<Maximum number of SSH connections
-   SshConnection *connections;                         ///<SSH connections
-   uint_t numChannels;                                 ///<Maximum number of SSH channels
-   SshChannel *channels;                               ///<SSH channels
-   const PrngAlgo *prngAlgo;                           ///<Pseudo-random number generator to be used
-   void *prngContext;                                  ///<Pseudo-random number generator context
-   SshPasswordAuthCallback passwordAuthCallback;       ///<Password authentication callback
-   SshPublicKeyAuthCallback publicKeyAuthCallback;     ///<Public key authentication callback
+   NetInterface *interface;                        ///<Underlying network interface
+   uint16_t port;                                  ///<SSH port number
+   uint_t numConnections;                          ///<Maximum number of SSH connections
+   SshConnection *connections;                     ///<SSH connections
+   uint_t numChannels;                             ///<Maximum number of SSH channels
+   SshChannel *channels;                           ///<SSH channels
+   const PrngAlgo *prngAlgo;                       ///<Pseudo-random number generator to be used
+   void *prngContext;                              ///<Pseudo-random number generator context
+   SshPasswordAuthCallback passwordAuthCallback;   ///<Password authentication callback
+   SshPublicKeyAuthCallback publicKeyAuthCallback; ///<Public key authentication callback
 } SshServerSettings;
 
 

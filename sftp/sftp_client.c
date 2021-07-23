@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.0.4
+ * @version 2.1.0
  **/
 
 //Switch to the appropriate trace level
@@ -860,7 +860,7 @@ error_t sftpClientOpenFile(SftpClientContext *context, const char_t *path,
       //Check current state
       if(context->state == SFTP_CLIENT_STATE_CONNECTED)
       {
-         //Rewind the the beginning of the file
+         //Rewind to the beginning of the file
          context->fileOffset = 0;
 
          //Format SSH_FXP_OPEN packet

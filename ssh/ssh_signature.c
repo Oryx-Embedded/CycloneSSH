@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.0.4
+ * @version 2.1.0
  **/
 
 //Switch to the appropriate trace level
@@ -38,8 +38,7 @@
 #include "ssh/ssh_misc.h"
 #include "pkix/pem_import.h"
 #include "ecc/ecdsa.h"
-#include "ecc/ed25519.h"
-#include "ecc/ed448.h"
+#include "ecc/eddsa.h"
 #include "debug.h"
 
 //Check SSH stack configuration
@@ -206,7 +205,7 @@ error_t sshGenerateRsaSignature(SshConnection *connection,
          *written += n;
 
          //Initialize hash context
-         hashAlgo->init(connection->hashContext);
+         hashAlgo->init(&connection->hashContext);
 
          //Client operation mode?
          if(connection->context->mode == SSH_OPERATION_MODE_CLIENT)
@@ -218,16 +217,16 @@ error_t sshGenerateRsaSignature(SshConnection *connection,
             STORE32BE(connection->sessionIdLen, temp);
 
             //Digest the length field
-            hashAlgo->update(connection->hashContext, temp, sizeof(temp));
+            hashAlgo->update(&connection->hashContext, temp, sizeof(temp));
 
             //Digest the session identifier
-            hashAlgo->update(connection->hashContext, connection->sessionId,
+            hashAlgo->update(&connection->hashContext, connection->sessionId,
                connection->sessionIdLen);
          }
 
          //Digest the message
-         hashAlgo->update(connection->hashContext, message, messageLen);
-         hashAlgo->final(connection->hashContext, digest);
+         hashAlgo->update(&connection->hashContext, message, messageLen);
+         hashAlgo->final(&connection->hashContext, digest);
 
          //Import RSA private key
          error = pemImportRsaPrivateKey(hostKey->privateKey,
@@ -299,7 +298,7 @@ error_t sshGenerateDsaSignature(SshConnection *connection,
    //Point to the SSH context
    context = connection->context;
    //Point to the hash context
-   hashContext = (Sha1Context *) connection->hashContext;
+   hashContext = &connection->hashContext.sha1Context;
 
    //Initialize DSA private key
    dsaInitPrivateKey(&dsaPrivateKey);
@@ -482,7 +481,7 @@ error_t sshGenerateEcdsaSignature(SshConnection *connection,
          *written += n;
 
          //Initialize hash context
-         hashAlgo->init(connection->hashContext);
+         hashAlgo->init(&connection->hashContext);
 
          //Client operation mode?
          if(connection->context->mode == SSH_OPERATION_MODE_CLIENT)
@@ -494,16 +493,16 @@ error_t sshGenerateEcdsaSignature(SshConnection *connection,
             STORE32BE(connection->sessionIdLen, temp);
 
             //Digest the length field
-            hashAlgo->update(connection->hashContext, temp, sizeof(temp));
+            hashAlgo->update(&connection->hashContext, temp, sizeof(temp));
 
             //Digest the session identifier
-            hashAlgo->update(connection->hashContext, connection->sessionId,
+            hashAlgo->update(&connection->hashContext, connection->sessionId,
                connection->sessionIdLen);
          }
 
          //Digest the message
-         hashAlgo->update(connection->hashContext, message, messageLen);
-         hashAlgo->final(connection->hashContext, digest);
+         hashAlgo->update(&connection->hashContext, message, messageLen);
+         hashAlgo->final(&connection->hashContext, digest);
 
          //Import EC domain parameters
          error = pemImportEcParameters(hostKey->privateKey,
@@ -975,7 +974,7 @@ error_t sshVerifyRsaSignature(SshConnection *connection,
       rsaInitPublicKey(&rsaPublicKey);
 
       //Initialize hash context
-      hashAlgo->init(connection->hashContext);
+      hashAlgo->init(&connection->hashContext);
 
       //Server operation mode?
       if(connection->context->mode == SSH_OPERATION_MODE_SERVER)
@@ -987,16 +986,16 @@ error_t sshVerifyRsaSignature(SshConnection *connection,
          STORE32BE(connection->sessionIdLen, temp);
 
          //Digest the length field
-         hashAlgo->update(connection->hashContext, temp, sizeof(temp));
+         hashAlgo->update(&connection->hashContext, temp, sizeof(temp));
 
          //Digest the session identifier
-         hashAlgo->update(connection->hashContext, connection->sessionId,
+         hashAlgo->update(&connection->hashContext, connection->sessionId,
             connection->sessionIdLen);
       }
 
       //Digest the message
-      hashAlgo->update(connection->hashContext, message, messageLen);
-      hashAlgo->final(connection->hashContext, digest);
+      hashAlgo->update(&connection->hashContext, message, messageLen);
+      hashAlgo->final(&connection->hashContext, digest);
 
       //Parse RSA host key structure
       error = sshParseRsaHostKey(publicKeyBlob->value, publicKeyBlob->length,
@@ -1059,7 +1058,7 @@ error_t sshVerifyDsaSignature(SshConnection *connection,
    uint8_t digest[SHA1_DIGEST_SIZE];
 
    //Point to the hash context
-   hashContext = (Sha1Context *) connection->hashContext;
+   hashContext = &connection->hashContext.sha1Context;
 
    //The DSA signature blob contains R followed by S (which are 160-bit
    //integers)
@@ -1244,7 +1243,7 @@ error_t sshVerifyEcdsaSignature(SshConnection *connection,
       ecdsaInitSignature(&ecdsaSignature);
 
       //Initialize hash context
-      hashAlgo->init(connection->hashContext);
+      hashAlgo->init(&connection->hashContext);
 
       //Server operation mode?
       if(connection->context->mode == SSH_OPERATION_MODE_SERVER)
@@ -1256,16 +1255,16 @@ error_t sshVerifyEcdsaSignature(SshConnection *connection,
          STORE32BE(connection->sessionIdLen, temp);
 
          //Digest the length field
-         hashAlgo->update(connection->hashContext, temp, sizeof(temp));
+         hashAlgo->update(&connection->hashContext, temp, sizeof(temp));
 
          //Digest the session identifier
-         hashAlgo->update(connection->hashContext, connection->sessionId,
+         hashAlgo->update(&connection->hashContext, connection->sessionId,
             connection->sessionIdLen);
       }
 
       //Digest the message
-      hashAlgo->update(connection->hashContext, message, messageLen);
-      hashAlgo->final(connection->hashContext, digest);
+      hashAlgo->update(&connection->hashContext, message, messageLen);
+      hashAlgo->final(&connection->hashContext, digest);
 
       //Parse ECDSA host key structure
       error = sshParseEcdsaHostKey(publicKeyBlob->value, publicKeyBlob->length,

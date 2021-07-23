@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.0.4
+ * @version 2.1.0
  **/
 
 //Switch to the appropriate trace level
@@ -67,7 +67,7 @@ void shellClientChangeState(ShellClientContext *context,
  * @param[in] type Request type
  * @param[in] data Request-specific data
  * @param[in] length Length of the request-specific data, in bytes
- * @param[in] param Pointer to the SFTP server context
+ * @param[in] param Pointer to the shell client context
  * @return Error code
  **/
 

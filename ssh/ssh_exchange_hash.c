@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.0.4
+ * @version 2.1.0
  **/
 
 //Switch to the appropriate trace level
@@ -115,7 +115,7 @@ error_t sshInitExchangeHash(SshConnection *connection)
       connection->hashAlgo = hashAlgo;
 
       //Initialize exchange hash computation
-      hashAlgo->init(connection->hashContext);
+      hashAlgo->init(&connection->hashContext);
    }
    else
    {
@@ -152,9 +152,9 @@ error_t sshUpdateExchangeHash(SshConnection *connection, const void *data,
       STORE32BE(length, temp);
 
       //Digest the length field
-      connection->hashAlgo->update(connection->hashContext, temp, sizeof(temp));
+      connection->hashAlgo->update(&connection->hashContext, temp, sizeof(temp));
       //Digest the contents of the data block
-      connection->hashAlgo->update(connection->hashContext, data, length);
+      connection->hashAlgo->update(&connection->hashContext, data, length);
    }
    else
    {
@@ -187,7 +187,7 @@ error_t sshFinalizeExchangeHash(SshConnection *connection, uint8_t *digest,
    if(connection->hashAlgo != NULL)
    {
       //Compute H = hash(V_C || V_S || I_C || I_S || K_S || e || f || K)
-      connection->hashAlgo->final(connection->hashContext, digest);
+      connection->hashAlgo->final(&connection->hashContext, digest);
       //Return the length of the resulting digest
       *digestLen = connection->hashAlgo->digestSize;
    }

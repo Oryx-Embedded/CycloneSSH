@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.0.4
+ * @version 2.1.0
  **/
 
 //Switch to the appropriate trace level
@@ -445,15 +445,15 @@ ShellServerSession *shellServerOpenSession(ShellServerContext *context,
    if(session != NULL)
    {
       //Save event object instance
-      event = session->event;
-      startEvent = session->startEvent;
+      osMemcpy(&event, &session->event, sizeof(OsEvent));
+      osMemcpy(&startEvent, &session->startEvent, sizeof(OsEvent));
 
       //Initialize session parameters
       osMemset(session, 0, sizeof(ShellServerSession));
 
       //Reuse event objects and avoid recreating them whenever possible
-      session->event = event;
-      session->startEvent = startEvent;
+      osMemcpy(&session->event, &event, sizeof(OsEvent));
+      osMemcpy(&session->startEvent, &startEvent, sizeof(OsEvent));
 
       //Attach shell server context
       session->context = context;

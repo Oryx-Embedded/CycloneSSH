@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.0.4
+ * @version 2.1.0
  **/
 
 #ifndef _SSH_H
@@ -36,13 +36,8 @@
 #include "ssh_legacy.h"
 #include "core/net.h"
 #include "core/crypto.h"
-#include "cipher/rc4.h"
-#include "cipher/idea.h"
-#include "cipher/des3.h"
-#include "cipher/aes.h"
-#include "cipher/blowfish.h"
-#include "cipher/camellia.h"
-#include "cipher/seed.h"
+#include "cipher/cipher_algorithms.h"
+#include "hash/hash_algorithms.h"
 #include "mac/hmac.h"
 #include "aead/gcm.h"
 #include "pkc/dh.h"
@@ -76,13 +71,13 @@
 #endif
 
 //Version string
-#define CYCLONE_SSH_VERSION_STRING "2.0.4"
+#define CYCLONE_SSH_VERSION_STRING "2.1.0"
 //Major version
 #define CYCLONE_SSH_MAJOR_VERSION 2
 //Minor version
-#define CYCLONE_SSH_MINOR_VERSION 0
+#define CYCLONE_SSH_MINOR_VERSION 1
 //Revision number
-#define CYCLONE_SSH_REV_NUMBER 4
+#define CYCLONE_SSH_REV_NUMBER 0
 
 //SSH support
 #ifndef SSH_SUPPORT
@@ -196,7 +191,7 @@
    #error SSH_STREAM_CIPHER_SUPPORT parameter is not valid
 #endif
 
-//CBC cipher mode support (insecure)
+//CBC cipher mode support (weak)
 #ifndef SSH_CBC_CIPHER_SUPPORT
    #define SSH_CBC_CIPHER_SUPPORT DISABLED
 #elif (SSH_CBC_CIPHER_SUPPORT != ENABLED && SSH_CBC_CIPHER_SUPPORT != DISABLED)
@@ -224,11 +219,18 @@
    #error SSH_CHACHA20_POLY1305_SUPPORT parameter is not valid
 #endif
 
-//RC4 cipher support (insecure)
-#ifndef SSH_RC4_SUPPORT
-   #define SSH_RC4_SUPPORT DISABLED
-#elif (SSH_RC4_SUPPORT != ENABLED && SSH_RC4_SUPPORT != DISABLED)
-   #error SSH_RC4_SUPPORT parameter is not valid
+//RC4 128-bit cipher support (insecure)
+#ifndef SSH_RC4_128_SUPPORT
+   #define SSH_RC4_128_SUPPORT DISABLED
+#elif (SSH_RC4_128_SUPPORT != ENABLED && SSH_RC4_128_SUPPORT != DISABLED)
+   #error SSH_RC4_128_SUPPORT parameter is not valid
+#endif
+
+//RC4 256-bit cipher support (insecure)
+#ifndef SSH_RC4_256_SUPPORT
+   #define SSH_RC4_256_SUPPORT DISABLED
+#elif (SSH_RC4_256_SUPPORT != ENABLED && SSH_RC4_256_SUPPORT != DISABLED)
+   #error SSH_RC4_256_SUPPORT parameter is not valid
 #endif
 
 //IDEA cipher support (insecure)
@@ -252,18 +254,46 @@
    #error SSH_3DES_SUPPORT parameter is not valid
 #endif
 
-//AES cipher support
-#ifndef SSH_AES_SUPPORT
-   #define SSH_AES_SUPPORT ENABLED
-#elif (SSH_AES_SUPPORT != ENABLED && SSH_AES_SUPPORT != DISABLED)
-   #error SSH_AES_SUPPORT parameter is not valid
+//AES 128-bit cipher support
+#ifndef SSH_AES_128_SUPPORT
+   #define SSH_AES_128_SUPPORT ENABLED
+#elif (SSH_AES_128_SUPPORT != ENABLED && SSH_AES_128_SUPPORT != DISABLED)
+   #error SSH_AES_128_SUPPORT parameter is not valid
 #endif
 
-//Camellia cipher support
-#ifndef SSH_CAMELLIA_SUPPORT
-   #define SSH_CAMELLIA_SUPPORT DISABLED
-#elif (SSH_CAMELLIA_SUPPORT != ENABLED && SSH_CAMELLIA_SUPPORT != DISABLED)
-   #error SSH_CAMELLIA_SUPPORT parameter is not valid
+//AES 192-bit cipher support
+#ifndef SSH_AES_192_SUPPORT
+   #define SSH_AES_192_SUPPORT ENABLED
+#elif (SSH_AES_192_SUPPORT != ENABLED && SSH_AES_192_SUPPORT != DISABLED)
+   #error SSH_AES_192_SUPPORT parameter is not valid
+#endif
+
+//AES 256-bit cipher support
+#ifndef SSH_AES_256_SUPPORT
+   #define SSH_AES_256_SUPPORT ENABLED
+#elif (SSH_AES_256_SUPPORT != ENABLED && SSH_AES_256_SUPPORT != DISABLED)
+   #error SSH_AES_256_SUPPORT parameter is not valid
+#endif
+
+//Camellia 128-bit cipher support
+#ifndef SSH_CAMELLIA_128_SUPPORT
+   #define SSH_CAMELLIA_128_SUPPORT DISABLED
+#elif (SSH_CAMELLIA_128_SUPPORT != ENABLED && SSH_CAMELLIA_128_SUPPORT != DISABLED)
+   #error SSH_CAMELLIA_128_SUPPORT parameter is not valid
+#endif
+
+//Camellia 192-bit cipher support
+#ifndef SSH_CAMELLIA_192_SUPPORT
+   #define SSH_CAMELLIA_192_SUPPORT DISABLED
+#elif (SSH_CAMELLIA_192_SUPPORT != ENABLED && SSH_CAMELLIA_192_SUPPORT != DISABLED)
+   #error SSH_CAMELLIA_192_SUPPORT parameter is not valid
+#endif
+
+//Camellia 256-bit cipher support
+#ifndef SSH_CAMELLIA_256_SUPPORT
+   #define SSH_CAMELLIA_256_SUPPORT DISABLED
+#elif (SSH_CAMELLIA_256_SUPPORT != ENABLED && SSH_CAMELLIA_256_SUPPORT != DISABLED)
+   #error SSH_CAMELLIA_256_SUPPORT parameter is not valid
 #endif
 
 //SEED cipher support
@@ -458,27 +488,18 @@
    #define SSH_MAX_ENC_KEY_SIZE 32
 #endif
 
-//Maximum context size (encryption algorithms)
-#if (SSH_BLOWFISH_SUPPORT == ENABLED)
-   #define SSH_MAX_CIPHER_CONTEXT_SIZE sizeof(BlowfishContext)
-#elif (SSH_AES_SUPPORT == ENABLED)
-   #define SSH_MAX_CIPHER_CONTEXT_SIZE sizeof(AesContext)
-#elif (SSH_3DES_SUPPORT == ENABLED)
-   #define SSH_MAX_CIPHER_CONTEXT_SIZE sizeof(Des3Context)
-#elif (SSH_CAMELLIA_SUPPORT == ENABLED)
-   #define SSH_MAX_CIPHER_CONTEXT_SIZE sizeof(CamelliaContext)
-#elif (SSH_RC4_SUPPORT == ENABLED)
-   #define SSH_MAX_CIPHER_CONTEXT_SIZE sizeof(Rc4Context)
-#elif (SSH_IDEA_SUPPORT == ENABLED)
-   #define SSH_MAX_CIPHER_CONTEXT_SIZE sizeof(IdeaContext)
-#else
-   #define SSH_MAX_CIPHER_CONTEXT_SIZE sizeof(SeedContext)
-#endif
-
 //Maximum block size (encryption algorithms)
-#if (SSH_AES_SUPPORT == ENABLED)
+#if (SSH_AES_128_SUPPORT == ENABLED)
    #define SSH_MAX_CIPHER_BLOCK_SIZE AES_BLOCK_SIZE
-#elif (SSH_CAMELLIA_SUPPORT == ENABLED)
+#elif (SSH_AES_192_SUPPORT == ENABLED)
+   #define SSH_MAX_CIPHER_BLOCK_SIZE AES_BLOCK_SIZE
+#elif (SSH_AES_256_SUPPORT == ENABLED)
+   #define SSH_MAX_CIPHER_BLOCK_SIZE AES_BLOCK_SIZE
+#elif (SSH_CAMELLIA_128_SUPPORT == ENABLED)
+   #define SSH_MAX_CIPHER_BLOCK_SIZE CAMELLIA_BLOCK_SIZE
+#elif (SSH_CAMELLIA_192_SUPPORT == ENABLED)
+   #define SSH_MAX_CIPHER_BLOCK_SIZE CAMELLIA_BLOCK_SIZE
+#elif (SSH_CAMELLIA_256_SUPPORT == ENABLED)
    #define SSH_MAX_CIPHER_BLOCK_SIZE CAMELLIA_BLOCK_SIZE
 #elif (SSH_SEED_SUPPORT == ENABLED)
    #define SSH_MAX_CIPHER_BLOCK_SIZE SEED_BLOCK_SIZE
@@ -488,21 +509,6 @@
    #define SSH_MAX_CIPHER_BLOCK_SIZE BLOWFISH_BLOCK_SIZE
 #else
    #define SSH_MAX_CIPHER_BLOCK_SIZE DES3_BLOCK_SIZE
-#endif
-
-//Maximum context size (MAC algorithms)
-#if (SSH_SHA512_SUPPORT == ENABLED)
-   #define SSH_MAX_HASH_CONTEXT_SIZE sizeof(Sha512Context)
-#elif (SSH_SHA384_SUPPORT == ENABLED)
-   #define SSH_MAX_HASH_CONTEXT_SIZE sizeof(Sha384Context)
-#elif (SSH_SHA256_SUPPORT == ENABLED)
-   #define SSH_MAX_HASH_CONTEXT_SIZE sizeof(Sha256Context)
-#elif (SSH_SHA1_SUPPORT == ENABLED)
-   #define SSH_MAX_HASH_CONTEXT_SIZE sizeof(Sha1Context)
-#elif (SSH_RIPEMD160_SUPPORT == ENABLED)
-   #define SSH_MAX_HASH_CONTEXT_SIZE sizeof(Ripemd160Context)
-#else
-   #define SSH_MAX_HASH_CONTEXT_SIZE sizeof(Md5Context)
 #endif
 
 //Maximum digest size (MAC algorithms)
@@ -866,22 +872,22 @@ typedef struct
 
 typedef struct
 {
-   CipherMode cipherMode;                              ///<Cipher mode of operation
-   const CipherAlgo *cipherAlgo;                       ///<Cipher algorithm
-   uint8_t cipherContext[SSH_MAX_CIPHER_CONTEXT_SIZE]; ///<Cipher context
-   const HashAlgo *hashAlgo;                           ///<Hash algorithm for MAC operations
-   HmacContext *hmacContext;                           ///<HMAC context
-   bool_t etm;                                         ///<Encrypt-then-MAC
-   uint8_t iv[SSH_MAX_CIPHER_BLOCK_SIZE];              ///<Initialization vector
-   uint8_t encKey[SSH_MAX_ENC_KEY_SIZE];               ///<Encryption key
-   size_t encKeyLen;                                   ///<Length of the encryption key, in bytes
-   uint8_t macKey[SSH_MAX_HASH_DIGEST_SIZE];           ///<Integrity key
-   uint8_t seqNum[4];                                  ///<Sequence number
+   CipherMode cipherMode;                    ///<Cipher mode of operation
+   const CipherAlgo *cipherAlgo;             ///<Cipher algorithm
+   CipherContext cipherContext;              ///<Cipher context
+   const HashAlgo *hashAlgo;                 ///<Hash algorithm for MAC operations
+   HmacContext *hmacContext;                 ///<HMAC context
+   bool_t etm;                               ///<Encrypt-then-MAC
+   uint8_t iv[SSH_MAX_CIPHER_BLOCK_SIZE];    ///<Initialization vector
+   uint8_t encKey[SSH_MAX_ENC_KEY_SIZE];     ///<Encryption key
+   size_t encKeyLen;                         ///<Length of the encryption key, in bytes
+   uint8_t macKey[SSH_MAX_HASH_DIGEST_SIZE]; ///<Integrity key
+   uint8_t seqNum[4];                        ///<Sequence number
 #if (SSH_GCM_CIPHER_SUPPORT == ENABLED)
-   GcmContext gcmContext;                              ///<GCM context
+   GcmContext gcmContext;                    ///<GCM context
 #endif
 #if (SSH_CHACHA20_POLY1305_SUPPORT == ENABLED)
-   uint8_t aad[4];                                     ///<Additional authenticated data
+   uint8_t aad[4];                           ///<Additional authenticated data
 #endif
 } SshEncryptionEngine;
 
@@ -939,63 +945,63 @@ struct _SshChannel
 
 struct _SshConnection
 {
-   SshConnectionState state;                       ///<Connection state
-   SshRequestState requestState;                   ///<Global request state
-   SshContext *context;                            ///<SSH context
-   Socket *socket;                                 ///<Underlying socket
-   systime_t timestamp;                            ///<Time stamp to manage connection timeout
+   SshConnectionState state;                    ///<Connection state
+   SshRequestState requestState;                ///<Global request state
+   SshContext *context;                         ///<SSH context
+   Socket *socket;                              ///<Underlying socket
+   systime_t timestamp;                         ///<Time stamp to manage connection timeout
 
-   char_t clientId[SSH_MAX_ID_LEN + 1];            ///<Client's identification string
-   char_t serverId[SSH_MAX_ID_LEN + 1];            ///<Server's identification string
-   uint8_t cookie[SSH_COOKIE_SIZE];                ///<Random value generated by the sender
-   char_t user[SSH_MAX_USERNAME_LEN + 1];          ///<User name
+   char_t clientId[SSH_MAX_ID_LEN + 1];         ///<Client's identification string
+   char_t serverId[SSH_MAX_ID_LEN + 1];         ///<Server's identification string
+   uint8_t cookie[SSH_COOKIE_SIZE];             ///<Random value generated by the sender
+   char_t user[SSH_MAX_USERNAME_LEN + 1];       ///<User name
 
-   const char_t *kexAlgo;                          ///<Selected key exchange algorithm name
-   const char_t *serverHostKeyAlgo;                ///<Selected server's host key algorithm name
-   const char_t *clientEncAlgo;                    ///<Selected client's encryption algorithm name
-   const char_t *serverEncAlgo;                    ///<Selected server's encryption algorithm name
-   const char_t *clientMacAlgo;                    ///<Selected client's MAC algorithm name
-   const char_t *serverMacAlgo;                    ///<Selected server's MAC algorithm name
-   const char_t *clientCompressAlgo;               ///<Selected client's encryption algorithm name
-   const char_t *serverCompressAlgo;               ///<Selected server's encryption algorithm name
-   uint_t hostKeyIndex;                            ///<Index of the selected host key
+   const char_t *kexAlgo;                       ///<Selected key exchange algorithm name
+   const char_t *serverHostKeyAlgo;             ///<Selected server's host key algorithm name
+   const char_t *clientEncAlgo;                 ///<Selected client's encryption algorithm name
+   const char_t *serverEncAlgo;                 ///<Selected server's encryption algorithm name
+   const char_t *clientMacAlgo;                 ///<Selected client's MAC algorithm name
+   const char_t *serverMacAlgo;                 ///<Selected server's MAC algorithm name
+   const char_t *clientCompressAlgo;            ///<Selected client's encryption algorithm name
+   const char_t *serverCompressAlgo;            ///<Selected server's encryption algorithm name
+   uint_t hostKeyIndex;                         ///<Index of the selected host key
 
-   uint8_t sessionId[SSH_MAX_HASH_DIGEST_SIZE];    ///<Session identifier
-   size_t sessionIdLen;                            ///<Length of the session identifier, in bytes
-   uint8_t h[SSH_MAX_HASH_DIGEST_SIZE];            ///<Exchange hash H
-   size_t hLen;                                    ///<Length of the exchange hash, in bytes
-   uint8_t k[SSH_MAX_SHARED_SECRET_LEN + 1];       ///<Shared secret K
-   size_t kLen;                                    ///<Length of the shared secret, in bytes
+   uint8_t sessionId[SSH_MAX_HASH_DIGEST_SIZE]; ///<Session identifier
+   size_t sessionIdLen;                         ///<Length of the session identifier, in bytes
+   uint8_t h[SSH_MAX_HASH_DIGEST_SIZE];         ///<Exchange hash H
+   size_t hLen;                                 ///<Length of the exchange hash, in bytes
+   uint8_t k[SSH_MAX_SHARED_SECRET_LEN + 1];    ///<Shared secret K
+   size_t kLen;                                 ///<Length of the shared secret, in bytes
 
-   const HashAlgo *hashAlgo;                       ///<Exchange hash algorithm
-   uint8_t hashContext[SSH_MAX_HASH_CONTEXT_SIZE]; ///<Exchange hash context
-   HmacContext hmacContext;                        ///<HMAC context
+   const HashAlgo *hashAlgo;                    ///<Exchange hash algorithm
+   HashContext hashContext;                     ///<Exchange hash context
+   HmacContext hmacContext;                     ///<HMAC context
 #if (SSH_DH_SUPPORT == ENABLED)
-   DhContext dhContext;                            ///<Diffie-Hellman context
+   DhContext dhContext;                         ///<Diffie-Hellman context
 #endif
 #if (SSH_ECDH_SUPPORT == ENABLED)
-   EcdhContext ecdhContext;                        ///<ECDH context
+   EcdhContext ecdhContext;                     ///<ECDH context
 #endif
 
-   SshEncryptionEngine encryptionEngine;           ///<Encryption engine
-   SshEncryptionEngine decryptionEngine;           ///<Decryption engine
+   SshEncryptionEngine encryptionEngine;        ///<Encryption engine
+   SshEncryptionEngine decryptionEngine;        ///<Decryption engine
 
-   bool_t kexInitSent;                             ///<An SSH_MSG_KEXINIT message has been sent
-   bool_t kexInitReceived;                         ///<An SSH_MSG_KEXINIT message has been received
-   bool_t newKeysSent;                             ///<An SSH_MSG_NEWKEYS message has been sent
-   bool_t newKeysReceived;                         ///<An SSH_MSG_NEWKEYS message has been received
-   bool_t disconnectSent;                          ///<An SSH_MSG_DISCONNECT message has been sent
-   bool_t disconnectReceived;                      ///<An SSH_MSG_DISCONNECT message has been received
-   bool_t wrongGuess;                              ///<A wrong guessed key exchange packet follows
-   uint_t authAttempts;                            ///<Number of authentication attempts
-   bool_t publicKeyOk;                             ///<The provided host key is acceptable
-   uint32_t localChannelNum;                       ///<Current channel number
+   bool_t kexInitSent;                          ///<An SSH_MSG_KEXINIT message has been sent
+   bool_t kexInitReceived;                      ///<An SSH_MSG_KEXINIT message has been received
+   bool_t newKeysSent;                          ///<An SSH_MSG_NEWKEYS message has been sent
+   bool_t newKeysReceived;                      ///<An SSH_MSG_NEWKEYS message has been received
+   bool_t disconnectSent;                       ///<An SSH_MSG_DISCONNECT message has been sent
+   bool_t disconnectReceived;                   ///<An SSH_MSG_DISCONNECT message has been received
+   bool_t wrongGuess;                           ///<A wrong guessed key exchange packet follows
+   uint_t authAttempts;                         ///<Number of authentication attempts
+   bool_t publicKeyOk;                          ///<The provided host key is acceptable
+   uint32_t localChannelNum;                    ///<Current channel number
 
-   uint8_t buffer[SSH_BUFFER_SIZE];                ///<Internal buffer
-   size_t txBufferLen;                             ///<Number of bytes that are pending to be sent
-   size_t txBufferPos;                             ///<Current position in TX buffer
-   size_t rxBufferLen;                             ///<Number of bytes available for reading
-   size_t rxBufferPos;                             ///<Current position in RX buffer
+   uint8_t buffer[SSH_BUFFER_SIZE];             ///<Internal buffer
+   size_t txBufferLen;                          ///<Number of bytes that are pending to be sent
+   size_t txBufferPos;                          ///<Current position in TX buffer
+   size_t rxBufferLen;                          ///<Number of bytes available for reading
+   size_t rxBufferPos;                          ///<Current position in RX buffer
 };
 
 

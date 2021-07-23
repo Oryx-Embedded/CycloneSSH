@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.0.4
+ * @version 2.1.0
  **/
 
 #ifndef _SHELL_SERVER_H
@@ -124,18 +124,6 @@ typedef enum
 
 
 /**
- * @brief File permissions
- **/
-
-typedef enum
-{
-   SHELL_FILE_PERM_LIST  = 0x01,
-   SHELL_FILE_PERM_READ  = 0x02,
-   SHELL_FILE_PERM_WRITE = 0x04
-} SFtpFilePerm;
-
-
-/**
  * @brief Shell session state
  **/
 
@@ -217,7 +205,7 @@ struct _ShellServerContext
    ShellServerSession *sessions;                             ///<Shell sessions
    ShellServerCheckUserCallback checkUserCallback;           ///<User verification callback function
    ShellServerCommandLineCallback commandLineCallback;       ///<Command line processing callback function
-   bool_t running;                                           ///<Operational state of the FTP server
+   bool_t running;                                           ///<Operational state of the shell server
    bool_t stop;                                              ///<Stop request
    OsEvent event;                                            ///<Event object used to poll the channels
    SshChannelEventDesc eventDesc[SHELL_SERVER_MAX_SESSIONS]; ///<The events the application is interested in

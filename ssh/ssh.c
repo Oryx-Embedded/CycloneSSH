@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.0.4
+ * @version 2.1.0
  **/
 
 //Switch to the appropriate trace level
@@ -883,11 +883,11 @@ SshChannel *sshCreateChannel(SshConnection *connection)
          channel = &context->channels[i];
 
          //Save event object instance
-         event = channel->event;
+         osMemcpy(&event, &channel->event, sizeof(OsEvent));
          //Clear associated structure
          osMemset(channel, 0, sizeof(SshChannel));
          //Reuse event objects and avoid recreating them whenever possible
-         channel->event = event;
+         osMemcpy(&channel->event, &event, sizeof(OsEvent));
 
          //Initialize channel's parameters
          channel->context = context;

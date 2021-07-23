@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.0.4
+ * @version 2.1.0
  **/
 
 //Switch to the appropriate trace level
@@ -704,7 +704,7 @@ error_t sftpServerParseFxpMkDir(SftpServerSession *session,
    p += sizeof(uint32_t);
    length -= sizeof(uint32_t);
 
-   //The path field specifies the the directory to be created
+   //The path field specifies the directory to be created
    error = sshParseString(p, length, &path);
    //Any error to report?
    if(error)
@@ -781,7 +781,7 @@ error_t sftpServerParseFxpRmDir(SftpServerSession *session,
    p += sizeof(uint32_t);
    length -= sizeof(uint32_t);
 
-   //The path field specifies the the directory to be removed
+   //The path field specifies the directory to be removed
    error = sshParseString(p, length, &path);
    //Any error to report?
    if(error)

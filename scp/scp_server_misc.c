@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.0.4
+ * @version 2.1.0
  **/
 
 //Switch to the appropriate trace level
@@ -138,7 +138,7 @@ error_t scpServerChannelRequestCallback(SshChannel *channel,
                return error;
 
             //Parse SCP command line
-            scpParseCommandLine(session, &requestParams);
+            scpServerParseCommandLine(session, &requestParams);
 
             //Notify the SCP server that the session is ready
             osSetEvent(&session->context->event);
@@ -167,7 +167,7 @@ error_t scpServerChannelRequestCallback(SshChannel *channel,
  * @param[in] requestParams Pointer to the "exec" request parameters
  **/
 
-void scpParseCommandLine(ScpServerSession *session,
+void scpServerParseCommandLine(ScpServerSession *session,
    const SshExecReqParams *requestParams)
 {
    error_t error;
@@ -692,7 +692,7 @@ void scpServerProcessSessionEvents(ScpServerSession *session)
             else
             {
                //Change to the parent directory
-               if(session->dirLevel)
+               if(session->dirLevel > 0)
                {
                   session->dirLevel--;
                }

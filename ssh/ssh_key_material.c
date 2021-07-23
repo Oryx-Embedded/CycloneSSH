@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.0.4
+ * @version 2.1.0
  **/
 
 //Switch to the appropriate trace level
@@ -89,7 +89,7 @@ error_t sshInitEncryptionEngine(SshConnection *connection,
          return error;
 
       //Initialize stream cipher context
-      error = encryptionEngine->cipherAlgo->init(encryptionEngine->cipherContext,
+      error = encryptionEngine->cipherAlgo->init(&encryptionEngine->cipherContext,
          encryptionEngine->encKey, encryptionEngine->encKeyLen);
       //Any error?
       if(error)
@@ -98,7 +98,7 @@ error_t sshInitEncryptionEngine(SshConnection *connection,
       //Discard the first 1536 bytes of keystream so as to ensure that the
       //cipher's internal state is thoroughly mixed (refer to RFC 4345,
       //section 1)
-      encryptionEngine->cipherAlgo->encryptStream(encryptionEngine->cipherContext,
+      encryptionEngine->cipherAlgo->encryptStream(&encryptionEngine->cipherContext,
          NULL, NULL, 1536);
 
       //Initialize HMAC context
@@ -133,7 +133,7 @@ error_t sshInitEncryptionEngine(SshConnection *connection,
          return error;
 
       //Initialize block cipher context
-      error = encryptionEngine->cipherAlgo->init(encryptionEngine->cipherContext,
+      error = encryptionEngine->cipherAlgo->init(&encryptionEngine->cipherContext,
          encryptionEngine->encKey, encryptionEngine->encKeyLen);
       //Any error?
       if(error)
@@ -164,7 +164,7 @@ error_t sshInitEncryptionEngine(SshConnection *connection,
       //Because an AEAD algorithm such as AES-GCM uses the encryption key to
       //provide both confidentiality and data integrity, the integrity key is
       //not used with AES-GCM (refer to RFC 5647, section 5.1)
-      error = encryptionEngine->cipherAlgo->init(encryptionEngine->cipherContext,
+      error = encryptionEngine->cipherAlgo->init(&encryptionEngine->cipherContext,
          encryptionEngine->encKey, encryptionEngine->encKeyLen);
       //Any error?
       if(error)
@@ -172,7 +172,7 @@ error_t sshInitEncryptionEngine(SshConnection *connection,
 
       //Initialize GCM context
       error = gcmInit(&encryptionEngine->gcmContext, encryptionEngine->cipherAlgo,
-         encryptionEngine->cipherContext);
+         &encryptionEngine->cipherContext);
       //Any error?
       if(error)
          return error;
@@ -221,7 +221,7 @@ error_t sshSelectCipherAlgo(SshEncryptionEngine *encryptionEngine,
    //Initialize status code
    error = NO_ERROR;
 
-#if (SSH_RC4_SUPPORT == ENABLED && SSH_STREAM_CIPHER_SUPPORT == ENABLED)
+#if (SSH_RC4_128_SUPPORT == ENABLED && SSH_STREAM_CIPHER_SUPPORT == ENABLED)
    //RC4 with 128-bit key encryption algorithm?
    if(sshCompareAlgo(encAlgo, "arcfour128"))
    {
@@ -230,8 +230,11 @@ error_t sshSelectCipherAlgo(SshEncryptionEngine *encryptionEngine,
       encryptionEngine->cipherAlgo = RC4_CIPHER_ALGO;
       encryptionEngine->encKeyLen = 16;
    }
+   else
+#endif
+#if (SSH_RC4_256_SUPPORT == ENABLED && SSH_STREAM_CIPHER_SUPPORT == ENABLED)
    //RC4 with 256-bit key encryption algorithm?
-   else if(sshCompareAlgo(encAlgo, "arcfour256"))
+   if(sshCompareAlgo(encAlgo, "arcfour256"))
    {
       //This cipher uses RC4 with a 256-bit key (refer to RFC 4345, section 4)
       encryptionEngine->cipherMode = CIPHER_MODE_STREAM;
@@ -310,7 +313,7 @@ error_t sshSelectCipherAlgo(SshEncryptionEngine *encryptionEngine,
    }
    else
 #endif
-#if (SSH_AES_SUPPORT == ENABLED && SSH_CBC_CIPHER_SUPPORT == ENABLED)
+#if (SSH_AES_128_SUPPORT == ENABLED && SSH_CBC_CIPHER_SUPPORT == ENABLED)
    //AES-CBC with 128-bit key encryption algorithm?
    if(sshCompareAlgo(encAlgo, "aes128-cbc"))
    {
@@ -320,8 +323,11 @@ error_t sshSelectCipherAlgo(SshEncryptionEngine *encryptionEngine,
       encryptionEngine->cipherAlgo = AES_CIPHER_ALGO;
       encryptionEngine->encKeyLen = 16;
    }
+   else
+#endif
+#if (SSH_AES_192_SUPPORT == ENABLED && SSH_CBC_CIPHER_SUPPORT == ENABLED)
    //AES-CBC with 192-bit key encryption algorithm?
-   else if(sshCompareAlgo(encAlgo, "aes192-cbc"))
+   if(sshCompareAlgo(encAlgo, "aes192-cbc"))
    {
       //This cipher uses AES in CBC mode with a 192-bit key (refer to
       //RFC 4253, section 6.3)
@@ -329,8 +335,11 @@ error_t sshSelectCipherAlgo(SshEncryptionEngine *encryptionEngine,
       encryptionEngine->cipherAlgo = AES_CIPHER_ALGO;
       encryptionEngine->encKeyLen = 24;
    }
+   else
+#endif
+#if (SSH_AES_256_SUPPORT == ENABLED && SSH_CBC_CIPHER_SUPPORT == ENABLED)
    //AES-CBC with 256-bit key encryption algorithm?
-   else if(sshCompareAlgo(encAlgo, "aes256-cbc"))
+   if(sshCompareAlgo(encAlgo, "aes256-cbc"))
    {
       //This cipher uses AES in CBC mode with a 256-bit key (refer to
       //RFC 4253, section 6.3)
@@ -340,7 +349,7 @@ error_t sshSelectCipherAlgo(SshEncryptionEngine *encryptionEngine,
    }
    else
 #endif
-#if (SSH_AES_SUPPORT == ENABLED && SSH_CTR_CIPHER_SUPPORT == ENABLED)
+#if (SSH_AES_128_SUPPORT == ENABLED && SSH_CTR_CIPHER_SUPPORT == ENABLED)
    //AES-CTR with 128-bit key encryption algorithm?
    if(sshCompareAlgo(encAlgo, "aes128-ctr"))
    {
@@ -350,8 +359,11 @@ error_t sshSelectCipherAlgo(SshEncryptionEngine *encryptionEngine,
       encryptionEngine->cipherAlgo = AES_CIPHER_ALGO;
       encryptionEngine->encKeyLen = 16;
    }
+   else
+#endif
+#if (SSH_AES_192_SUPPORT == ENABLED && SSH_CTR_CIPHER_SUPPORT == ENABLED)
    //AES-CTR with 192-bit key encryption algorithm?
-   else if(sshCompareAlgo(encAlgo, "aes192-ctr"))
+   if(sshCompareAlgo(encAlgo, "aes192-ctr"))
    {
       //This cipher uses AES in CTR mode with a 192-bit key (refer to
       //RFC 4344, section 4)
@@ -359,8 +371,11 @@ error_t sshSelectCipherAlgo(SshEncryptionEngine *encryptionEngine,
       encryptionEngine->cipherAlgo = AES_CIPHER_ALGO;
       encryptionEngine->encKeyLen = 24;
    }
+   else
+#endif
+#if (SSH_AES_256_SUPPORT == ENABLED && SSH_CTR_CIPHER_SUPPORT == ENABLED)
    //AES-CTR with 256-bit key encryption algorithm?
-   else if(sshCompareAlgo(encAlgo, "aes256-ctr"))
+   if(sshCompareAlgo(encAlgo, "aes256-ctr"))
    {
       //This cipher uses AES in CTR mode with a 256-bit key (refer to
       //RFC 4344, section 4)
@@ -370,7 +385,7 @@ error_t sshSelectCipherAlgo(SshEncryptionEngine *encryptionEngine,
    }
    else
 #endif
-#if (SSH_CAMELLIA_SUPPORT == ENABLED && SSH_CBC_CIPHER_SUPPORT == ENABLED)
+#if (SSH_CAMELLIA_128_SUPPORT == ENABLED && SSH_CBC_CIPHER_SUPPORT == ENABLED)
    //Camellia-CBC with 128-bit key encryption algorithm?
    if(sshCompareAlgo(encAlgo, "camellia128-cbc"))
    {
@@ -379,16 +394,22 @@ error_t sshSelectCipherAlgo(SshEncryptionEngine *encryptionEngine,
       encryptionEngine->cipherAlgo = CAMELLIA_CIPHER_ALGO;
       encryptionEngine->encKeyLen = 16;
    }
+   else
+#endif
+#if (SSH_CAMELLIA_192_SUPPORT == ENABLED && SSH_CBC_CIPHER_SUPPORT == ENABLED)
    //Camellia-CBC with 192-bit key encryption algorithm?
-   else if(sshCompareAlgo(encAlgo, "camellia192-cbc"))
+   if(sshCompareAlgo(encAlgo, "camellia192-cbc"))
    {
       //This cipher uses Camellia in CBC mode with a 192-bit key
       encryptionEngine->cipherMode = CIPHER_MODE_CBC;
       encryptionEngine->cipherAlgo = CAMELLIA_CIPHER_ALGO;
       encryptionEngine->encKeyLen = 24;
    }
+   else
+#endif
+#if (SSH_CAMELLIA_256_SUPPORT == ENABLED && SSH_CBC_CIPHER_SUPPORT == ENABLED)
    //Camellia-CBC with 256-bit key encryption algorithm?
-   else if(sshCompareAlgo(encAlgo, "camellia256-cbc"))
+   if(sshCompareAlgo(encAlgo, "camellia256-cbc"))
    {
       //This cipher uses Camellia in CBC mode with a 256-bit key
       encryptionEngine->cipherMode = CIPHER_MODE_CBC;
@@ -397,7 +418,7 @@ error_t sshSelectCipherAlgo(SshEncryptionEngine *encryptionEngine,
    }
    else
 #endif
-#if (SSH_CAMELLIA_SUPPORT == ENABLED && SSH_CTR_CIPHER_SUPPORT == ENABLED)
+#if (SSH_CAMELLIA_128_SUPPORT == ENABLED && SSH_CTR_CIPHER_SUPPORT == ENABLED)
    //Camellia-CTR with 128-bit key encryption algorithm?
    if(sshCompareAlgo(encAlgo, "camellia128-ctr"))
    {
@@ -406,16 +427,22 @@ error_t sshSelectCipherAlgo(SshEncryptionEngine *encryptionEngine,
       encryptionEngine->cipherAlgo = CAMELLIA_CIPHER_ALGO;
       encryptionEngine->encKeyLen = 16;
    }
+   else
+#endif
+#if (SSH_CAMELLIA_192_SUPPORT == ENABLED && SSH_CTR_CIPHER_SUPPORT == ENABLED)
    //Camellia-CTR with 192-bit key encryption algorithm?
-   else if(sshCompareAlgo(encAlgo, "camellia192-ctr"))
+   if(sshCompareAlgo(encAlgo, "camellia192-ctr"))
    {
       //This cipher uses Camellia in CTR mode with a 192-bit key
       encryptionEngine->cipherMode = CIPHER_MODE_CTR;
       encryptionEngine->cipherAlgo = CAMELLIA_CIPHER_ALGO;
       encryptionEngine->encKeyLen = 24;
    }
+   else
+#endif
+#if (SSH_CAMELLIA_256_SUPPORT == ENABLED && SSH_CTR_CIPHER_SUPPORT == ENABLED)
    //Camellia-CTR with 256-bit key encryption algorithm?
-   else if(sshCompareAlgo(encAlgo, "camellia256-ctr"))
+   if(sshCompareAlgo(encAlgo, "camellia256-ctr"))
    {
       //This cipher uses Camellia in CTR mode with a 256-bit key
       encryptionEngine->cipherMode = CIPHER_MODE_CTR;
@@ -446,7 +473,7 @@ error_t sshSelectCipherAlgo(SshEncryptionEngine *encryptionEngine,
    }
    else
 #endif
-#if (SSH_AES_SUPPORT == ENABLED && SSH_GCM_CIPHER_SUPPORT == ENABLED)
+#if (SSH_AES_128_SUPPORT == ENABLED && SSH_GCM_CIPHER_SUPPORT == ENABLED)
    //AES-GCM with 128-bit key encryption algorithm?
    if(sshCompareAlgo(encAlgo, "aes128-gcm@openssh.com"))
    {
@@ -455,8 +482,11 @@ error_t sshSelectCipherAlgo(SshEncryptionEngine *encryptionEngine,
       encryptionEngine->cipherAlgo = AES_CIPHER_ALGO;
       encryptionEngine->encKeyLen = 16;
    }
+   else
+#endif
+#if (SSH_AES_256_SUPPORT == ENABLED && SSH_GCM_CIPHER_SUPPORT == ENABLED)
    //AES-GCM with 256-bit key encryption algorithm?
-   else if(sshCompareAlgo(encAlgo, "aes256-gcm@openssh.com"))
+   if(sshCompareAlgo(encAlgo, "aes256-gcm@openssh.com"))
    {
       //AEAD algorithms offer both encryption and authentication
       encryptionEngine->cipherMode = CIPHER_MODE_GCM;
@@ -504,10 +534,19 @@ error_t sshSelectHashAlgo(SshEncryptionEngine *encryptionEngine,
    //Initialize status code
    error = NO_ERROR;
 
-#if (SSH_AES_SUPPORT == ENABLED && SSH_GCM_CIPHER_SUPPORT == ENABLED)
-   //AES-GCM authenticated encryption algorithm?
-   if(sshCompareAlgo(encAlgo, "aes128-gcm@openssh.com") ||
-      sshCompareAlgo(encAlgo, "aes256-gcm@openssh.com"))
+#if (SSH_AES_128_SUPPORT == ENABLED && SSH_GCM_CIPHER_SUPPORT == ENABLED)
+   //AES-GCM with 128-bit key authenticated encryption algorithm?
+   if(sshCompareAlgo(encAlgo, "aes128-gcm@openssh.com"))
+   {
+      //AEAD algorithms offer both encryption and authentication
+      encryptionEngine->hashAlgo = NULL;
+      encryptionEngine->etm = FALSE;
+   }
+   else
+#endif
+#if (SSH_AES_256_SUPPORT == ENABLED && SSH_GCM_CIPHER_SUPPORT == ENABLED)
+   //AES-GCM with 256-bit key authenticated encryption algorithm?
+   if(sshCompareAlgo(encAlgo, "aes256-gcm@openssh.com"))
    {
       //AEAD algorithms offer both encryption and authentication
       encryptionEngine->hashAlgo = NULL;

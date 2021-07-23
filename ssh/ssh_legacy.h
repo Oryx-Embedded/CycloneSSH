@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.0.4
+ * @version 2.1.0
  **/
 
 #ifndef _SSH_LEGACY_H
@@ -46,5 +46,22 @@
 #define sshServerReadChannel sshReadChannel
 #define sshServerTerminateChannel sshCloseChannel
 #define sshParseWindowChangeParams sshParseWindowChangeReqParams
+
+#ifdef SSH_RC4_SUPPORT
+   #define SSH_RC4_128_SUPPORT SSH_RC4_SUPPORT
+   #define SSH_RC4_256_SUPPORT SSH_RC4_SUPPORT
+#endif
+
+#ifdef SSH_AES_SUPPORT
+   #define SSH_AES_128_SUPPORT SSH_AES_SUPPORT
+   #define SSH_AES_192_SUPPORT SSH_AES_SUPPORT
+   #define SSH_AES_256_SUPPORT SSH_AES_SUPPORT
+#endif
+
+#ifdef SSH_CAMELLIA_SUPPORT
+   #define SSH_CAMELLIA_128_SUPPORT SSH_CAMELLIA_SUPPORT
+   #define SSH_CAMELLIA_192_SUPPORT SSH_CAMELLIA_SUPPORT
+   #define SSH_CAMELLIA_256_SUPPORT SSH_CAMELLIA_SUPPORT
+#endif
 
 #endif

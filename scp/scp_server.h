@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.0.4
+ * @version 2.1.0
  **/
 
 #ifndef _SCP_SERVER_H
@@ -138,7 +138,7 @@ typedef enum
    SCP_FILE_PERM_LIST  = 0x01,
    SCP_FILE_PERM_READ  = 0x02,
    SCP_FILE_PERM_WRITE = 0x04
-} SFtpFilePerm;
+} ScpFilePerm;
 
 
 /**
