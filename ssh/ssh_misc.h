@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.1.0
+ * @version 2.1.2
  **/
 
 #ifndef _SSH_MISC_H
@@ -87,6 +87,9 @@ error_t sshFormatNameList(const char_t *nameList[], uint_t nameListLen,
    uint8_t *p, size_t *written);
 
 error_t sshFormatMpint(const Mpi *value, uint8_t *p, size_t *written);
+
+error_t sshConvertArrayToMpint(const uint8_t *value, size_t length, uint8_t *p,
+   size_t *written);
 
 bool_t sshCompareString(const SshString *string, const char_t *value);
 bool_t sshCompareStrings(const SshString *string1, const SshString *string2);

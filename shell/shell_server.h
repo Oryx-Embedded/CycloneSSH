@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.1.0
+ * @version 2.1.2
  **/
 
 #ifndef _SHELL_SERVER_H
@@ -175,6 +175,11 @@ struct _ShellServerSession
    ShellServerSessionState state;                   ///<Session state
    OsEvent startEvent;
    OsEvent event;
+   OsTaskId taskId;                                 ///<Task identifier
+#if (OS_STATIC_TASK_SUPPORT == ENABLED)
+   OsTaskTcb taskTcb;                               ///<Task control block
+   OsStackType taskStack[SHELL_SERVER_STACK_SIZE];  ///<Task stack
+#endif
    ShellServerContext *context;                     ///<Shell server context
    SshChannel *channel;                             ///<Underlying SSH channel
    char_t prompt[SHELL_SERVER_MAX_PROMPT_LEN + 1];  ///<Shell prompt

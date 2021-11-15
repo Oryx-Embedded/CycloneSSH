@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.1.0
+ * @version 2.1.2
  **/
 
 #ifndef _SSH_KEY_EXPORT_H
@@ -51,7 +51,7 @@ error_t sshExportDsaPublicKey(const DsaPublicKey *publicKey,
    char_t *output, size_t *written);
 
 error_t sshExportEcdsaPublicKey(const EcDomainParameters *params,
-   const EcPoint *publicKey, char_t *output, size_t *written);
+   const EcPublicKey *publicKey, char_t *output, size_t *written);
 
 error_t sshExportEd25519PublicKey(const EddsaPublicKey *publicKey,
    char_t *output, size_t *written);
@@ -66,7 +66,7 @@ error_t sshFormatDsaPublicKey(const DsaPublicKey *publicKey,
    uint8_t *p, size_t *written);
 
 error_t sshFormatEcdsaPublicKey(const EcDomainParameters *params,
-   const EcPoint *publicKey, uint8_t *p, size_t *written);
+   const EcPublicKey *publicKey, uint8_t *p, size_t *written);
 
 error_t sshFormatEd25519PublicKey(const EddsaPublicKey *publicKey,
    uint8_t *p, size_t *written);

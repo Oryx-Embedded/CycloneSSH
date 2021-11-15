@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.1.0
+ * @version 2.1.2
  **/
 
 //Switch to the appropriate trace level
@@ -208,7 +208,7 @@ error_t sshImportDsaPublicKey(const char_t *input, size_t length,
  **/
 
 error_t sshImportEcdsaPublicKey(const char_t *input, size_t length,
-   EcDomainParameters *params, EcPoint *publicKey)
+   EcDomainParameters *params, EcPublicKey *publicKey)
 {
 #if (SSH_ECDSA_SUPPORT == ENABLED)
    error_t error;
@@ -266,7 +266,7 @@ error_t sshImportEcdsaPublicKey(const char_t *input, size_t length,
    {
       //Clean up side effects
       ecFreeDomainParameters(params);
-      ecFree(publicKey);
+      ecFreePublicKey(publicKey);
    }
 
    //Return status code
@@ -544,7 +544,7 @@ error_t sshImportDsaHostKey(const SshDsaHostKey *hostKey,
  **/
 
 error_t sshImportEcdsaHostKey(const SshEcdsaHostKey *hostKey,
-   EcDomainParameters *params, EcPoint *publicKey)
+   EcDomainParameters *params, EcPublicKey *publicKey)
 {
 #if (SSH_ECDSA_SUPPORT == ENABLED)
    error_t error;
@@ -590,7 +590,7 @@ error_t sshImportEcdsaHostKey(const SshEcdsaHostKey *hostKey,
       return error;
 
    //Import EC public key
-   error = ecImport(params, publicKey, hostKey->q.value, hostKey->q.length);
+   error = ecImport(params, &publicKey->q, hostKey->q.value, hostKey->q.length);
    //Any error to report?
    if(error)
       return error;

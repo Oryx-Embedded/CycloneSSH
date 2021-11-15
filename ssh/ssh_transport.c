@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.1.0
+ * @version 2.1.2
  **/
 
 //Switch to the appropriate trace level
@@ -182,8 +182,8 @@ error_t sshSendServiceAccept(SshConnection *connection,
    //Check status code
    if(!error)
    {
-      //The authentication protocol is intended to be run over the SSH
-      //transport layer protocol (refer to RFC 4252, section 1)
+      //The authentication protocol is intended to be run over the SSH transport
+      //layer protocol (refer to RFC 4252, section 1)
       connection->state = SSH_CONN_STATE_USER_AUTH_REQUEST;
    }
 
@@ -469,7 +469,9 @@ error_t sshParseIdString(SshConnection *connection, const uint8_t *id,
 
    //Trim the trailing CR character from the string
    if(id[length - 1] == '\r')
+   {
       length--;
+   }
 
    //Sanity check
    if(length > SSH_MAX_ID_LEN)
@@ -657,8 +659,8 @@ error_t sshParseServiceAccept(SshConnection *connection, const uint8_t *message,
    if(!sshCompareString(&serviceName, "ssh-userauth"))
       return ERROR_INVALID_MESSAGE;
 
-   //The authentication protocol is intended to be run over the SSH
-   //transport layer protocol (refer to RFC 4252, section 1)
+   //The authentication protocol is intended to be run over the SSH transport
+   //layer protocol (refer to RFC 4252, section 1)
    connection->state = SSH_CONN_STATE_USER_AUTH_REQUEST;
 
    //Successful processing

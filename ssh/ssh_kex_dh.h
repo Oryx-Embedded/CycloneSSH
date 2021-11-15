@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.1.0
+ * @version 2.1.2
  **/
 
 #ifndef _SSH_KEX_DH_H
@@ -58,6 +58,7 @@ error_t sshParseKexDhReply(SshConnection *connection, const uint8_t *message,
 error_t sshParseKexDhMessage(SshConnection *connection, uint8_t type,
    const uint8_t *message, size_t length);
 
+error_t sshComputeDhSharedSecret(SshConnection *connection);
 error_t sshDigestClientDhPublicKey(SshConnection *connection);
 
 //C++ guard

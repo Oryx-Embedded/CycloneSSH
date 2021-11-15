@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.1.0
+ * @version 2.1.2
  **/
 
 #ifndef _SSH_H
@@ -71,13 +71,13 @@
 #endif
 
 //Version string
-#define CYCLONE_SSH_VERSION_STRING "2.1.0"
+#define CYCLONE_SSH_VERSION_STRING "2.1.2"
 //Major version
 #define CYCLONE_SSH_MAJOR_VERSION 2
 //Minor version
 #define CYCLONE_SSH_MINOR_VERSION 1
 //Revision number
-#define CYCLONE_SSH_REV_NUMBER 0
+#define CYCLONE_SSH_REV_NUMBER 2
 
 //SSH support
 #ifndef SSH_SUPPORT
@@ -112,6 +112,20 @@
    #define SSH_PUBLIC_KEY_AUTH_SUPPORT ENABLED
 #elif (SSH_PUBLIC_KEY_AUTH_SUPPORT != ENABLED && SSH_PUBLIC_KEY_AUTH_SUPPORT != DISABLED)
    #error SSH_PUBLIC_KEY_AUTH_SUPPORT parameter is not valid
+#endif
+
+//Signature generation/verification callback functions
+#ifndef SSH_SIGN_CALLBACK_SUPPORT
+   #define SSH_SIGN_CALLBACK_SUPPORT DISABLED
+#elif (SSH_SIGN_CALLBACK_SUPPORT != ENABLED && SSH_SIGN_CALLBACK_SUPPORT != DISABLED)
+   #error SSH_SIGN_CALLBACK_SUPPORT parameter is not valid
+#endif
+
+//ECDH callback functions
+#ifndef SSH_ECDH_CALLBACK_SUPPORT
+   #define SSH_ECDH_CALLBACK_SUPPORT DISABLED
+#elif (SSH_ECDH_CALLBACK_SUPPORT != ENABLED && SSH_ECDH_CALLBACK_SUPPORT != DISABLED)
+   #error SSH_ECDH_CALLBACK_SUPPORT parameter is not valid
 #endif
 
 //Maximum number of keys the SSH entity can load
@@ -310,6 +324,13 @@
    #error SSH_MD5_SUPPORT parameter is not valid
 #endif
 
+//MD5/96 hash support (insecure)
+#ifndef SSH_MD5_96_SUPPORT
+   #define SSH_MD5_96_SUPPORT DISABLED
+#elif (SSH_MD5_96_SUPPORT != ENABLED && SSH_MD5_96_SUPPORT != DISABLED)
+   #error SSH_MD5_96_SUPPORT parameter is not valid
+#endif
+
 //RIPEMD-160 hash support (weak)
 #ifndef SSH_RIPEMD160_SUPPORT
    #define SSH_RIPEMD160_SUPPORT DISABLED
@@ -322,6 +343,13 @@
    #define SSH_SHA1_SUPPORT ENABLED
 #elif (SSH_SHA1_SUPPORT != ENABLED && SSH_SHA1_SUPPORT != DISABLED)
    #error SSH_SHA1_SUPPORT parameter is not valid
+#endif
+
+//SHA-1/96 hash support (insecure)
+#ifndef SSH_SHA1_96_SUPPORT
+   #define SSH_SHA1_96_SUPPORT DISABLED
+#elif (SSH_SHA1_96_SUPPORT != ENABLED && SSH_SHA1_96_SUPPORT != DISABLED)
+   #error SSH_SHA1_96_SUPPORT parameter is not valid
 #endif
 
 //SHA-256 hash support
@@ -518,7 +546,7 @@
    #define SSH_MAX_HASH_DIGEST_SIZE SHA384_DIGEST_SIZE
 #elif (SSH_SHA256_SUPPORT == ENABLED)
    #define SSH_MAX_HASH_DIGEST_SIZE SHA256_DIGEST_SIZE
-#elif (SSH_SHA1_SUPPORT == ENABLED)
+#elif (SSH_SHA1_SUPPORT == ENABLED || SSH_SHA1_96_SUPPORT == ENABLED)
    #define SSH_MAX_HASH_DIGEST_SIZE SHA1_DIGEST_SIZE
 #elif (SSH_RIPEMD160_SUPPORT == ENABLED)
    #define SSH_MAX_HASH_DIGEST_SIZE RIPEMD160_DIGEST_SIZE
@@ -813,6 +841,20 @@ typedef struct
 
 
 /**
+ * @brief Host key
+ **/
+
+typedef struct
+{
+   char_t keyFormatId[20];   ///<Key format identifier
+   const char_t *publicKey;  ///<Public key (PEM format)
+   size_t publicKeyLen;      ///<Length of the public key
+   const char_t *privateKey; ///<Private key (PEM format)
+   size_t privateKeyLen;     ///<Length of the private key
+} SshHostKey;
+
+
+/**
  * @brief Host key verification callback function
  **/
 
@@ -837,6 +879,41 @@ typedef error_t (*SshPublicKeyAuthCallback)(SshConnection *connection,
 
 
 /**
+ * @brief Signature generation callback function
+ **/
+
+typedef error_t (*SshSignGenCallback)(SshConnection *connection,
+   const char_t *publicKeyAlgo, const SshHostKey *hostKey,
+   const void *message, size_t messageLen, uint8_t *p, size_t *written);
+
+
+/**
+ * @brief Signature verification callback function
+ **/
+
+typedef error_t (*SshSignVerifyCallback)(SshConnection *connection,
+   const SshString *publicKeyAlgo, const SshBinaryString *publicKeyBlob,
+   const uint8_t *message, size_t messageLen, const SshBinaryString *signature);
+
+
+/**
+ * @brief ECDH key pair generation callback
+ **/
+
+typedef error_t (*SshEcdhKeyPairGenCallback)(SshConnection *connection,
+   const char_t *kexAlgo, EcPublicKey *publicKey);
+
+
+/**
+ * @brief ECDH shared secret calculation callback
+ **/
+
+typedef error_t (*SshEcdhSharedSecretCalcCallback)(SshConnection *connection,
+   const char_t *kexAlgo, const EcPublicKey *publicKey, uint8_t *output,
+   size_t *outputLen);
+
+
+/**
  * @brief Global request processing callback function
  **/
 
@@ -853,20 +930,6 @@ typedef error_t (*SshChannelReqCallback)(SshChannel *channel,
 
 
 /**
- * @brief Host key
- **/
-
-typedef struct
-{
-   char_t keyFormatId[20];   ///<Key format identifier
-   const char_t *publicKey;  ///<Public key (PEM format)
-   size_t publicKeyLen;      ///<Length of the public key
-   const char_t *privateKey; ///<Private key (PEM format)
-   size_t privateKeyLen;     ///<Length of the private key
-} SshHostKey;
-
-
-/**
  * @brief Encryption engine
  **/
 
@@ -877,6 +940,7 @@ typedef struct
    CipherContext cipherContext;              ///<Cipher context
    const HashAlgo *hashAlgo;                 ///<Hash algorithm for MAC operations
    HmacContext *hmacContext;                 ///<HMAC context
+   size_t macSize;                           ///<Size of the MAC tag, in bytes
    bool_t etm;                               ///<Encrypt-then-MAC
    uint8_t iv[SSH_MAX_CIPHER_BLOCK_SIZE];    ///<Initialization vector
    uint8_t encKey[SSH_MAX_ENC_KEY_SIZE];     ///<Encryption key
@@ -1029,6 +1093,14 @@ struct _SshContext
    SshHostKeyVerifyCallback hostKeyVerifyCallback;                  ///<Host key verification callback
    SshPasswordAuthCallback passwordAuthCallback;                    ///<Password authentication callback
    SshPublicKeyAuthCallback publicKeyAuthCallback;                  ///<Public key authentication callback
+#if (SSH_SIGN_CALLBACK_SUPPORT == ENABLED)
+   SshSignGenCallback signGenCallback;                              ///<Signature generation callback
+   SshSignVerifyCallback signVerifyCallback;                        ///<Signature verification callback
+#endif
+#if (SSH_ECDH_CALLBACK_SUPPORT == ENABLED)
+   SshEcdhKeyPairGenCallback ecdhKeyPairGenCallback;                ///<ECDH key pair generation callback
+   SshEcdhSharedSecretCalcCallback ecdhSharedSecretCalcCallback;    ///<ECDH shared secret calculation callback
+#endif
    SshGlobalReqCallback globalReqCallback[SSH_MAX_REQ_CALLBACKS];   ///<Global request processing callbacks
    void *globalReqParam[SSH_MAX_REQ_CALLBACKS];                     ///<Opaque pointer passed to the global request callback
    SshChannelReqCallback channelReqCallback[SSH_MAX_REQ_CALLBACKS]; ///<Channel request processing callbacks
@@ -1072,6 +1144,18 @@ error_t sshRegisterPasswordAuthCallback(SshContext *context,
 
 error_t sshRegisterPublicKeyAuthCallback(SshContext *context,
    SshPublicKeyAuthCallback callback);
+
+error_t sshRegisterSignGenCallback(SshContext *context,
+   SshSignGenCallback callback);
+
+error_t sshRegisterSignVerifyCallback(SshContext *context,
+   SshSignVerifyCallback callback);
+
+error_t sshRegisterEcdhKeyPairGenCallback(SshContext *context,
+   SshEcdhKeyPairGenCallback callback);
+
+error_t sshRegisterEcdhSharedSecretCalcCallback(SshContext *context,
+   SshEcdhSharedSecretCalcCallback callback);
 
 error_t sshRegisterGlobalRequestCallback(SshContext *context,
    SshGlobalReqCallback callback, void *param);

@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.1.0
+ * @version 2.1.2
  **/
 
 //Switch to the appropriate trace level
@@ -163,7 +163,6 @@ error_t sftpServerInit(SftpServerContext *context,
 error_t sftpServerStart(SftpServerContext *context)
 {
    error_t error;
-   OsTask *task;
 
    //Make sure the SFTP server context is valid
    if(context == NULL)
@@ -187,11 +186,20 @@ error_t sftpServerStart(SftpServerContext *context)
       context->stop = FALSE;
       context->running = TRUE;
 
-      //Create the SFTP server task
-      task = osCreateTask("SFTP Server", sftpServerTask, context,
-         SFTP_SERVER_STACK_SIZE, SFTP_SERVER_PRIORITY);
+#if (OS_STATIC_TASK_SUPPORT == ENABLED)
+      //Create a task using statically allocated memory
+      context->taskId = osCreateStaticTask("SFTP Server",
+         (OsTaskCode) sftpServerTask, context, &context->taskTcb,
+         context->taskStack, SFTP_SERVER_STACK_SIZE, SFTP_SERVER_PRIORITY);
+#else
+      //Create a task
+      context->taskId = osCreateTask("SFTP Server",
+         (OsTaskCode) sftpServerTask, context, SFTP_SERVER_STACK_SIZE,
+         SFTP_SERVER_PRIORITY);
+#endif
+
       //Failed to create task?
-      if(task == OS_INVALID_HANDLE)
+      if(context->taskId == OS_INVALID_TASK_ID)
       {
          error = ERROR_OUT_OF_RESOURCES;
       }
@@ -393,8 +401,10 @@ void sftpServerTask(void *param)
          {
             //Stop SFTP server operation
             context->running = FALSE;
+            //Task epilogue
+            osExitTask();
             //Kill ourselves
-            osDeleteTask(NULL);
+            osDeleteTask(OS_SELF_TASK_ID);
          }
 
          //Loop through SFTP sessions

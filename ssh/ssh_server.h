@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.1.0
+ * @version 2.1.2
  **/
 
 #ifndef _SSH_SERVER_H
@@ -72,16 +72,24 @@ extern "C" {
 
 typedef struct
 {
-   NetInterface *interface;                        ///<Underlying network interface
-   uint16_t port;                                  ///<SSH port number
-   uint_t numConnections;                          ///<Maximum number of SSH connections
-   SshConnection *connections;                     ///<SSH connections
-   uint_t numChannels;                             ///<Maximum number of SSH channels
-   SshChannel *channels;                           ///<SSH channels
-   const PrngAlgo *prngAlgo;                       ///<Pseudo-random number generator to be used
-   void *prngContext;                              ///<Pseudo-random number generator context
-   SshPasswordAuthCallback passwordAuthCallback;   ///<Password authentication callback
-   SshPublicKeyAuthCallback publicKeyAuthCallback; ///<Public key authentication callback
+   NetInterface *interface;                                      ///<Underlying network interface
+   uint16_t port;                                                ///<SSH port number
+   uint_t numConnections;                                        ///<Maximum number of SSH connections
+   SshConnection *connections;                                   ///<SSH connections
+   uint_t numChannels;                                           ///<Maximum number of SSH channels
+   SshChannel *channels;                                         ///<SSH channels
+   const PrngAlgo *prngAlgo;                                     ///<Pseudo-random number generator to be used
+   void *prngContext;                                            ///<Pseudo-random number generator context
+   SshPasswordAuthCallback passwordAuthCallback;                 ///<Password authentication callback
+   SshPublicKeyAuthCallback publicKeyAuthCallback;               ///<Public key authentication callback
+#if (SSH_SIGN_CALLBACK_SUPPORT == ENABLED)
+   SshSignGenCallback signGenCallback;                           ///<Signature generation callback
+   SshSignVerifyCallback signVerifyCallback;                     ///<Signature verification callback
+#endif
+#if (SSH_ECDH_CALLBACK_SUPPORT == ENABLED)
+   SshEcdhKeyPairGenCallback ecdhKeyPairGenCallback;             ///<ECDH key pair generation callback
+   SshEcdhSharedSecretCalcCallback ecdhSharedSecretCalcCallback; ///<ECDH shared secret calculation callback
+#endif
 } SshServerSettings;
 
 
@@ -91,12 +99,17 @@ typedef struct
 
 typedef struct
 {
-   bool_t running;          ///<Operational state of the SSH server
-   bool_t stop;             ///<Stop request
-   NetInterface *interface; ///<Underlying network interface
-   Socket *socket;          ///<Listening socket
-   uint16_t port;           ///<SSH port number
-   SshContext sshContext;   ///<SSH context
+   bool_t running;                               ///<Operational state of the SSH server
+   bool_t stop;                                  ///<Stop request
+   OsTaskId taskId;                              ///<Task identifier
+#if (OS_STATIC_TASK_SUPPORT == ENABLED)
+   OsTaskTcb taskTcb;                            ///<Task control block
+   OsStackType taskStack[SSH_SERVER_STACK_SIZE]; ///<Task stack
+#endif
+   NetInterface *interface;                      ///<Underlying network interface
+   Socket *socket;                               ///<Listening socket
+   uint16_t port;                                ///<SSH port number
+   SshContext sshContext;                        ///<SSH context
 } SshServerContext;
 
 

@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.1.0
+ * @version 2.1.2
  **/
 
 //Switch to the appropriate trace level
@@ -796,12 +796,12 @@ error_t sshFormatHostKey(SshConnection *connection, uint8_t *p,
       {
          const EcCurveInfo *curveInfo;
          EcDomainParameters ecParams;
-         EcPoint ecPublicKey;
+         EcPublicKey ecPublicKey;
 
          //Initialize EC domain parameters
          ecInitDomainParameters(&ecParams);
-         //Initialize ECDSA public key
-         ecInit(&ecPublicKey);
+         //Initialize EC public key
+         ecInitPublicKey(&ecPublicKey);
 
 #if (SSH_NISTP256_SUPPORT == ENABLED)
          //NIST P-256 elliptic curve?
@@ -853,7 +853,7 @@ error_t sshFormatHostKey(SshConnection *connection, uint8_t *p,
 
          //Free previously allocated resources
          ecFreeDomainParameters(&ecParams);
-         ecFree(&ecPublicKey);
+         ecFreePublicKey(&ecPublicKey);
       }
       else
 #endif
@@ -1415,6 +1415,60 @@ error_t sshFormatMpint(const Mpi *value, uint8_t *p, size_t *written)
 
    //Return status code
    return error;
+}
+
+
+/**
+ * @brief Convert a binary string to mpint representation
+ * @param[in] value Pointer to the binary string (MSB first encoded)
+ * @param[out] length Length of the binary string, in bytes
+ * @param[out] p Output stream where to write the mpint representation
+ * @param[out] written Total number of bytes that have been written
+ * @return Error code
+ **/
+
+error_t sshConvertArrayToMpint(const uint8_t *value, size_t length, uint8_t *p,
+   size_t *written)
+{
+   size_t n;
+
+   //Skip leading zeroes
+   while(length > 0 && value[0] == 0)
+   {
+      value++;
+      length--;
+   }
+
+   //The value zero must be stored as a string with zero bytes of data (refer
+   //to RFC 4251, section 5)
+   n = 0;
+
+   //If the most significant bit would be set for a positive number, the
+   //number must be preceded by a zero byte
+   if((value[0] & 0x80) != 0)
+   {
+      //The number is preceded by a zero byte
+      p[4 + n] = 0;
+
+      //Update the length of the data
+      n++;
+   }
+
+   //The value of the multiple precision integer is encoded MSB first.
+   //Unnecessary leading bytes with the value 0 must not be included
+   osMemcpy(p + 4 + n, value, length);
+
+   //Update the length of the data
+   n += length;
+
+   //The integer is preceded by a uint32 containing its length
+   STORE32BE(n, p);
+
+   //Total number of bytes that have been written
+   *written = sizeof(uint32_t) + n;
+
+   //Successful processing
+   return NO_ERROR;
 }
 
 

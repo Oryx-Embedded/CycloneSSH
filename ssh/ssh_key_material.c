@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.1.0
+ * @version 2.1.2
  **/
 
 //Switch to the appropriate trace level
@@ -46,9 +46,9 @@
  * @param[in] connection Pointer to the SSH connection
  * @param[in] encryptionEngine Pointer to the encryption/decryption engine to
  *   be initialized
- * @param[in] x A single character used to derive keys
  * @param[in] encAlgo Selected encryption algorithm (NULL-terminated string)
  * @param[in] macAlgo Selected integrity algorithm (NULL-terminated string)
+ * @param[in] x A single character used to derive keys
  * @return Error code
  **/
 
@@ -540,6 +540,7 @@ error_t sshSelectHashAlgo(SshEncryptionEngine *encryptionEngine,
    {
       //AEAD algorithms offer both encryption and authentication
       encryptionEngine->hashAlgo = NULL;
+      encryptionEngine->macSize = 16;
       encryptionEngine->etm = FALSE;
    }
    else
@@ -550,6 +551,7 @@ error_t sshSelectHashAlgo(SshEncryptionEngine *encryptionEngine,
    {
       //AEAD algorithms offer both encryption and authentication
       encryptionEngine->hashAlgo = NULL;
+      encryptionEngine->macSize = 16;
       encryptionEngine->etm = FALSE;
    }
    else
@@ -560,6 +562,7 @@ error_t sshSelectHashAlgo(SshEncryptionEngine *encryptionEngine,
    {
       //AEAD algorithms offer both encryption and authentication
       encryptionEngine->hashAlgo = NULL;
+      encryptionEngine->macSize = 16;
       encryptionEngine->etm = FALSE;
    }
    else
@@ -570,12 +573,40 @@ error_t sshSelectHashAlgo(SshEncryptionEngine *encryptionEngine,
    {
       //Select MAC-then-encrypt mode
       encryptionEngine->hashAlgo = MD5_HASH_ALGO;
+      encryptionEngine->macSize = MD5_DIGEST_SIZE;
       encryptionEngine->etm = FALSE;
    }
-   else if(sshCompareAlgo(macAlgo, "hmac-md5-etm@openssh.com"))
+   else
+#endif
+#if (SSH_MD5_SUPPORT == ENABLED && SSH_ETM_SUPPORT == ENABLED)
+   //HMAC with MD5 integrity algorithm (EtM mode)?
+   if(sshCompareAlgo(macAlgo, "hmac-md5-etm@openssh.com"))
    {
       //Select encrypt-then-MAC mode
       encryptionEngine->hashAlgo = MD5_HASH_ALGO;
+      encryptionEngine->macSize = MD5_DIGEST_SIZE;
+      encryptionEngine->etm = TRUE;
+   }
+   else
+#endif
+#if (SSH_MD5_96_SUPPORT == ENABLED)
+   //HMAC with MD5/96 integrity algorithm?
+   if(sshCompareAlgo(macAlgo, "hmac-md5-96"))
+   {
+      //Select MAC-then-encrypt mode
+      encryptionEngine->hashAlgo = MD5_HASH_ALGO;
+      encryptionEngine->macSize = 12;
+      encryptionEngine->etm = FALSE;
+   }
+   else
+#endif
+#if (SSH_MD5_96_SUPPORT == ENABLED && SSH_ETM_SUPPORT == ENABLED)
+   //HMAC with MD5/96 integrity algorithm (EtM mode)?
+   if(sshCompareAlgo(macAlgo, "hmac-md5-96-etm@openssh.com"))
+   {
+      //Select encrypt-then-MAC mode
+      encryptionEngine->hashAlgo = MD5_HASH_ALGO;
+      encryptionEngine->macSize = 12;
       encryptionEngine->etm = TRUE;
    }
    else
@@ -586,12 +617,18 @@ error_t sshSelectHashAlgo(SshEncryptionEngine *encryptionEngine,
    {
       //Select MAC-then-encrypt mode
       encryptionEngine->hashAlgo = RIPEMD160_HASH_ALGO;
+      encryptionEngine->macSize = RIPEMD160_DIGEST_SIZE;
       encryptionEngine->etm = FALSE;
    }
-   else if(sshCompareAlgo(macAlgo, "hmac-ripemd160-etm@openssh.com"))
+   else
+#endif
+#if (SSH_RIPEMD160_SUPPORT == ENABLED && SSH_ETM_SUPPORT == ENABLED)
+   //HMAC with RIPEMD-160 integrity algorithm (EtM mode)?
+   if(sshCompareAlgo(macAlgo, "hmac-ripemd160-etm@openssh.com"))
    {
       //Select encrypt-then-MAC mode
       encryptionEngine->hashAlgo = RIPEMD160_HASH_ALGO;
+      encryptionEngine->macSize = RIPEMD160_DIGEST_SIZE;
       encryptionEngine->etm = TRUE;
    }
    else
@@ -602,12 +639,40 @@ error_t sshSelectHashAlgo(SshEncryptionEngine *encryptionEngine,
    {
       //Select MAC-then-encrypt mode
       encryptionEngine->hashAlgo = SHA1_HASH_ALGO;
+      encryptionEngine->macSize = SHA1_DIGEST_SIZE;
       encryptionEngine->etm = FALSE;
    }
-   else if(sshCompareAlgo(macAlgo, "hmac-sha1-etm@openssh.com"))
+   else
+#endif
+#if (SSH_SHA1_SUPPORT == ENABLED && SSH_ETM_SUPPORT == ENABLED)
+   //HMAC with SHA-1 integrity algorithm (EtM mode)?
+   if(sshCompareAlgo(macAlgo, "hmac-sha1-etm@openssh.com"))
    {
       //Select encrypt-then-MAC mode
       encryptionEngine->hashAlgo = SHA1_HASH_ALGO;
+      encryptionEngine->macSize = SHA1_DIGEST_SIZE;
+      encryptionEngine->etm = TRUE;
+   }
+   else
+#endif
+#if (SSH_SHA1_96_SUPPORT == ENABLED)
+   //HMAC with SHA-1/96 integrity algorithm?
+   if(sshCompareAlgo(macAlgo, "hmac-sha1-96"))
+   {
+      //Select MAC-then-encrypt mode
+      encryptionEngine->hashAlgo = SHA1_HASH_ALGO;
+      encryptionEngine->macSize = 12;
+      encryptionEngine->etm = FALSE;
+   }
+   else
+#endif
+#if (SSH_SHA1_96_SUPPORT == ENABLED && SSH_ETM_SUPPORT == ENABLED)
+   //HMAC with SHA-1/96 integrity algorithm (EtM mode)?
+   if(sshCompareAlgo(macAlgo, "hmac-sha1-96-etm@openssh.com"))
+   {
+      //Select encrypt-then-MAC mode
+      encryptionEngine->hashAlgo = SHA1_HASH_ALGO;
+      encryptionEngine->macSize = 12;
       encryptionEngine->etm = TRUE;
    }
    else
@@ -618,12 +683,18 @@ error_t sshSelectHashAlgo(SshEncryptionEngine *encryptionEngine,
    {
       //Select MAC-then-encrypt mode
       encryptionEngine->hashAlgo = SHA256_HASH_ALGO;
+      encryptionEngine->macSize = SHA256_DIGEST_SIZE;
       encryptionEngine->etm = FALSE;
    }
-   else if(sshCompareAlgo(macAlgo, "hmac-sha2-256-etm@openssh.com"))
+   else
+#endif
+#if (SSH_SHA256_SUPPORT == ENABLED && SSH_ETM_SUPPORT == ENABLED)
+   //HMAC with SHA-256 integrity algorithm (EtM mode)?
+   if(sshCompareAlgo(macAlgo, "hmac-sha2-256-etm@openssh.com"))
    {
       //Select encrypt-then-MAC mode
       encryptionEngine->hashAlgo = SHA256_HASH_ALGO;
+      encryptionEngine->macSize = SHA256_DIGEST_SIZE;
       encryptionEngine->etm = TRUE;
    }
    else
@@ -634,12 +705,18 @@ error_t sshSelectHashAlgo(SshEncryptionEngine *encryptionEngine,
    {
       //Select MAC-then-encrypt mode
       encryptionEngine->hashAlgo = SHA512_HASH_ALGO;
+      encryptionEngine->macSize = SHA512_DIGEST_SIZE;
       encryptionEngine->etm = FALSE;
    }
-   else if(sshCompareAlgo(macAlgo, "hmac-sha2-512-etm@openssh.com"))
+   else
+#endif
+#if (SSH_SHA512_SUPPORT == ENABLED && SSH_ETM_SUPPORT == ENABLED)
+   //HMAC with SHA-512 integrity algorithm (EtM mode)?
+   if(sshCompareAlgo(macAlgo, "hmac-sha2-512-etm@openssh.com"))
    {
       //Select encrypt-then-MAC mode
       encryptionEngine->hashAlgo = SHA512_HASH_ALGO;
+      encryptionEngine->macSize = SHA512_DIGEST_SIZE;
       encryptionEngine->etm = TRUE;
    }
    else
@@ -674,8 +751,9 @@ error_t sshDeriveKey(SshConnection *connection, uint8_t x, uint8_t *output,
    const HashAlgo *hashAlgo;
    HashContext *hashContext;
 
-   //Each key exchange method specifies a hash function that is used in the
-   //key exchange. The same hash algorithm must be used in key derivation
+   //Each key exchange method specifies a hash function that is used in the key
+   //exchange. The same hash algorithm must be used in key derivation (refer to
+   //RFC 4253, section 7.2)
    hashAlgo = connection->hashAlgo;
 
    //Make sure the hash algorithm is valid

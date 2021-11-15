@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.1.0
+ * @version 2.1.2
  **/
 
 //Switch to the appropriate trace level
@@ -123,7 +123,7 @@ error_t sshSendKexInit(SshConnection *connection)
             else
             {
                //Report an error
-               error = ERROR_UNSUPPORTED_KEY_EXCH_METHOD;
+               error = ERROR_UNSUPPORTED_KEY_EXCH_ALGO;
             }
          }
          else
@@ -840,7 +840,7 @@ error_t sshParseKexInit(SshConnection *connection,
       else
       {
          //Report an error
-         error = ERROR_UNSUPPORTED_KEY_EXCH_METHOD;
+         error = ERROR_UNSUPPORTED_KEY_EXCH_ALGO;
       }
    }
 
@@ -975,7 +975,7 @@ error_t sshParseKexMessage(SshConnection *connection, uint8_t type,
       //Unknown key exchange algorithm?
       {
          //Report an error
-         error = ERROR_UNSUPPORTED_KEY_EXCH_METHOD;
+         error = ERROR_UNSUPPORTED_KEY_EXCH_ALGO;
       }
    }
 

@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.1.0
+ * @version 2.1.2
  **/
 
 //Switch to the appropriate trace level
@@ -407,8 +407,6 @@ ShellServerSession *shellServerOpenSession(ShellServerContext *context,
 {
    uint_t i;
    ShellServerSession *session;
-   OsEvent event;
-   OsEvent startEvent;
 
    //Initialize pointer
    session = NULL;
@@ -444,21 +442,15 @@ ShellServerSession *shellServerOpenSession(ShellServerContext *context,
    //Valid session?
    if(session != NULL)
    {
-      //Save event object instance
-      osMemcpy(&event, &session->event, sizeof(OsEvent));
-      osMemcpy(&startEvent, &session->startEvent, sizeof(OsEvent));
-
-      //Initialize session parameters
-      osMemset(session, 0, sizeof(ShellServerSession));
-
-      //Reuse event objects and avoid recreating them whenever possible
-      osMemcpy(&session->event, &event, sizeof(OsEvent));
-      osMemcpy(&session->startEvent, &startEvent, sizeof(OsEvent));
-
       //Attach shell server context
       session->context = context;
       //Attach SSH channel
       session->channel = channel;
+
+      //Default shell prompt
+      osStrcpy(session->prompt, ">");
+      //Save the length of the prompt string
+      session->promptLen = osStrlen(session->prompt);
 
       //Initialize session parameters
       session->backspaceCode = VT100_DEL_CODE;
@@ -468,8 +460,11 @@ ShellServerSession *shellServerOpenSession(ShellServerContext *context,
       session->newTermWidth = SHELL_SERVER_DEFAULT_TERM_WIDTH;
       session->newTermHeight = SHELL_SERVER_DEFAULT_TERM_HEIGHT;
 
-      //Default shell prompt
-      osStrcpy(session->prompt, ">");
+      //Initialize variables
+      session->bufferPos = 0;
+      session->bufferLen = 0;
+      session->windowResize = FALSE;
+      session->escSeqLen = 0;
 
       //Set initial session state
       session->state = SHELL_SERVER_SESSION_STATE_INIT;

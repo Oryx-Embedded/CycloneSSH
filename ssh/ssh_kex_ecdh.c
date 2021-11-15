@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.1.0
+ * @version 2.1.2
  **/
 
 //Switch to the appropriate trace level
@@ -56,10 +56,6 @@ error_t sshSendKexEcdhInit(SshConnection *connection)
    error_t error;
    size_t length;
    uint8_t *message;
-   SshContext *context;
-
-   //Point to the SSH context
-   context = connection->context;
 
    //Point to the buffer where to format the message
    message = connection->buffer + SSH_PACKET_HEADER_SIZE;
@@ -72,8 +68,7 @@ error_t sshSendKexEcdhInit(SshConnection *connection)
    if(!error)
    {
       //Generate an ephemeral key pair
-      error = ecdhGenerateKeyPair(&connection->ecdhContext, context->prngAlgo,
-         context->prngContext);
+      error = sshGenerateEcdhKeyPair(connection);
    }
 
    //Check status code
@@ -117,17 +112,12 @@ error_t sshSendKexEcdhReply(SshConnection *connection)
    error_t error;
    size_t length;
    uint8_t *message;
-   SshContext *context;
-
-   //Point to the SSH context
-   context = connection->context;
 
    //Point to the buffer where to format the message
    message = connection->buffer + SSH_PACKET_HEADER_SIZE;
 
    //Generate an ephemeral key pair
-   error = ecdhGenerateKeyPair(&connection->ecdhContext, context->prngAlgo,
-      context->prngContext);
+   error = sshGenerateEcdhKeyPair(connection);
 
    //Check status code
    if(!error)
@@ -186,7 +176,7 @@ error_t sshFormatKexEcdhInit(SshConnection *connection, uint8_t *p,
 
    //Format client's ephemeral public key
    error = ecExport(&connection->ecdhContext.params,
-      &connection->ecdhContext.qa, p + sizeof(uint32_t), &n);
+      &connection->ecdhContext.qa.q, p + sizeof(uint32_t), &n);
    //Any error to report?
    if(error)
       return error;
@@ -246,7 +236,7 @@ error_t sshFormatKexEcdhReply(SshConnection *connection, uint8_t *p,
 
    //Format server's ephemeral public key
    error = ecExport(&connection->ecdhContext.params,
-      &connection->ecdhContext.qa, p + sizeof(uint32_t), &n);
+      &connection->ecdhContext.qa.q, p + sizeof(uint32_t), &n);
    //Any error to report?
    if(error)
       return error;
@@ -265,32 +255,10 @@ error_t sshFormatKexEcdhReply(SshConnection *connection, uint8_t *p,
    *length += sizeof(uint32_t) + n;
 
    //Compute the shared secret K
-   error = ecdhComputeSharedSecret(&connection->ecdhContext, connection->k,
-      SSH_MAX_SHARED_SECRET_LEN, &connection->kLen);
+   error = sshComputeEcdhSharedSecret(connection);
    //Any error to report?
    if(error)
       return error;
-
-   //Unnecessary leading bytes with the value 0 must not be included
-   while(connection->kLen > 0 && connection->k[0] == 0)
-   {
-      //Adjust the length of the shared secret
-      connection->kLen--;
-      //Strip leading byte
-      osMemmove(connection->k, connection->k + 1, connection->kLen);
-   }
-
-   //If the most significant bit would be set for a positive number, the
-   //number must be preceded by a zero byte
-   if((connection->k[0] & 0x80) != 0)
-   {
-      //Make room for the leading byte
-      osMemmove(connection->k + 1, connection->k, connection->kLen);
-      //The number is preceded by a zero byte
-      connection->k[0] = 0;
-      //Adjust the length of the shared secret
-      connection->kLen++;
-   }
 
    //Update exchange hash H with K (shared secret)
    error = sshUpdateExchangeHash(connection, connection->k, connection->kLen);
@@ -389,7 +357,7 @@ error_t sshParseKexEcdhInit(SshConnection *connection, const uint8_t *message,
       return error;
 
    //Load client's ephemeral public key
-   error = ecImport(&connection->ecdhContext.params, &connection->ecdhContext.qb,
+   error = ecImport(&connection->ecdhContext.params, &connection->ecdhContext.qb.q,
       publicKey.value, publicKey.length);
    //Any error to report?
    if(error)
@@ -397,7 +365,7 @@ error_t sshParseKexEcdhInit(SshConnection *connection, const uint8_t *message,
 
    //Ensure the public key is acceptable
    error = ecdhCheckPublicKey(&connection->ecdhContext.params,
-      &connection->ecdhContext.qb);
+      &connection->ecdhContext.qb.q);
    //Any error to report?
    if(error)
       return error;
@@ -540,45 +508,23 @@ error_t sshParseKexEcdhReply(SshConnection *connection, const uint8_t *message,
 
    //Load server's ephemeral public key
    error = ecImport(&connection->ecdhContext.params,
-      &connection->ecdhContext.qb, publicKey.value, publicKey.length);
+      &connection->ecdhContext.qb.q, publicKey.value, publicKey.length);
    //Any error to report?
    if(error)
       return error;
 
    //Ensure the public key is acceptable
    error = ecdhCheckPublicKey(&connection->ecdhContext.params,
-      &connection->ecdhContext.qb);
+      &connection->ecdhContext.qb.q);
    //Any error to report?
    if(error)
       return error;
 
    //Compute the shared secret K
-   error = ecdhComputeSharedSecret(&connection->ecdhContext, connection->k,
-      SSH_MAX_SHARED_SECRET_LEN, &connection->kLen);
+   error = sshComputeEcdhSharedSecret(connection);
    //Any error to report?
    if(error)
       return error;
-
-   //Unnecessary leading bytes with the value 0 must not be included
-   while(connection->kLen > 0 && connection->k[0] == 0)
-   {
-      //Adjust the length of the shared secret
-      connection->kLen--;
-      //Strip leading byte
-      osMemmove(connection->k, connection->k + 1, connection->kLen);
-   }
-
-   //If the most significant bit would be set for a positive number, the
-   //number must be preceded by a zero byte
-   if((connection->k[0] & 0x80) != 0)
-   {
-      //Make room for the leading byte
-      osMemmove(connection->k + 1, connection->k, connection->kLen);
-      //The number is preceded by a zero byte
-      connection->k[0] = 0;
-      //Adjust the length of the shared secret
-      connection->kLen++;
-   }
 
    //Update exchange hash H with K (shared secret)
    error = sshUpdateExchangeHash(connection, connection->k, connection->kLen);
@@ -733,7 +679,113 @@ error_t sshLoadKexEcdhParams(const char_t *kexAlgo, EcDomainParameters *params)
    else
    {
       //Report an error
-      error = ERROR_UNSUPPORTED_KEY_EXCH_METHOD;
+      error = ERROR_UNSUPPORTED_KEY_EXCH_ALGO;
+   }
+
+   //Return status code
+   return error;
+}
+
+
+/**
+ * @brief ECDH key pair generation
+ * @param[in] connection Pointer to the SSH connection
+ * @return Error code
+ **/
+
+error_t sshGenerateEcdhKeyPair(SshConnection *connection)
+{
+   error_t error;
+   SshContext *context;
+
+   //Point to the SSH context
+   context = connection->context;
+
+#if (SSH_ECDH_CALLBACK_SUPPORT == ENABLED)
+   //Valid ECDH key pair generation callback function?
+   if(context->ecdhKeyPairGenCallback != NULL)
+   {
+      //Invoke user-defined callback
+      error = context->ecdhKeyPairGenCallback(connection,
+         connection->kexAlgo, &connection->ecdhContext.qa);
+   }
+   else
+#endif
+   {
+      //No callback function registered
+      error = ERROR_UNSUPPORTED_KEY_EXCH_ALGO;
+   }
+
+   //Check status code
+   if(error == ERROR_UNSUPPORTED_KEY_EXCH_ALGO)
+   {
+      //Generate an ephemeral key pair
+      error = ecdhGenerateKeyPair(&connection->ecdhContext, context->prngAlgo,
+         context->prngContext);
+   }
+
+   //Return status code
+   return error;
+}
+
+
+/**
+ * @brief ECDH shared secret calculation
+ * @param[in] connection Pointer to the SSH connection
+ * @return Error code
+ **/
+
+error_t sshComputeEcdhSharedSecret(SshConnection *connection)
+{
+   error_t error;
+
+#if (SSH_ECDH_CALLBACK_SUPPORT == ENABLED)
+   //Valid ECDH shared secret calculation callback function?
+   if(connection->context->ecdhSharedSecretCalcCallback != NULL)
+   {
+      //Invoke user-defined callback
+      error = connection->context->ecdhSharedSecretCalcCallback(connection,
+         connection->kexAlgo, &connection->ecdhContext.qb, connection->k,
+         &connection->kLen);
+   }
+   else
+#endif
+   {
+      //No callback function registered
+      error = ERROR_UNSUPPORTED_KEY_EXCH_ALGO;
+   }
+
+   //Check status code
+   if(error == ERROR_UNSUPPORTED_KEY_EXCH_ALGO)
+   {
+      //Compute the shared secret K
+      error = ecdhComputeSharedSecret(&connection->ecdhContext, connection->k,
+         SSH_MAX_SHARED_SECRET_LEN, &connection->kLen);
+   }
+
+   //Check status code
+   if(!error)
+   {
+      //Unnecessary leading bytes with the value 0 must not be included
+      while(connection->kLen > 0 && connection->k[0] == 0)
+      {
+         //Adjust the length of the shared secret
+         connection->kLen--;
+         //Strip leading byte
+         osMemmove(connection->k, connection->k + 1, connection->kLen);
+      }
+
+      //If the most significant bit would be set for a positive number, the
+      //number must be preceded by a zero byte
+      if((connection->k[0] & 0x80) != 0)
+      {
+         //Make room for the leading byte
+         osMemmove(connection->k + 1, connection->k, connection->kLen);
+         //The number is preceded by a zero byte
+         connection->k[0] = 0;
+         //Adjust the length of the shared secret
+         connection->kLen++;
+      }
    }
 
    //Return status code
@@ -761,7 +813,7 @@ error_t sshDigestClientEcdhPublicKey(SshConnection *connection)
    {
       //Format client's ephemeral public key
       error = ecExport(&connection->ecdhContext.params,
-         &connection->ecdhContext.qa, buffer, &n);
+         &connection->ecdhContext.qa.q, buffer, &n);
 
       //Check status code
       if(!error)

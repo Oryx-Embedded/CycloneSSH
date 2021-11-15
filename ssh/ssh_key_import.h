@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.1.0
+ * @version 2.1.2
  **/
 
 #ifndef _SSH_KEY_IMPORT_H
@@ -101,7 +101,7 @@ error_t sshImportDsaPublicKey(const char_t *input, size_t length,
    DsaPublicKey *publicKey);
 
 error_t sshImportEcdsaPublicKey(const char_t *input, size_t length,
-   EcDomainParameters *params, EcPoint *publicKey);
+   EcDomainParameters *params, EcPublicKey *publicKey);
 
 error_t sshImportEd25519PublicKey(const char_t *input, size_t length,
    EddsaPublicKey *publicKey);
@@ -116,7 +116,7 @@ error_t sshImportDsaHostKey(const SshDsaHostKey *hostKey,
    DsaPublicKey *publicKey);
 
 error_t sshImportEcdsaHostKey(const SshEcdsaHostKey *hostKey,
-   EcDomainParameters *params, EcPoint *publicKey);
+   EcDomainParameters *params, EcPublicKey *publicKey);
 
 error_t sshImportEd25519HostKey(const SshEddsaHostKey *hostKey,
    EddsaPublicKey *publicKey);

@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.1.0
+ * @version 2.1.2
  **/
 
 #ifndef _SSH_SIGNATURE_H
@@ -38,6 +38,18 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+
+/**
+ * @brief ECDSA signature
+ **/
+
+typedef struct
+{
+   SshBinaryString r;
+   SshBinaryString s;
+} SshEcdsaSignature;
+
 
 //SSH related functions
 error_t sshGenerateSignature(SshConnection *connection,
@@ -66,27 +78,39 @@ error_t sshGenerateEd448Signature(SshConnection *connection,
 
 error_t sshVerifySignature(SshConnection *connection,
    const SshString *publicKeyAlgo, const SshBinaryString *publicKey,
-   const uint8_t *message, size_t messageLen, const SshBinaryString *signature);
+   const uint8_t *message, size_t messageLen,
+   const SshBinaryString *signature);
 
 error_t sshVerifyRsaSignature(SshConnection *connection,
    const SshString *publicKeyAlgo, const SshBinaryString *publicKey,
-   const uint8_t *message, size_t messageLen, const SshBinaryString *signature);
+   const uint8_t *message, size_t messageLen,
+   const SshBinaryString *signatureBlob);
 
 error_t sshVerifyDsaSignature(SshConnection *connection,
    const SshString *publicKeyAlgo, const SshBinaryString *publicKey,
-   const uint8_t *message, size_t messageLen, const SshBinaryString *signature);
+   const uint8_t *message, size_t messageLen,
+   const SshBinaryString *signatureBlob);
 
 error_t sshVerifyEcdsaSignature(SshConnection *connection,
-   const SshString *publicKeyAlgo, const SshBinaryString *publicKey,
-   const uint8_t *message, size_t messageLen, const SshBinaryString *signature);
+   const SshString *publicKeyAlgo, const SshBinaryString *publicKeyBlob,
+   const uint8_t *message, size_t messageLen,
+   const SshBinaryString *signatureBlob);
 
 error_t sshVerifyEd25519Signature(SshConnection *connection,
    const SshString *publicKeyAlgo, const SshBinaryString *publicKey,
-   const uint8_t *message, size_t messageLen, const SshBinaryString *signature);
+   const uint8_t *message, size_t messageLen,
+   const SshBinaryString *signatureBlob);
 
 error_t sshVerifyEd448Signature(SshConnection *connection,
    const SshString *publicKeyAlgo, const SshBinaryString *publicKey,
-   const uint8_t *message, size_t messageLen, const SshBinaryString *signature);
+   const uint8_t *message, size_t messageLen,
+   const SshBinaryString *signatureBlob);
+
+error_t sshFormatEcdsaSignature(const SshEcdsaSignature *signature,
+   uint8_t *p, size_t *written);
+
+error_t sshParseEcdsaSignature(const uint8_t *data, size_t length,
+   SshEcdsaSignature *signature);
 
 //C++ guard
 #ifdef __cplusplus

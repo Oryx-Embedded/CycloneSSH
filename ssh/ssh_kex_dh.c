@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.1.0
+ * @version 2.1.2
  **/
 
 //Switch to the appropriate trace level
@@ -70,7 +70,7 @@ error_t sshSendKexDhInit(SshConnection *connection)
    dhGroup = sshGetDhGroup(connection->kexAlgo);
    //Unsupported MODP group?
    if(dhGroup == NULL)
-      return ERROR_UNSUPPORTED_KEY_EXCH_METHOD;
+      return ERROR_UNSUPPORTED_KEY_EXCH_ALGO;
 
    //Convert the prime modulus to a multiple precision integer
    error = mpiImport(&connection->dhContext.params.p, dhGroup->p, dhGroup->pLen,
@@ -275,32 +275,10 @@ error_t sshFormatKexDhReply(SshConnection *connection, uint8_t *p,
    *length += n;
 
    //Compute the shared secret K
-   error = dhComputeSharedSecret(&connection->dhContext, connection->k,
-      SSH_MAX_SHARED_SECRET_LEN, &connection->kLen);
+   error = sshComputeDhSharedSecret(connection);
    //Any error to report?
    if(error)
       return error;
-
-   //Unnecessary leading bytes with the value 0 must not be included
-   while(connection->kLen > 0 && connection->k[0] == 0)
-   {
-      //Adjust the length of the shared secret
-      connection->kLen--;
-      //Strip leading byte
-      osMemmove(connection->k, connection->k + 1, connection->kLen);
-   }
-
-   //If the most significant bit would be set for a positive number, the
-   //number must be preceded by a zero byte
-   if((connection->k[0] & 0x80) != 0)
-   {
-      //Make room for the leading byte
-      osMemmove(connection->k + 1, connection->k, connection->kLen);
-      //The number is preceded by a zero byte
-      connection->k[0] = 0;
-      //Adjust the length of the shared secret
-      connection->kLen++;
-   }
 
    //Update exchange hash H with K (shared secret)
    error = sshUpdateExchangeHash(connection, connection->k, connection->kLen);
@@ -398,7 +376,7 @@ error_t sshParseKexDhInit(SshConnection *connection, const uint8_t *message,
    dhGroup = sshGetDhGroup(connection->kexAlgo);
    //Unsupported MODP group?
    if(dhGroup == NULL)
-      return ERROR_UNSUPPORTED_KEY_EXCH_METHOD;
+      return ERROR_UNSUPPORTED_KEY_EXCH_ALGO;
 
    //Convert the prime modulus to a multiple precision integer
    error = mpiImport(&connection->dhContext.params.p, dhGroup->p,
@@ -577,32 +555,10 @@ error_t sshParseKexDhReply(SshConnection *connection, const uint8_t *message,
       return error;
 
    //Compute the shared secret K
-   error = dhComputeSharedSecret(&connection->dhContext, connection->k,
-      SSH_MAX_SHARED_SECRET_LEN, &connection->kLen);
+   error = sshComputeDhSharedSecret(connection);
    //Any error to report?
    if(error)
       return error;
-
-   //Unnecessary leading bytes with the value 0 must not be included
-   while(connection->kLen > 0 && connection->k[0] == 0)
-   {
-      //Adjust the length of the shared secret
-      connection->kLen--;
-      //Strip leading byte
-      osMemmove(connection->k, connection->k + 1, connection->kLen);
-   }
-
-   //If the most significant bit would be set for a positive number, the
-   //number must be preceded by a zero byte
-   if((connection->k[0] & 0x80) != 0)
-   {
-      //Make room for the leading byte
-      osMemmove(connection->k + 1, connection->k, connection->kLen);
-      //The number is preceded by a zero byte
-      connection->k[0] = 0;
-      //Adjust the length of the shared secret
-      connection->kLen++;
-   }
 
    //Update exchange hash H with K (shared secret)
    error = sshUpdateExchangeHash(connection, connection->k, connection->kLen);
@@ -683,6 +639,50 @@ error_t sshParseKexDhMessage(SshConnection *connection, uint8_t type,
    {
       //Report an error
       error = ERROR_INVALID_TYPE;
+   }
+
+   //Return status code
+   return error;
+}
+
+
+/**
+ * @brief Diffie-Hellman shared secret calculation
+ * @param[in] connection Pointer to the SSH connection
+ * @return Error code
+ **/
+
+error_t sshComputeDhSharedSecret(SshConnection *connection)
+{
+   error_t error;
+
+   //Compute the shared secret K
+   error = dhComputeSharedSecret(&connection->dhContext, connection->k,
+      SSH_MAX_SHARED_SECRET_LEN, &connection->kLen);
+
+   //Check status code
+   if(!error)
+   {
+      //Unnecessary leading bytes with the value 0 must not be included
+      while(connection->kLen > 0 && connection->k[0] == 0)
+      {
+         //Adjust the length of the shared secret
+         connection->kLen--;
+         //Strip leading byte
+         osMemmove(connection->k, connection->k + 1, connection->kLen);
+      }
+
+      //If the most significant bit would be set for a positive number, the
+      //number must be preceded by a zero byte
+      if((connection->k[0] & 0x80) != 0)
+      {
+         //Make room for the leading byte
+         osMemmove(connection->k + 1, connection->k, connection->kLen);
+         //The number is preceded by a zero byte
+         connection->k[0] = 0;
+         //Adjust the length of the shared secret
+         connection->kLen++;
+      }
    }
 
    //Return status code

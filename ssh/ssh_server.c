@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.1.0
+ * @version 2.1.2
  **/
 
 //Switch to the appropriate trace level
@@ -71,6 +71,20 @@ void sshServerGetDefaultSettings(SshServerSettings *settings)
    settings->passwordAuthCallback = NULL;
    //Public key authentication callback function
    settings->publicKeyAuthCallback = NULL;
+
+#if (SSH_SIGN_CALLBACK_SUPPORT == ENABLED)
+   //Signature generation callback function
+   settings->signGenCallback = NULL;
+   //Signature verification callback function
+   settings->signVerifyCallback = NULL;
+#endif
+
+#if (SSH_ECDH_CALLBACK_SUPPORT == ENABLED)
+   //ECDH key pair generation callback
+   settings->ecdhKeyPairGenCallback = NULL;
+   //ECDH shared secret calculation callback
+   settings->ecdhSharedSecretCalcCallback = NULL;
+#endif
 }
 
 
@@ -153,6 +167,54 @@ error_t sshServerInit(SshServerContext *context,
          if(error)
             break;
       }
+
+#if (SSH_SIGN_CALLBACK_SUPPORT == ENABLED)
+      //Valid signature generation callback function?
+      if(settings->signGenCallback != NULL)
+      {
+         //Register callback function
+         error = sshRegisterSignGenCallback(&context->sshContext,
+            settings->signGenCallback);
+         //Any error to report?
+         if(error)
+            break;
+      }
+
+      //Valid signature verification callback function?
+      if(settings->signVerifyCallback != NULL)
+      {
+         //Register callback function
+         error = sshRegisterSignVerifyCallback(&context->sshContext,
+            settings->signVerifyCallback);
+         //Any error to report?
+         if(error)
+            break;
+      }
+#endif
+
+#if (SSH_ECDH_CALLBACK_SUPPORT == ENABLED)
+      //Valid ECDH key pair generation callback function?
+      if(settings->ecdhKeyPairGenCallback != NULL)
+      {
+         //Register callback function
+         error = sshRegisterEcdhKeyPairGenCallback(&context->sshContext,
+            settings->ecdhKeyPairGenCallback);
+         //Any error to report?
+         if(error)
+            break;
+      }
+
+      //Valid ECDH shared secret calculation callback function?
+      if(settings->ecdhSharedSecretCalcCallback != NULL)
+      {
+         //Register callback function
+         error = sshRegisterEcdhSharedSecretCalcCallback(&context->sshContext,
+            settings->ecdhSharedSecretCalcCallback);
+         //Any error to report?
+         if(error)
+            break;
+      }
+#endif
 
       //End of exception handling block
    } while(0);
@@ -302,7 +364,6 @@ error_t sshServerUnloadAllHostKeys(SshServerContext *context)
 error_t sshServerStart(SshServerContext *context)
 {
    error_t error;
-   OsTask *task;
 
    //Make sure the SSH server context is valid
    if(context == NULL)
@@ -358,11 +419,19 @@ error_t sshServerStart(SshServerContext *context)
       context->stop = FALSE;
       context->running = TRUE;
 
-      //Create the SSH server task
-      task = osCreateTask("SSH Server", (OsTaskCode) sshServerTask, context,
-         SSH_SERVER_STACK_SIZE, SSH_SERVER_PRIORITY);
+#if (OS_STATIC_TASK_SUPPORT == ENABLED)
+      //Create a task using statically allocated memory
+      context->taskId = osCreateStaticTask("SSH Server",
+         (OsTaskCode) sshServerTask, context, &context->taskTcb,
+         context->taskStack, SSH_SERVER_STACK_SIZE, SSH_SERVER_PRIORITY);
+#else
+      //Create a task
+      context->taskId = osCreateTask("SSH Server", (OsTaskCode) sshServerTask,
+         context, SSH_SERVER_STACK_SIZE, SSH_SERVER_PRIORITY);
+#endif
+
       //Failed to create task?
-      if(task == OS_INVALID_HANDLE)
+      if(context->taskId == OS_INVALID_TASK_ID)
       {
          //Report an error
          error = ERROR_OUT_OF_RESOURCES;
@@ -497,8 +566,10 @@ void sshServerTask(SshServerContext *context)
          {
             //Stop SSH server operation
             context->running = FALSE;
+            //Task epilogue
+            osExitTask();
             //Kill ourselves
-            osDeleteTask(NULL);
+            osDeleteTask(OS_SELF_TASK_ID);
          }
 
          //Event-driven processing

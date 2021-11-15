@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.1.0
+ * @version 2.1.2
  **/
 
 //Switch to the appropriate trace level
@@ -62,65 +62,107 @@ error_t sshGenerateSignature(SshConnection *connection,
    const void *message, size_t messageLen, uint8_t *p, size_t *written)
 {
    error_t error;
+   size_t n;
 
-#if (SSH_RSA_SUPPORT == ENABLED)
-   //RSA public key algorithm?
-   if(sshCompareAlgo(publicKeyAlgo, "ssh-rsa") ||
-      sshCompareAlgo(publicKeyAlgo, "rsa-sha2-256") ||
-      sshCompareAlgo(publicKeyAlgo, "rsa-sha2-512"))
+   //Total length of the signature encoding
+   *written = 0;
+
+   //Format public key format identifier
+   error = sshFormatString(publicKeyAlgo, p, &n);
+
+   //Check status code
+   if(!error)
    {
-      //Generate an RSA signature using the host private key
-      error = sshGenerateRsaSignature(connection, publicKeyAlgo, hostKey,
-         message, messageLen, p, written);
+      //Point to the signature blob
+      p += n;
+      *written += n;
+
+#if (SSH_SIGN_CALLBACK_SUPPORT == ENABLED)
+      //Valid signature generation callback function?
+      if(connection->context->signGenCallback != NULL)
+      {
+         //Invoke user-defined callback
+         error = connection->context->signGenCallback(connection,
+            publicKeyAlgo, hostKey, message, messageLen, p, &n);
+      }
+      else
+#endif
+      {
+         //No callback function registered
+         error = ERROR_UNSUPPORTED_SIGNATURE_ALGO;
+      }
    }
-   else
+
+   //Check status code
+   if(error == ERROR_UNSUPPORTED_SIGNATURE_ALGO ||
+      error == ERROR_UNKOWN_KEY)
+   {
+#if (SSH_RSA_SUPPORT == ENABLED)
+      //RSA public key algorithm?
+      if(sshCompareAlgo(publicKeyAlgo, "ssh-rsa") ||
+         sshCompareAlgo(publicKeyAlgo, "rsa-sha2-256") ||
+         sshCompareAlgo(publicKeyAlgo, "rsa-sha2-512"))
+      {
+         //Generate an RSA signature using the host private key
+         error = sshGenerateRsaSignature(connection, publicKeyAlgo, hostKey,
+            message, messageLen, p, &n);
+      }
+      else
 #endif
 #if (SSH_DSA_SUPPORT == ENABLED)
-   //DSA public key algorithm?
-   if(sshCompareAlgo(publicKeyAlgo, "ssh-dss"))
-   {
-      //Generate a DSA signature using the host private key
-      error = sshGenerateDsaSignature(connection, publicKeyAlgo, hostKey,
-         message, messageLen, p, written);
-   }
-   else
+      //DSA public key algorithm?
+      if(sshCompareAlgo(publicKeyAlgo, "ssh-dss"))
+      {
+         //Generate a DSA signature using the host private key
+         error = sshGenerateDsaSignature(connection, publicKeyAlgo, hostKey,
+            message, messageLen, p, &n);
+      }
+      else
 #endif
 #if (SSH_ECDSA_SUPPORT == ENABLED)
-   //ECDSA public key algorithm?
-   if(sshCompareAlgo(publicKeyAlgo, "ecdsa-sha2-nistp256") ||
-      sshCompareAlgo(publicKeyAlgo, "ecdsa-sha2-nistp384") ||
-      sshCompareAlgo(publicKeyAlgo, "ecdsa-sha2-nistp521"))
-   {
-      //Generate an ECDSA signature using the host private key
-      error = sshGenerateEcdsaSignature(connection, publicKeyAlgo, hostKey,
-         message, messageLen, p, written);
-   }
-   else
+      //ECDSA public key algorithm?
+      if(sshCompareAlgo(publicKeyAlgo, "ecdsa-sha2-nistp256") ||
+         sshCompareAlgo(publicKeyAlgo, "ecdsa-sha2-nistp384") ||
+         sshCompareAlgo(publicKeyAlgo, "ecdsa-sha2-nistp521"))
+      {
+         //Generate an ECDSA signature using the host private key
+         error = sshGenerateEcdsaSignature(connection, publicKeyAlgo, hostKey,
+            message, messageLen, p, &n);
+      }
+      else
 #endif
 #if (SSH_ED25519_SUPPORT == ENABLED)
-   //Ed22519 public key algorithm?
-   if(sshCompareAlgo(publicKeyAlgo, "ssh-ed25519"))
-   {
-      //Generate an EdDSA signature using the host private key
-      error = sshGenerateEd25519Signature(connection, publicKeyAlgo, hostKey,
-         message, messageLen, p, written);
-   }
-   else
+      //Ed22519 public key algorithm?
+      if(sshCompareAlgo(publicKeyAlgo, "ssh-ed25519"))
+      {
+         //Generate an EdDSA signature using the host private key
+         error = sshGenerateEd25519Signature(connection, publicKeyAlgo, hostKey,
+            message, messageLen, p, &n);
+      }
+      else
 #endif
 #if (SSH_ED448_SUPPORT == ENABLED)
-   //Ed448 public key algorithm?
-   if(sshCompareAlgo(publicKeyAlgo, "ssh-ed448"))
-   {
-      //Generate an EdDSA signature using the host private key
-      error = sshGenerateEd448Signature(connection, publicKeyAlgo, hostKey,
-         message, messageLen, p, written);
-   }
-   else
+      //Ed448 public key algorithm?
+      if(sshCompareAlgo(publicKeyAlgo, "ssh-ed448"))
+      {
+         //Generate an EdDSA signature using the host private key
+         error = sshGenerateEd448Signature(connection, publicKeyAlgo, hostKey,
+            message, messageLen, p, &n);
+      }
+      else
 #endif
-   //Unknown host key type?
+      //Unknown host key type?
+      {
+         //Report an error
+         error = ERROR_UNSUPPORTED_SIGNATURE_ALGO;
+      }
+   }
+
+   //Check status code
+   if(!error)
    {
-      //Report an error
-      error = ERROR_UNSUPPORTED_SIGNATURE_ALGO;
+      //Total number of bytes that have been written
+      *written += n;
    }
 
    //Return status code
@@ -149,9 +191,6 @@ error_t sshGenerateRsaSignature(SshConnection *connection,
    size_t n;
    const HashAlgo *hashAlgo;
    uint8_t digest[SSH_MAX_HASH_DIGEST_SIZE];
-
-   //Total number of bytes that have been written
-   *written = 0;
 
 #if (SSH_SHA1_SUPPORT == ENABLED)
    //RSA with SHA-1 public key algorithm?
@@ -194,44 +233,33 @@ error_t sshGenerateRsaSignature(SshConnection *connection,
       //Initialize RSA private key
       rsaInitPrivateKey(&rsaPrivateKey);
 
-      //Format public key format identifier
-      error = sshFormatString(publicKeyAlgo, p, &n);
+      //Initialize hash context
+      hashAlgo->init(&connection->hashContext);
 
-      //Check status code
-      if(!error)
+      //Client operation mode?
+      if(connection->context->mode == SSH_OPERATION_MODE_CLIENT)
       {
-         //Point to the next field
-         p += n;
-         *written += n;
+         uint8_t temp[4];
 
-         //Initialize hash context
-         hashAlgo->init(&connection->hashContext);
+         //Encode the length of the session identifier as a 32-bit
+         //big-endian integer
+         STORE32BE(connection->sessionIdLen, temp);
 
-         //Client operation mode?
-         if(connection->context->mode == SSH_OPERATION_MODE_CLIENT)
-         {
-            uint8_t temp[4];
+         //Digest the length field
+         hashAlgo->update(&connection->hashContext, temp, sizeof(temp));
 
-            //Encode the length of the session identifier as a 32-bit
-            //big-endian integer
-            STORE32BE(connection->sessionIdLen, temp);
-
-            //Digest the length field
-            hashAlgo->update(&connection->hashContext, temp, sizeof(temp));
-
-            //Digest the session identifier
-            hashAlgo->update(&connection->hashContext, connection->sessionId,
-               connection->sessionIdLen);
-         }
-
-         //Digest the message
-         hashAlgo->update(&connection->hashContext, message, messageLen);
-         hashAlgo->final(&connection->hashContext, digest);
-
-         //Import RSA private key
-         error = pemImportRsaPrivateKey(hostKey->privateKey,
-            hostKey->privateKeyLen, &rsaPrivateKey);
+         //Digest the session identifier
+         hashAlgo->update(&connection->hashContext, connection->sessionId,
+            connection->sessionIdLen);
       }
+
+      //Digest the message
+      hashAlgo->update(&connection->hashContext, message, messageLen);
+      hashAlgo->final(&connection->hashContext, digest);
+
+      //Import RSA private key
+      error = pemImportRsaPrivateKey(hostKey->privateKey,
+         hostKey->privateKeyLen, &rsaPrivateKey);
 
       //Check status code
       if(!error)
@@ -246,7 +274,7 @@ error_t sshGenerateRsaSignature(SshConnection *connection,
          //The resulting RSA signature blob is encoded as a string
          STORE32BE(n, p);
          //Total number of bytes that have been written
-         *written += sizeof(uint32_t) + n;
+         *written = sizeof(uint32_t) + n;
       }
 
       //Free previously allocated memory
@@ -292,9 +320,6 @@ error_t sshGenerateDsaSignature(SshConnection *connection,
    Sha1Context *hashContext;
    uint8_t digest[SHA1_DIGEST_SIZE];
 
-   //Total number of bytes that have been written
-   *written = 0;
-
    //Point to the SSH context
    context = connection->context;
    //Point to the hash context
@@ -305,44 +330,33 @@ error_t sshGenerateDsaSignature(SshConnection *connection,
    //Initialize DSA signature
    dsaInitSignature(&dsaSignature);
 
-   //Format public key format identifier
-   error = sshFormatString("ssh-dss", p, &n);
+   //Initialize hash context
+   sha1Init(hashContext);
 
-   //Check status code
-   if(!error)
+   //Client operation mode?
+   if(connection->context->mode == SSH_OPERATION_MODE_CLIENT)
    {
-      //Point to the next field
-      p += n;
-      *written += n;
+      uint8_t temp[4];
 
-      //Initialize hash context
-      sha1Init(hashContext);
+      //Encode the length of the session identifier as a 32-bit
+      //big-endian integer
+      STORE32BE(connection->sessionIdLen, temp);
 
-      //Client operation mode?
-      if(connection->context->mode == SSH_OPERATION_MODE_CLIENT)
-      {
-         uint8_t temp[4];
+      //Digest the length field
+      sha1Update(hashContext, temp, sizeof(temp));
 
-         //Encode the length of the session identifier as a 32-bit
-         //big-endian integer
-         STORE32BE(connection->sessionIdLen, temp);
-
-         //Digest the length field
-         sha1Update(hashContext, temp, sizeof(temp));
-
-         //Digest the session identifier
-         sha1Update(hashContext, connection->sessionId,
-            connection->sessionIdLen);
-      }
-
-      //Digest the message
-      sha1Update(hashContext, message, messageLen);
-      sha1Final(hashContext, digest);
-
-      //Import DSA private key
-      error = pemImportDsaPrivateKey(hostKey->privateKey,
-         hostKey->privateKeyLen, &dsaPrivateKey);
+      //Digest the session identifier
+      sha1Update(hashContext, connection->sessionId,
+         connection->sessionIdLen);
    }
+
+   //Digest the message
+   sha1Update(hashContext, message, messageLen);
+   sha1Final(hashContext, digest);
+
+   //Import DSA private key
+   error = pemImportDsaPrivateKey(hostKey->privateKey, hostKey->privateKeyLen,
+      &dsaPrivateKey);
 
    //Check status code
    if(!error)
@@ -376,7 +390,7 @@ error_t sshGenerateDsaSignature(SshConnection *connection,
       //The resulting DSA signature blob is encoded as a string
       STORE32BE(2 * n, p);
       //Total number of bytes that have been written
-      *written += sizeof(uint32_t) + 2 * n;
+      *written = sizeof(uint32_t) + 2 * n;
    }
 
    //Free previously allocated resources
@@ -410,15 +424,11 @@ error_t sshGenerateEcdsaSignature(SshConnection *connection,
 {
 #if (SSH_ECDSA_SUPPORT == ENABLED)
    error_t error;
-   size_t n;
    size_t rLen;
    size_t sLen;
    const HashAlgo *hashAlgo;
    SshContext *context;
    uint8_t digest[SSH_MAX_HASH_DIGEST_SIZE];
-
-   //Total number of bytes that have been written
-   *written = 0;
 
    //Point to the SSH context
    context = connection->context;
@@ -460,54 +470,43 @@ error_t sshGenerateEcdsaSignature(SshConnection *connection,
    if(hashAlgo != NULL)
    {
       EcDomainParameters ecParams;
-      Mpi ecPrivateKey;
+      EcPrivateKey ecPrivateKey;
       EcdsaSignature ecdsaSignature;
 
       //Initialize EC domain parameters
       ecInitDomainParameters(&ecParams);
       //Initialize EC private key
-      mpiInit(&ecPrivateKey);
+      ecInitPrivateKey(&ecPrivateKey);
       //Initialize ECDSA signature
       ecdsaInitSignature(&ecdsaSignature);
 
-      //Format public key format identifier
-      error = sshFormatString(publicKeyAlgo, p, &n);
+      //Initialize hash context
+      hashAlgo->init(&connection->hashContext);
 
-      //Check status code
-      if(!error)
+      //Client operation mode?
+      if(connection->context->mode == SSH_OPERATION_MODE_CLIENT)
       {
-         //Point to the next field
-         p += n;
-         *written += n;
+         uint8_t temp[4];
 
-         //Initialize hash context
-         hashAlgo->init(&connection->hashContext);
+         //Encode the length of the session identifier as a 32-bit
+         //big-endian integer
+         STORE32BE(connection->sessionIdLen, temp);
 
-         //Client operation mode?
-         if(connection->context->mode == SSH_OPERATION_MODE_CLIENT)
-         {
-            uint8_t temp[4];
+         //Digest the length field
+         hashAlgo->update(&connection->hashContext, temp, sizeof(temp));
 
-            //Encode the length of the session identifier as a 32-bit
-            //big-endian integer
-            STORE32BE(connection->sessionIdLen, temp);
-
-            //Digest the length field
-            hashAlgo->update(&connection->hashContext, temp, sizeof(temp));
-
-            //Digest the session identifier
-            hashAlgo->update(&connection->hashContext, connection->sessionId,
-               connection->sessionIdLen);
-         }
-
-         //Digest the message
-         hashAlgo->update(&connection->hashContext, message, messageLen);
-         hashAlgo->final(&connection->hashContext, digest);
-
-         //Import EC domain parameters
-         error = pemImportEcParameters(hostKey->privateKey,
-            hostKey->privateKeyLen, &ecParams);
+         //Digest the session identifier
+         hashAlgo->update(&connection->hashContext, connection->sessionId,
+            connection->sessionIdLen);
       }
+
+      //Digest the message
+      hashAlgo->update(&connection->hashContext, message, messageLen);
+      hashAlgo->final(&connection->hashContext, digest);
+
+      //Import EC domain parameters
+      error = pemImportEcParameters(hostKey->privateKey, hostKey->privateKeyLen,
+         &ecParams);
 
       //Check status code
       if(!error)
@@ -546,12 +545,12 @@ error_t sshGenerateEcdsaSignature(SshConnection *connection,
          //The resulting ECDSA signature blob is encoded as a string
          STORE32BE(rLen + sLen, p);
          //Total number of bytes that have been written
-         *written += sizeof(uint32_t) + rLen + sLen;
+         *written = sizeof(uint32_t) + rLen + sLen;
       }
 
       //Free previously allocated resources
       ecFreeDomainParameters(&ecParams);
-      mpiFree(&ecPrivateKey);
+      ecFreePrivateKey(&ecPrivateKey);
       ecdsaFreeSignature(&ecdsaSignature);
    }
    else
@@ -593,26 +592,12 @@ error_t sshGenerateEd25519Signature(SshConnection *connection,
    uint8_t temp[4];
    uint8_t d[ED25519_PRIVATE_KEY_LEN];
 
-   //Total number of bytes that have been written
-   *written = 0;
-
    //Initialize EdDSA private key
    eddsaInitPrivateKey(&eddsaPrivateKey);
 
-   //Format public key format identifier
-   error = sshFormatString("ssh-ed25519", p, &n);
-
-   //Check status code
-   if(!error)
-   {
-      //Point to the next field
-      p += n;
-      *written += n;
-
-      //Import EdDSA private key
-      error = pemImportEddsaPrivateKey(hostKey->privateKey,
-         hostKey->privateKeyLen, &eddsaPrivateKey);
-   }
+   //Import EdDSA private key
+   error = pemImportEddsaPrivateKey(hostKey->privateKey, hostKey->privateKeyLen,
+      &eddsaPrivateKey);
 
    //Check status code
    if(!error)
@@ -666,7 +651,7 @@ error_t sshGenerateEd25519Signature(SshConnection *connection,
       //The resulting EdDSA signature is encoded as a string
       STORE32BE(n, p);
       //Total number of bytes that have been written
-      *written += sizeof(uint32_t) + n;
+      *written = sizeof(uint32_t) + n;
    }
 
    //Free previously allocated resources
@@ -705,26 +690,12 @@ error_t sshGenerateEd448Signature(SshConnection *connection,
    uint8_t temp[4];
    uint8_t d[ED448_PRIVATE_KEY_LEN];
 
-   //Total number of bytes that have been written
-   *written = 0;
-
    //Initialize EdDSA private key
    eddsaInitPrivateKey(&eddsaPrivateKey);
 
-   //Format public key format identifier
-   error = sshFormatString("ssh-ed448", p, &n);
-
-   //Check status code
-   if(!error)
-   {
-      //Point to the next field
-      p += n;
-      *written += n;
-
-      //Import EdDSA private key
-      error = pemImportEddsaPrivateKey(hostKey->privateKey,
-         hostKey->privateKeyLen, &eddsaPrivateKey);
-   }
+   //Import EdDSA private key
+   error = pemImportEddsaPrivateKey(hostKey->privateKey, hostKey->privateKeyLen,
+      &eddsaPrivateKey);
 
    //Check status code
    if(!error)
@@ -778,7 +749,7 @@ error_t sshGenerateEd448Signature(SshConnection *connection,
       //The resulting EdDSA signature is encoded as a string
       STORE32BE(n, p);
       //Total number of bytes that have been written
-      *written += sizeof(uint32_t) + n;
+      *written = sizeof(uint32_t) + n;
    }
 
    //Free previously allocated resources
@@ -806,7 +777,8 @@ error_t sshGenerateEd448Signature(SshConnection *connection,
 
 error_t sshVerifySignature(SshConnection *connection,
    const SshString *publicKeyAlgo, const SshBinaryString *publicKeyBlob,
-   const uint8_t *message, size_t messageLen, const SshBinaryString *signature)
+   const uint8_t *message, size_t messageLen,
+   const SshBinaryString *signature)
 {
    error_t error;
    size_t n;
@@ -846,64 +818,83 @@ error_t sshVerifySignature(SshConnection *connection,
    if(!sshCompareStrings(&keyFormatId, publicKeyAlgo))
       return ERROR_INVALID_SIGNATURE;
 
-#if (SSH_RSA_SUPPORT == ENABLED)
-   //RSA public key algorithm?
-   if(sshCompareString(publicKeyAlgo, "ssh-rsa") ||
-      sshCompareString(publicKeyAlgo, "rsa-sha2-256") ||
-      sshCompareString(publicKeyAlgo, "rsa-sha2-512"))
+#if (SSH_SIGN_CALLBACK_SUPPORT == ENABLED)
+   //Valid signature verification callback function?
+   if(connection->context->signVerifyCallback != NULL)
    {
-      //RSA signature verification
-      error = sshVerifyRsaSignature(connection, publicKeyAlgo,
-         publicKeyBlob, message, messageLen, &signatureBlob);
+      //Invoke user-defined callback
+      error = connection->context->signVerifyCallback(connection,
+         publicKeyAlgo, publicKeyBlob, message, messageLen, &signatureBlob);
    }
    else
+#endif
+   {
+      //No callback function registered
+      error = ERROR_UNSUPPORTED_SIGNATURE_ALGO;
+   }
+
+   //Check status code
+   if(error == ERROR_UNSUPPORTED_SIGNATURE_ALGO)
+   {
+#if (SSH_RSA_SUPPORT == ENABLED)
+      //RSA public key algorithm?
+      if(sshCompareString(publicKeyAlgo, "ssh-rsa") ||
+         sshCompareString(publicKeyAlgo, "rsa-sha2-256") ||
+         sshCompareString(publicKeyAlgo, "rsa-sha2-512"))
+      {
+         //RSA signature verification
+         error = sshVerifyRsaSignature(connection, publicKeyAlgo,
+            publicKeyBlob, message, messageLen, &signatureBlob);
+      }
+      else
 #endif
 #if (SSH_DSA_SUPPORT == ENABLED)
-   //DSA public key algorithm?
-   if(sshCompareString(publicKeyAlgo, "ssh-dss"))
-   {
-      //DSA signature verification
-      error = sshVerifyDsaSignature(connection, publicKeyAlgo,
-         publicKeyBlob, message, messageLen, &signatureBlob);
-   }
-   else
+      //DSA public key algorithm?
+      if(sshCompareString(publicKeyAlgo, "ssh-dss"))
+      {
+         //DSA signature verification
+         error = sshVerifyDsaSignature(connection, publicKeyAlgo,
+            publicKeyBlob, message, messageLen, &signatureBlob);
+      }
+      else
 #endif
 #if (SSH_ECDSA_SUPPORT == ENABLED)
-   //ECDSA public key algorithm?
-   if(sshCompareString(publicKeyAlgo, "ecdsa-sha2-nistp256") ||
-      sshCompareString(publicKeyAlgo, "ecdsa-sha2-nistp384") ||
-      sshCompareString(publicKeyAlgo, "ecdsa-sha2-nistp521"))
-   {
-      //ECDSA signature verification
-      error = sshVerifyEcdsaSignature(connection, publicKeyAlgo,
-         publicKeyBlob, message, messageLen, &signatureBlob);
-   }
-   else
+      //ECDSA public key algorithm?
+      if(sshCompareString(publicKeyAlgo, "ecdsa-sha2-nistp256") ||
+         sshCompareString(publicKeyAlgo, "ecdsa-sha2-nistp384") ||
+         sshCompareString(publicKeyAlgo, "ecdsa-sha2-nistp521"))
+      {
+         //ECDSA signature verification
+         error = sshVerifyEcdsaSignature(connection, publicKeyAlgo,
+            publicKeyBlob, message, messageLen, &signatureBlob);
+      }
+      else
 #endif
 #if (SSH_ED25519_SUPPORT == ENABLED)
-   //Ed22519 public key algorithm?
-   if(sshCompareString(publicKeyAlgo, "ssh-ed25519"))
-   {
-      //Ed25519 signature verification
-      error = sshVerifyEd25519Signature(connection, publicKeyAlgo,
-         publicKeyBlob, message, messageLen, &signatureBlob);
-   }
-   else
+      //Ed22519 public key algorithm?
+      if(sshCompareString(publicKeyAlgo, "ssh-ed25519"))
+      {
+         //Ed25519 signature verification
+         error = sshVerifyEd25519Signature(connection, publicKeyAlgo,
+            publicKeyBlob, message, messageLen, &signatureBlob);
+      }
+      else
 #endif
 #if (SSH_ED448_SUPPORT == ENABLED)
-   //Ed448 public key algorithm?
-   if(sshCompareString(publicKeyAlgo, "ssh-ed448"))
-   {
-      //Ed448 signature verification
-      error = sshVerifyEd448Signature(connection, publicKeyAlgo,
-         publicKeyBlob, message, messageLen, &signatureBlob);
-   }
-   else
+      //Ed448 public key algorithm?
+      if(sshCompareString(publicKeyAlgo, "ssh-ed448"))
+      {
+         //Ed448 signature verification
+         error = sshVerifyEd448Signature(connection, publicKeyAlgo,
+            publicKeyBlob, message, messageLen, &signatureBlob);
+      }
+      else
 #endif
-   //Unknown public key algorithm?
-   {
-      //Report an error
-      error = ERROR_UNSUPPORTED_SIGNATURE_ALGO;
+      //Unknown public key algorithm?
+      {
+         //Report an error
+         error = ERROR_UNSUPPORTED_SIGNATURE_ALGO;
+      }
    }
 
    //Return status code
@@ -918,13 +909,14 @@ error_t sshVerifySignature(SshConnection *connection,
  * @param[in] publicKeyBlob Signer's public key
  * @param[in] message Message whose signature is to be verified
  * @param[in] messageLen Length of the message, in bytes
- * @param[in] signature Signature to be verified
+ * @param[in] signatureBlob Signature to be verified
  * @return Error code
  **/
 
 error_t sshVerifyRsaSignature(SshConnection *connection,
    const SshString *publicKeyAlgo, const SshBinaryString *publicKeyBlob,
-   const uint8_t *message, size_t messageLen, const SshBinaryString *signature)
+   const uint8_t *message, size_t messageLen,
+   const SshBinaryString *signatureBlob)
 {
 #if (SSH_RSA_SUPPORT == ENABLED)
    error_t error;
@@ -1013,7 +1005,7 @@ error_t sshVerifyRsaSignature(SshConnection *connection,
       {
          //Verify RSA signature
          error = rsassaPkcs1v15Verify(&rsaPublicKey, hashAlgo, digest,
-            signature->value, signature->length);
+            signatureBlob->value, signatureBlob->length);
       }
 
       //Free previously allocated resources
@@ -1041,13 +1033,14 @@ error_t sshVerifyRsaSignature(SshConnection *connection,
  * @param[in] publicKeyBlob Signer's public key
  * @param[in] message Message whose signature is to be verified
  * @param[in] messageLen Length of the message, in bytes
- * @param[in] signature Signature to be verified
+ * @param[in] signatureBlob Signature to be verified
  * @return Error code
  **/
 
 error_t sshVerifyDsaSignature(SshConnection *connection,
    const SshString *publicKeyAlgo, const SshBinaryString *publicKeyBlob,
-   const uint8_t *message, size_t messageLen, const SshBinaryString *signature)
+   const uint8_t *message, size_t messageLen,
+   const SshBinaryString *signatureBlob)
 {
 #if (SSH_DSA_SUPPORT == ENABLED)
    error_t error;
@@ -1062,7 +1055,7 @@ error_t sshVerifyDsaSignature(SshConnection *connection,
 
    //The DSA signature blob contains R followed by S (which are 160-bit
    //integers)
-   if(signature->length != 40)
+   if(signatureBlob->length != 40)
       return ERROR_INVALID_MESSAGE;
 
    //Initialize DSA public key
@@ -1109,7 +1102,7 @@ error_t sshVerifyDsaSignature(SshConnection *connection,
    if(!error)
    {
       //Import integer R
-      error = mpiImport(&dsaSignature.r, signature->value, 20,
+      error = mpiImport(&dsaSignature.r, signatureBlob->value, 20,
          MPI_FORMAT_BIG_ENDIAN);
    }
 
@@ -1117,7 +1110,7 @@ error_t sshVerifyDsaSignature(SshConnection *connection,
    if(!error)
    {
       //Import integer S
-      error = mpiImport(&dsaSignature.s, signature->value + 20, 20,
+      error = mpiImport(&dsaSignature.s, signatureBlob->value + 20, 20,
          MPI_FORMAT_BIG_ENDIAN);
    }
 
@@ -1149,50 +1142,20 @@ error_t sshVerifyDsaSignature(SshConnection *connection,
  * @param[in] publicKeyBlob Signer's public key
  * @param[in] message Message whose signature is to be verified
  * @param[in] messageLen Length of the message, in bytes
- * @param[in] signature Signature to be verified
+ * @param[in] signatureBlob Signature to be verified
  * @return Error code
  **/
 
 error_t sshVerifyEcdsaSignature(SshConnection *connection,
    const SshString *publicKeyAlgo, const SshBinaryString *publicKeyBlob,
-   const uint8_t *message, size_t messageLen, const SshBinaryString *signature)
+   const uint8_t *message, size_t messageLen,
+   const SshBinaryString *signatureBlob)
 {
 #if (SSH_ECDSA_SUPPORT == ENABLED)
    error_t error;
-   size_t n;
-   const uint8_t *p;
-   SshBinaryString r;
-   SshBinaryString s;
+   SshEcdsaSignature signature;
    const HashAlgo *hashAlgo;
    uint8_t digest[SSH_MAX_HASH_DIGEST_SIZE];
-
-   //Point to the ECDSA signature
-   p = signature->value;
-   n = signature->length;
-
-   //Decode integer R
-   error = sshParseBinaryString(p, n, &r);
-   //Any error to report?
-   if(error)
-      return error;
-
-   //Point to the next field
-   p += sizeof(uint32_t) + r.length;
-   n -= sizeof(uint32_t) + r.length;
-
-   //Decode integer S
-   error = sshParseBinaryString(p, n, &s);
-   //Any error to report?
-   if(error)
-      return error;
-
-   //Point to the next field
-   p += sizeof(uint32_t) + s.length;
-   n -= sizeof(uint32_t) + s.length;
-
-   //Malformed signature?
-   if(n != 0)
-      return ERROR_INVALID_MESSAGE;
 
 #if (SSH_NISTP256_SUPPORT == ENABLED && SSH_SHA256_SUPPORT == ENABLED)
    //ECDSA with NIST P-256 public key algorithm?
@@ -1232,13 +1195,13 @@ error_t sshVerifyEcdsaSignature(SshConnection *connection,
    {
       SshEcdsaHostKey hostKey;
       EcDomainParameters ecParams;
-      EcPoint ecPublicKey;
+      EcPublicKey ecPublicKey;
       EcdsaSignature ecdsaSignature;
 
       //Initialize EC domain parameters
       ecInitDomainParameters(&ecParams);
-      //Initialize ECDSA public key
-      ecInit(&ecPublicKey);
+      //Initialize EC public key
+      ecInitPublicKey(&ecPublicKey);
       //Initialize ECDSA signature
       ecdsaInitSignature(&ecdsaSignature);
 
@@ -1280,17 +1243,25 @@ error_t sshVerifyEcdsaSignature(SshConnection *connection,
       //Check status code
       if(!error)
       {
+         //Parse ECDSA signature structure
+         error = sshParseEcdsaSignature(signatureBlob->value,
+            signatureBlob->length, &signature);
+      }
+
+      //Check status code
+      if(!error)
+      {
          //Import integer R
-         error = mpiImport(&ecdsaSignature.r, r.value, r.length,
-            MPI_FORMAT_BIG_ENDIAN);
+         error = mpiImport(&ecdsaSignature.r, signature.r.value,
+            signature.r.length, MPI_FORMAT_BIG_ENDIAN);
       }
 
       //Check status code
       if(!error)
       {
          //Import integer S
-         error = mpiImport(&ecdsaSignature.s, s.value, s.length,
-            MPI_FORMAT_BIG_ENDIAN);
+         error = mpiImport(&ecdsaSignature.s, signature.s.value,
+            signature.s.length, MPI_FORMAT_BIG_ENDIAN);
       }
 
       //Check status code
@@ -1303,7 +1274,7 @@ error_t sshVerifyEcdsaSignature(SshConnection *connection,
 
       //Free previously allocated resources
       ecFreeDomainParameters(&ecParams);
-      ecFree(&ecPublicKey);
+      ecFreePublicKey(&ecPublicKey);
       ecdsaFreeSignature(&ecdsaSignature);
    }
    else
@@ -1328,13 +1299,14 @@ error_t sshVerifyEcdsaSignature(SshConnection *connection,
  * @param[in] publicKeyBlob Signer's public key
  * @param[in] message Message whose signature is to be verified
  * @param[in] messageLen Length of the message, in bytes
- * @param[in] signature Signature to be verified
+ * @param[in] signatureBlob Signature to be verified
  * @return Error code
  **/
 
 error_t sshVerifyEd25519Signature(SshConnection *connection,
    const SshString *publicKeyAlgo, const SshBinaryString *publicKeyBlob,
-   const uint8_t *message, size_t messageLen, const SshBinaryString *signature)
+   const uint8_t *message, size_t messageLen,
+   const SshBinaryString *signatureBlob)
 {
 #if (SSH_ED25519_SUPPORT == ENABLED)
    error_t error;
@@ -1343,7 +1315,7 @@ error_t sshVerifyEd25519Signature(SshConnection *connection,
    uint8_t temp[4];
 
    //The Ed25519 signature consists of 32 octets
-   if(signature->length != ED25519_SIGNATURE_LEN)
+   if(signatureBlob->length != ED25519_SIGNATURE_LEN)
       return ERROR_INVALID_SIGNATURE;
 
    //Parse Ed25519 host key structure
@@ -1382,7 +1354,7 @@ error_t sshVerifyEd25519Signature(SshConnection *connection,
 
       //Verify Ed25519 signature (PureEdDSA mode)
       error = ed25519VerifySignatureEx(hostKey.q.value, messageChunks, NULL,
-         0, 0, signature->value);
+         0, 0, signatureBlob->value);
    }
 
    //Return status code
@@ -1401,13 +1373,14 @@ error_t sshVerifyEd25519Signature(SshConnection *connection,
  * @param[in] publicKeyBlob Signer's public key
  * @param[in] message Message whose signature is to be verified
  * @param[in] messageLen Length of the message, in bytes
- * @param[in] signature Signature to be verified
+ * @param[in] signatureBlob Signature to be verified
  * @return Error code
  **/
 
 error_t sshVerifyEd448Signature(SshConnection *connection,
    const SshString *publicKeyAlgo, const SshBinaryString *publicKeyBlob,
-   const uint8_t *message, size_t messageLen, const SshBinaryString *signature)
+   const uint8_t *message, size_t messageLen,
+   const SshBinaryString *signatureBlob)
 {
 #if (SSH_ED448_SUPPORT == ENABLED)
    error_t error;
@@ -1416,7 +1389,7 @@ error_t sshVerifyEd448Signature(SshConnection *connection,
    uint8_t temp[4];
 
    //The Ed448 signature consists of 57 octets
-   if(signature->length != ED448_SIGNATURE_LEN)
+   if(signatureBlob->length != ED448_SIGNATURE_LEN)
       return ERROR_INVALID_SIGNATURE;
 
    //Parse Ed448 host key structure
@@ -1455,11 +1428,104 @@ error_t sshVerifyEd448Signature(SshConnection *connection,
 
       //Verify Ed448 signature (PureEdDSA mode)
       error = ed448VerifySignatureEx(hostKey.q.value, messageChunks, NULL,
-         0, 0, signature->value);
+         0, 0, signatureBlob->value);
    }
 
    //Return status code
    return error;
+#else
+   //Not implemented
+   return ERROR_NOT_IMPLEMENTED;
+#endif
+}
+
+
+/**
+ * @brief Format an ECDSA signature
+ * @param[in] signature ECDSA signature
+ * @param[out] p  Output stream where to write the ECDSA signature
+ * @param[out] written Total number of bytes that have been written
+ * @return Error code
+ **/
+
+error_t sshFormatEcdsaSignature(const SshEcdsaSignature *signature,
+   uint8_t *p, size_t *written)
+{
+#if (SSH_ECDSA_SUPPORT == ENABLED)
+   error_t error;
+   size_t rLen;
+   size_t sLen;
+
+   //Encode integer R
+   error = sshConvertArrayToMpint(signature->r.value, signature->r.length,
+      p + 4, &rLen);
+
+   //Check status code
+   if(!error)
+   {
+      //Encode integer S
+      error = sshConvertArrayToMpint(signature->s.value, signature->s.length,
+         p + rLen + 4, &sLen);
+   }
+
+   //Check status code
+   if(!error)
+   {
+      //The resulting ECDSA signature blob is encoded as a string
+      STORE32BE(rLen + sLen, p);
+      //Total number of bytes that have been written
+      *written = sizeof(uint32_t) + rLen + sLen;
+   }
+
+   //Return status code
+   return error;
+#else
+   //Not implemented
+   return ERROR_NOT_IMPLEMENTED;
+#endif
+}
+
+
+/**
+ * @brief Parse an ECDSA signature
+ * @param[in] data Pointer to the ECDSA signature structure
+ * @param[in] length Length of the ECDSA signature structure, in bytes
+ * @param[out] signature Information resulting from the parsing process
+ * @return Error code
+ **/
+
+error_t sshParseEcdsaSignature(const uint8_t *data, size_t length,
+   SshEcdsaSignature *signature)
+{
+#if (SSH_ECDSA_SUPPORT == ENABLED)
+   error_t error;
+
+   //Decode integer R
+   error = sshParseBinaryString(data, length, &signature->r);
+   //Any error to report?
+   if(error)
+      return error;
+
+   //Point to the next field
+   data += sizeof(uint32_t) + signature->r.length;
+   length -= sizeof(uint32_t) + signature->r.length;
+
+   //Decode integer S
+   error = sshParseBinaryString(data, length, &signature->s);
+   //Any error to report?
+   if(error)
+      return error;
+
+   //Point to the next field
+   data += sizeof(uint32_t) + signature->s.length;
+   length -= sizeof(uint32_t) + signature->s.length;
+
+   //Malformed signature?
+   if(length != 0)
+      return ERROR_INVALID_MESSAGE;
+
+   //Successful processing
+   return NO_ERROR;
 #else
    //Not implemented
    return ERROR_NOT_IMPLEMENTED;

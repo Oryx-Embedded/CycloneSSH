@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.1.0
+ * @version 2.1.2
  **/
 
 //Switch to the appropriate trace level
@@ -471,13 +471,9 @@ error_t sshEncryptPacket(SshConnection *connection, uint8_t *packet,
 {
    error_t error;
    size_t n;
-   size_t macSize;
    uint8_t *data;
    size_t dataLen;
    SshEncryptionEngine *encryptionEngine;
-
-   //Initialize variables
-   macSize = 0;
 
    //Point to the encryption engine
    encryptionEngine = &connection->encryptionEngine;
@@ -497,9 +493,6 @@ error_t sshEncryptPacket(SshConnection *connection, uint8_t *packet,
       //The packet_length field and the payload will be encrypted
       data = packet;
       dataLen = n;
-
-      //Retrieve the size of the MAC
-      macSize = encryptionEngine->hashAlgo->digestSize;
 
       //Compute message authentication code
       sshAppendMessageAuthCode(encryptionEngine, packet, n);
@@ -561,12 +554,12 @@ error_t sshEncryptPacket(SshConnection *connection, uint8_t *packet,
    //GCM AEAD cipher?
    if(encryptionEngine->cipherMode == CIPHER_MODE_GCM)
    {
-      //The MAC tag consists of 16 bytes
-      macSize = 16;
-
-      //Perform authenticated encryption using GCM
+      //When using AES-GCM, the packet_length field is to be treated as
+      //additional authenticated data, not as plaintext (refer to RFC 5647,
+      //section 7.3)
       error = gcmEncrypt(&encryptionEngine->gcmContext, encryptionEngine->iv,
-         12, packet, 4, data, data, dataLen, packet + n, macSize);
+         12, packet, 4, data, data, dataLen, packet + n,
+         encryptionEngine->macSize);
 
       //The invocation counter is treated as a 64-bit integer and is
       //incremented after each invocation of AES-GCM to process a binary
@@ -587,9 +580,6 @@ error_t sshEncryptPacket(SshConnection *connection, uint8_t *packet,
       //The nonce consists of the packet sequence number encoded as a uint64
       osMemset(nonce, 0, 4);
       osMemcpy(nonce + 4, encryptionEngine->seqNum, 4);
-
-      //The MAC tag consists of 16 bytes
-      macSize = 16;
 
       //The ChaCha20 instance keyed by K_1 is a stream cipher that is used
       //only to encrypt the 4 byte packet length field
@@ -635,7 +625,7 @@ error_t sshEncryptPacket(SshConnection *connection, uint8_t *packet,
          TRACE_VERBOSE("Write sequence number:\r\n");
          TRACE_VERBOSE_ARRAY("  ", &encryptionEngine->seqNum, 4);
          TRACE_VERBOSE("Computed MAC:\r\n");
-         TRACE_VERBOSE_ARRAY("  ", packet + n, macSize);
+         TRACE_VERBOSE_ARRAY("  ", packet + n, encryptionEngine->macSize);
       }
    }
    else
@@ -654,8 +644,6 @@ error_t sshEncryptPacket(SshConnection *connection, uint8_t *packet,
       //Encrypt-then-MAC mode?
       if(encryptionEngine->hashAlgo != NULL && encryptionEngine->etm)
       {
-         //Retrieve the size of the MAC
-         macSize = encryptionEngine->hashAlgo->digestSize;
          //Compute message authentication code
          sshAppendMessageAuthCode(encryptionEngine, packet, n);
       }
@@ -665,9 +653,9 @@ error_t sshEncryptPacket(SshConnection *connection, uint8_t *packet,
    //Check status code
    if(!error)
    {
-      //The value of mac resulting from the MAC algorithm must be transmitted
-      //without encryption as the last part of the packet
-      n += macSize;
+      //The value resulting from the MAC algorithm must be transmitted without
+      //encryption as the last part of the packet
+      n += encryptionEngine->macSize;
 
       //Debug message
       TRACE_VERBOSE("Encrypted packet (%" PRIuSIZE " bytes):\r\n", n);
@@ -695,7 +683,6 @@ error_t sshDecryptPacket(SshConnection *connection, uint8_t *packet,
 {
    error_t error;
    size_t n;
-   size_t macSize;
    size_t blockSize;
    SshEncryptionEngine *decryptionEngine;
 
@@ -705,50 +692,26 @@ error_t sshDecryptPacket(SshConnection *connection, uint8_t *packet,
    //Point to the decryption engine
    decryptionEngine = &connection->decryptionEngine;
 
-   //Stream cipher?
-   if(decryptionEngine->cipherMode == CIPHER_MODE_STREAM)
+   //Block cipher algorithm?
+   if(decryptionEngine->cipherMode == CIPHER_MODE_CBC ||
+      decryptionEngine->cipherMode == CIPHER_MODE_CTR)
+   {
+      //Encrypt-then-MAC mode?
+      if(decryptionEngine->etm)
+      {
+         //The packet_length field is not encrypted
+         blockSize = 4;
+      }
+      else
+      {
+         //Retrieve the cipher block size
+         blockSize = decryptionEngine->cipherAlgo->blockSize;
+      }
+   }
+   else
    {
       //The packet_length field is a 32-bit integer
       blockSize = 4;
-      //Retrieve the size of the MAC
-      macSize = decryptionEngine->hashAlgo->digestSize;
-   }
-   //GCM AEAD cipher?
-   else if(decryptionEngine->cipherMode == CIPHER_MODE_GCM)
-   {
-      //When using AES-GCM, the packet_length field is to be treated as
-      //additional authenticated data, not as plaintext (refer to RFC 5647,
-      //section 7.3)
-      blockSize = 4;
-
-      //AES-GCM produce a 16-octet authentication tag
-      macSize = 16;
-   }
-   //ChaCha20Poly1305 AEAD cipher?
-   else if(decryptionEngine->cipherMode == CIPHER_MODE_CHACHA20_POLY1305)
-   {
-      //The ChaCha20 instance keyed by K_1 is a stream cipher that is used
-      //only to encrypt the 4 byte packet length field
-      blockSize = 4;
-
-      //The MAC tag consists of 16 bytes
-      macSize = 16;
-   }
-   //Block cipher (encrypt-then-MAC mode)?
-   else if(decryptionEngine->etm)
-   {
-      //The packet_length field is not encrypted
-      blockSize = 4;
-      //Retrieve the size of the MAC
-      macSize = decryptionEngine->hashAlgo->digestSize;
-   }
-   //Block cipher (MAC-then-encrypt mode)?
-   else
-   {
-      //Retrieve the cipher block size
-      blockSize = decryptionEngine->cipherAlgo->blockSize;
-      //Retrieve the size of the MAC
-      macSize = decryptionEngine->hashAlgo->digestSize;
    }
 
    //Get the actual length of the packet
@@ -759,11 +722,11 @@ error_t sshDecryptPacket(SshConnection *connection, uint8_t *packet,
    TRACE_VERBOSE_ARRAY("  ", packet, n);
 
    //Check the length of the incoming packet
-   if(n >= (blockSize + macSize))
+   if(n >= (blockSize + decryptionEngine->macSize))
    {
-      //The value of mac resulting from the MAC algorithm is transmitted
-      //without encryption as the last part of the packet
-      n -= macSize;
+      //The value resulting from the MAC algorithm is transmitted without
+      //encryption as the last part of the packet
+      n -= decryptionEngine->macSize;
 
 #if (SSH_STREAM_CIPHER_SUPPORT == ENABLED || SSH_CBC_CIPHER_SUPPORT == ENABLED || \
    SSH_CTR_CIPHER_SUPPORT == ENABLED)
@@ -808,11 +771,15 @@ error_t sshDecryptPacket(SshConnection *connection, uint8_t *packet,
          //CTR cipher mode?
          if(decryptionEngine->cipherMode == CIPHER_MODE_CTR)
          {
+            uint_t m;
+
+            //Retrieve cipher block size, in bits
+            m = decryptionEngine->cipherAlgo->blockSize * 8;
+
             //Perform CTR decryption
             error = ctrDecrypt(decryptionEngine->cipherAlgo,
-               &decryptionEngine->cipherContext, blockSize * 8,
-               decryptionEngine->iv, packet + blockSize, packet + blockSize,
-               n - blockSize);
+               &decryptionEngine->cipherContext, m, decryptionEngine->iv,
+               packet + blockSize, packet + blockSize, n - blockSize);
          }
          else
 #endif
@@ -820,10 +787,13 @@ error_t sshDecryptPacket(SshConnection *connection, uint8_t *packet,
          //GCM AEAD cipher?
          if(decryptionEngine->cipherMode == CIPHER_MODE_GCM)
          {
-            //Perform authenticated decryption using GCM
+            //When using AES-GCM, the packet_length field is to be treated as
+            //additional authenticated data, not as plaintext (refer to
+            //RFC 5647, section 7.3)
             error = gcmDecrypt(&decryptionEngine->gcmContext,
                decryptionEngine->iv, 12, packet, blockSize, packet + blockSize,
-               packet + blockSize, n - blockSize, packet + n, macSize);
+               packet + blockSize, n - blockSize, packet + n,
+               decryptionEngine->macSize);
 
             //The invocation counter is treated as a 64-bit integer and is
             //incremented after each invocation of AES-GCM to process a binary
@@ -986,7 +956,6 @@ error_t sshParsePacketLength(SshConnection *connection, uint8_t *packet)
 error_t sshDecryptPacketLength(SshConnection *connection, uint8_t *packet)
 {
    error_t error;
-   size_t macSize;
    size_t blockSize;
    size_t packetLen;
    SshEncryptionEngine *decryptionEngine;
@@ -997,50 +966,26 @@ error_t sshDecryptPacketLength(SshConnection *connection, uint8_t *packet)
    //Point to the decryption engine
    decryptionEngine = &connection->decryptionEngine;
 
-   //Stream cipher?
-   if(decryptionEngine->cipherMode == CIPHER_MODE_STREAM)
+   //Block cipher algorithm?
+   if(decryptionEngine->cipherMode == CIPHER_MODE_CBC ||
+      decryptionEngine->cipherMode == CIPHER_MODE_CTR)
+   {
+      //Encrypt-then-MAC mode?
+      if(decryptionEngine->etm)
+      {
+         //The packet_length field is not encrypted
+         blockSize = 4;
+      }
+      else
+      {
+         //Retrieve the cipher block size
+         blockSize = decryptionEngine->cipherAlgo->blockSize;
+      }
+   }
+   else
    {
       //The packet_length field is a 32-bit integer
       blockSize = 4;
-      //Retrieve the size of the MAC
-      macSize = decryptionEngine->hashAlgo->digestSize;
-   }
-   //GCM AEAD cipher?
-   else if(decryptionEngine->cipherMode == CIPHER_MODE_GCM)
-   {
-      //When using AES-GCM, the packet_length field is to be treated as
-      //additional authenticated data, not as plaintext (refer to RFC 5647,
-      //section 7.3)
-      blockSize = 4;
-
-      //AES-GCM produce a 16-octet authentication tag
-      macSize = 16;
-   }
-   //ChaCha20Poly1305 AEAD cipher?
-   else if(decryptionEngine->cipherMode == CIPHER_MODE_CHACHA20_POLY1305)
-   {
-      //The ChaCha20 instance keyed by K_1 is a stream cipher that is used
-      //only to encrypt the 4 byte packet length field
-      blockSize = 4;
-
-      //The MAC tag consists of 16 bytes
-      macSize = 16;
-   }
-   //Block cipher (encrypt-then-MAC mode)?
-   else if(decryptionEngine->etm)
-   {
-      //The packet_length field is not encrypted
-      blockSize = 4;
-      //Retrieve the size of the MAC
-      macSize = decryptionEngine->hashAlgo->digestSize;
-   }
-   //Block cipher (MAC-then-encrypt mode)?
-   else
-   {
-      //Retrieve the cipher block size
-      blockSize = decryptionEngine->cipherAlgo->blockSize;
-      //Retrieve the size of the MAC
-      macSize = decryptionEngine->hashAlgo->digestSize;
    }
 
    //Debug message
@@ -1088,10 +1033,15 @@ error_t sshDecryptPacketLength(SshConnection *connection, uint8_t *packet)
       //MAC-then-encrypt mode?
       if(!decryptionEngine->etm)
       {
+         uint_t m;
+
+         //Retrieve cipher block size, in bits
+         m = decryptionEngine->cipherAlgo->blockSize * 8;
+
          //Perform CTR decryption
          error = ctrDecrypt(decryptionEngine->cipherAlgo,
-            &decryptionEngine->cipherContext, blockSize * 8,
-            decryptionEngine->iv, packet, packet, blockSize);
+            &decryptionEngine->cipherContext, m, decryptionEngine->iv,
+            packet, packet, blockSize);
       }
    }
    else
@@ -1150,7 +1100,7 @@ error_t sshDecryptPacketLength(SshConnection *connection, uint8_t *packet)
 
       //The length of the packet does not include the mac field and the
       //packet_length field itself
-      packetLen += macSize + sizeof(uint32_t);
+      packetLen += decryptionEngine->macSize + sizeof(uint32_t);
 
       //Sanity check
       if(packetLen <= SSH_BUFFER_SIZE && packetLen > LOAD32BE(packet))
@@ -1383,14 +1333,10 @@ void sshAppendMessageAuthCode(SshEncryptionEngine *encryptionEngine,
 {
 #if (SSH_STREAM_CIPHER_SUPPORT == ENABLED || SSH_CBC_CIPHER_SUPPORT == ENABLED || \
    SSH_CTR_CIPHER_SUPPORT == ENABLED)
-   size_t macSize;
-
-   //Retrieve the size of the MAC
-   macSize = encryptionEngine->hashAlgo->digestSize;
 
    //Initialize HMAC calculation
    hmacInit(encryptionEngine->hmacContext, encryptionEngine->hashAlgo,
-      encryptionEngine->macKey, macSize);
+      encryptionEngine->macKey, encryptionEngine->hashAlgo->digestSize);
 
    //Compute MAC(key, sequence_number || unencrypted_packet)
    hmacUpdate(encryptionEngine->hmacContext, encryptionEngine->seqNum, 4);
@@ -1401,10 +1347,7 @@ void sshAppendMessageAuthCode(SshEncryptionEngine *encryptionEngine,
    TRACE_VERBOSE("Write sequence number:\r\n");
    TRACE_VERBOSE_ARRAY("  ", &encryptionEngine->seqNum, 4);
    TRACE_VERBOSE("Computed MAC:\r\n");
-   TRACE_VERBOSE_ARRAY("  ", packet + length, macSize);
-#else
-   //Not implemented
-   return ERROR_NOT_IMPLEMENTED;
+   TRACE_VERBOSE_ARRAY("  ", packet + length, encryptionEngine->macSize);
 #endif
 }
 
@@ -1423,16 +1366,12 @@ error_t sshVerifyMessageAuthCode(SshEncryptionEngine *decryptionEngine,
 #if (SSH_STREAM_CIPHER_SUPPORT == ENABLED || SSH_CBC_CIPHER_SUPPORT == ENABLED || \
    SSH_CTR_CIPHER_SUPPORT == ENABLED)
    size_t i;
-   size_t macSize;
    uint8_t mask;
    uint8_t mac[SSH_MAX_HASH_DIGEST_SIZE];
 
-   //Retrieve the size of the MAC
-   macSize = decryptionEngine->hashAlgo->digestSize;
-
    //Initialize HMAC calculation
    hmacInit(decryptionEngine->hmacContext, decryptionEngine->hashAlgo,
-      decryptionEngine->macKey, macSize);
+      decryptionEngine->macKey, decryptionEngine->hashAlgo->digestSize);
 
    //Compute MAC(key, sequence_number || unencrypted_packet)
    hmacUpdate(decryptionEngine->hmacContext, decryptionEngine->seqNum, 4);
@@ -1443,11 +1382,11 @@ error_t sshVerifyMessageAuthCode(SshEncryptionEngine *decryptionEngine,
    TRACE_VERBOSE("Read sequence number:\r\n");
    TRACE_VERBOSE_ARRAY("  ", &decryptionEngine->seqNum, 4);
    TRACE_VERBOSE("Computed MAC:\r\n");
-   TRACE_VERBOSE_ARRAY("  ", mac, macSize);
+   TRACE_VERBOSE_ARRAY("  ", mac, decryptionEngine->macSize);
 
    //The calculated MAC is bitwise compared to the received message
    //authentication code
-   for(mask = 0, i = 0; i < macSize; i++)
+   for(mask = 0, i = 0; i < decryptionEngine->macSize; i++)
    {
       mask |= mac[i] ^ packet[length + i];
    }

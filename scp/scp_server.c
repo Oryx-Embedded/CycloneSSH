@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.1.0
+ * @version 2.1.2
  **/
 
 //Switch to the appropriate trace level
@@ -144,7 +144,6 @@ error_t scpServerInit(ScpServerContext *context,
 error_t scpServerStart(ScpServerContext *context)
 {
    error_t error;
-   OsTask *task;
 
    //Make sure the SCP server context is valid
    if(context == NULL)
@@ -168,11 +167,19 @@ error_t scpServerStart(ScpServerContext *context)
       context->stop = FALSE;
       context->running = TRUE;
 
-      //Create the SCP server task
-      task = osCreateTask("SCP Server", scpServerTask, context,
-         SCP_SERVER_STACK_SIZE, SCP_SERVER_PRIORITY);
+#if (OS_STATIC_TASK_SUPPORT == ENABLED)
+      //Create a task using statically allocated memory
+      context->taskId = osCreateStaticTask("SCP Server",
+         (OsTaskCode) scpServerTask, context, &context->taskTcb,
+         context->taskStack, SCP_SERVER_STACK_SIZE, SCP_SERVER_PRIORITY);
+#else
+      //Create a task
+      context->taskId = osCreateTask("SCP Server", (OsTaskCode) scpServerTask,
+         context, SCP_SERVER_STACK_SIZE, SCP_SERVER_PRIORITY);
+#endif
+
       //Failed to create task?
-      if(task == OS_INVALID_HANDLE)
+      if(context->taskId == OS_INVALID_TASK_ID)
       {
          error = ERROR_OUT_OF_RESOURCES;
       }
@@ -374,8 +381,10 @@ void scpServerTask(void *param)
          {
             //Stop SCP server operation
             context->running = FALSE;
+            //Task epilogue
+            osExitTask();
             //Kill ourselves
-            osDeleteTask(NULL);
+            osDeleteTask(OS_SELF_TASK_ID);
          }
 
          //Loop through SCP sessions

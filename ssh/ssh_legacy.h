@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.1.0
+ * @version 2.1.2
  **/
 
 #ifndef _SSH_LEGACY_H
@@ -63,5 +63,7 @@
    #define SSH_CAMELLIA_192_SUPPORT SSH_CAMELLIA_SUPPORT
    #define SSH_CAMELLIA_256_SUPPORT SSH_CAMELLIA_SUPPORT
 #endif
+
+#define generateSignatureCallback signGenCallback
 
 #endif

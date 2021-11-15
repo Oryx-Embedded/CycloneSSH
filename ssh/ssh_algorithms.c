@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.1.0
+ * @version 2.1.2
  **/
 
 //Switch to the appropriate trace level
@@ -251,6 +251,18 @@ const char_t *sshSupportedMacAlgos[] =
 #endif
 #if (SSH_MD5_SUPPORT == ENABLED)
    "hmac-md5",
+#endif
+#if (SSH_SHA1_96_SUPPORT == ENABLED && SSH_ETM_SUPPORT == ENABLED)
+   "hmac-sha1-96-etm@openssh.com",
+#endif
+#if (SSH_SHA1_96_SUPPORT == ENABLED)
+   "hmac-sha1-96",
+#endif
+#if (SSH_MD5_96_SUPPORT == ENABLED && SSH_ETM_SUPPORT == ENABLED)
+   "hmac-md5-96-etm@openssh.com",
+#endif
+#if (SSH_MD5_96_SUPPORT == ENABLED)
+   "hmac-md5-96",
 #endif
 };
 

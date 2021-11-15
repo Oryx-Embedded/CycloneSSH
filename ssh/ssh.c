@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.1.0
+ * @version 2.1.2
  **/
 
 //Switch to the appropriate trace level
@@ -345,6 +345,130 @@ error_t sshRegisterPublicKeyAuthCallback(SshContext *context,
 
 
 /**
+ * @brief Register signature generation callback function
+ * @param[in] context Pointer to the SSH context
+ * @param[in] callback Signature generation callback function
+ * @return Error code
+ **/
+
+error_t sshRegisterSignGenCallback(SshContext *context,
+   SshSignGenCallback callback)
+{
+#if (SSH_SIGN_CALLBACK_SUPPORT == ENABLED)
+   //Check parameters
+   if(context == NULL || callback == NULL)
+      return ERROR_INVALID_PARAMETER;
+
+   //Acquire exclusive access to the SSH context
+   osAcquireMutex(&context->mutex);
+   //Save callback function
+   context->signGenCallback = callback;
+   //Release exclusive access to the SSH context
+   osReleaseMutex(&context->mutex);
+
+   //Successful processing
+   return NO_ERROR;
+#else
+   //Not implemented
+   return ERROR_NOT_IMPLEMENTED;
+#endif
+}
+
+
+/**
+ * @brief Register signature verification callback function
+ * @param[in] context Pointer to the SSH context
+ * @param[in] callback Signature verification callback function
+ * @return Error code
+ **/
+
+error_t sshRegisterSignVerifyCallback(SshContext *context,
+   SshSignVerifyCallback callback)
+{
+#if (SSH_SIGN_CALLBACK_SUPPORT == ENABLED)
+   //Check parameters
+   if(context == NULL || callback == NULL)
+      return ERROR_INVALID_PARAMETER;
+
+   //Acquire exclusive access to the SSH context
+   osAcquireMutex(&context->mutex);
+   //Save callback function
+   context->signVerifyCallback = callback;
+   //Release exclusive access to the SSH context
+   osReleaseMutex(&context->mutex);
+
+   //Successful processing
+   return NO_ERROR;
+#else
+   //Not implemented
+   return ERROR_NOT_IMPLEMENTED;
+#endif
+}
+
+
+/**
+ * @brief Register ECDH key pair generation callback function
+ * @param[in] context Pointer to the SSH context
+ * @param[in] callback ECDH key pair generation callback function
+ * @return Error code
+ **/
+
+error_t sshRegisterEcdhKeyPairGenCallback(SshContext *context,
+   SshEcdhKeyPairGenCallback callback)
+{
+#if (SSH_ECDH_CALLBACK_SUPPORT == ENABLED)
+   //Check parameters
+   if(context == NULL || callback == NULL)
+      return ERROR_INVALID_PARAMETER;
+
+   //Acquire exclusive access to the SSH context
+   osAcquireMutex(&context->mutex);
+   //Save callback function
+   context->ecdhKeyPairGenCallback = callback;
+   //Release exclusive access to the SSH context
+   osReleaseMutex(&context->mutex);
+
+   //Successful processing
+   return NO_ERROR;
+#else
+   //Not implemented
+   return ERROR_NOT_IMPLEMENTED;
+#endif
+}
+
+
+/**
+ * @brief Register ECDH shared secret calculation callback function
+ * @param[in] context Pointer to the SSH context
+ * @param[in] callback ECDH shared secret calculation callback function
+ * @return Error code
+ **/
+
+error_t sshRegisterEcdhSharedSecretCalcCallback(SshContext *context,
+   SshEcdhSharedSecretCalcCallback callback)
+{
+#if (SSH_ECDH_CALLBACK_SUPPORT == ENABLED)
+   //Check parameters
+   if(context == NULL || callback == NULL)
+      return ERROR_INVALID_PARAMETER;
+
+   //Acquire exclusive access to the SSH context
+   osAcquireMutex(&context->mutex);
+   //Save callback function
+   context->ecdhSharedSecretCalcCallback = callback;
+   //Release exclusive access to the SSH context
+   osReleaseMutex(&context->mutex);
+
+   //Successful processing
+   return NO_ERROR;
+#else
+   //Not implemented
+   return ERROR_NOT_IMPLEMENTED;
+#endif
+}
+
+
+/**
  * @brief Register global request callback function
  * @param[in] context Pointer to the SSH context
  * @param[in] callback Global request callback function
@@ -543,12 +667,12 @@ error_t sshLoadHostKey(SshContext *context, const char_t *publicKey,
    if(publicKey == NULL || publicKeyLen == 0)
       return ERROR_INVALID_PARAMETER;
 
-   //Check private key
-   if(privateKey == NULL || privateKeyLen == 0)
+   //The private key is optional
+   if(privateKey == NULL && privateKeyLen != 0)
       return ERROR_INVALID_PARAMETER;
 
-   //Retrieve the type of a PEM-encoded private key
-   error = pemGetPrivateKeyType(privateKey, privateKeyLen, &type);
+   //Retrieve the type of the host key
+   error = pemGetPublicKeyType(publicKey, publicKeyLen, &type);
    //Any error to report?
    if(error)
       return error;
@@ -579,9 +703,14 @@ error_t sshLoadHostKey(SshContext *context, const char_t *publicKey,
          //Check status code
          if(!error)
          {
-            //Check whether the RSA private key is valid
-            error = pemImportRsaPrivateKey(privateKey, privateKeyLen,
-               &rsaPrivateKey);
+            //The private key can be omitted if a public-key hardware
+            //accelerator is used to generate signatures
+            if(privateKey != NULL)
+            {
+               //Check whether the RSA private key is valid
+               error = pemImportRsaPrivateKey(privateKey, privateKeyLen,
+                  &rsaPrivateKey);
+            }
          }
 
          //Check status code
@@ -614,9 +743,14 @@ error_t sshLoadHostKey(SshContext *context, const char_t *publicKey,
          //Check status code
          if(!error)
          {
-            //Check whether the DSA private key is valid
-            error = pemImportDsaPrivateKey(privateKey, privateKeyLen,
-               &dsaPrivateKey);
+            //The private key can be omitted if a public-key hardware
+            //accelerator is used to generate signatures
+            if(privateKey != NULL)
+            {
+               //Check whether the DSA private key is valid
+               error = pemImportDsaPrivateKey(privateKey, privateKeyLen,
+                  &dsaPrivateKey);
+            }
          }
 
          //Check status code
@@ -637,16 +771,16 @@ error_t sshLoadHostKey(SshContext *context, const char_t *publicKey,
       if(type == X509_KEY_TYPE_EC)
       {
          EcDomainParameters ecParams;
-         EcPoint ecPublicKey;
-         Mpi ecPrivateKey;
+         EcPublicKey ecPublicKey;
+         EcPrivateKey ecPrivateKey;
 
          //Initialize ECDSA public and private keys
          ecInitDomainParameters(&ecParams);
-         ecInit(&ecPublicKey);
-         mpiInit(&ecPrivateKey);
+         ecInitPublicKey(&ecPublicKey);
+         ecInitPrivateKey(&ecPrivateKey);
 
          //Import EC domain parameters
-         error = pemImportEcParameters(privateKey, privateKeyLen, &ecParams);
+         error = pemImportEcParameters(publicKey, publicKeyLen, &ecParams);
 
          //Check status code
          if(!error)
@@ -658,9 +792,14 @@ error_t sshLoadHostKey(SshContext *context, const char_t *publicKey,
          //Check status code
          if(!error)
          {
-            //Check whether the ECDSA private key is valid
-            error = pemImportEcPrivateKey(privateKey, privateKeyLen,
-               &ecPrivateKey);
+            //The private key can be omitted if a public-key hardware
+            //accelerator is used to generate signatures
+            if(privateKey != NULL)
+            {
+               //Check whether the ECDSA private key is valid
+               error = pemImportEcPrivateKey(privateKey, privateKeyLen,
+                  &ecPrivateKey);
+            }
          }
 
          //Check status code
@@ -702,8 +841,8 @@ error_t sshLoadHostKey(SshContext *context, const char_t *publicKey,
 
          //Release previously allocated memory
          ecFreeDomainParameters(&ecParams);
-         ecFree(&ecPublicKey);
-         mpiFree(&ecPrivateKey);
+         ecFreePublicKey(&ecPublicKey);
+         ecFreePrivateKey(&ecPrivateKey);
       }
       else
 #endif
@@ -725,9 +864,14 @@ error_t sshLoadHostKey(SshContext *context, const char_t *publicKey,
          //Check status code
          if(!error)
          {
-            //Check whether the EdDSA private key is valid
-            error = pemImportEddsaPrivateKey(privateKey, privateKeyLen,
-               &eddsaPrivateKey);
+            //The private key can be omitted if a public-key hardware
+            //accelerator is used to generate signatures
+            if(privateKey != NULL)
+            {
+               //Check whether the EdDSA private key is valid
+               error = pemImportEddsaPrivateKey(privateKey, privateKeyLen,
+                  &eddsaPrivateKey);
+            }
          }
 
          //Check status code
@@ -761,9 +905,14 @@ error_t sshLoadHostKey(SshContext *context, const char_t *publicKey,
          //Check status code
          if(!error)
          {
-            //Check whether the EdDSA private key is valid
-            error = pemImportEddsaPrivateKey(privateKey, privateKeyLen,
-               &eddsaPrivateKey);
+            //The private key can be omitted if a public-key hardware
+            //accelerator is used to generate signatures
+            if(privateKey != NULL)
+            {
+               //Check whether the EdDSA private key is valid
+               error = pemImportEddsaPrivateKey(privateKey, privateKeyLen,
+                  &eddsaPrivateKey);
+            }
          }
 
          //Check status code

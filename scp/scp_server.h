@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.1.0
+ * @version 2.1.2
  **/
 
 #ifndef _SCP_SERVER_H
@@ -238,6 +238,11 @@ struct _ScpServerContext
    bool_t running;                                         ///<Operational state of the FTP server
    bool_t stop;                                            ///<Stop request
    OsEvent event;                                          ///<Event object used to poll the channels
+   OsTaskId taskId;                                        ///<Task identifier
+#if (OS_STATIC_TASK_SUPPORT == ENABLED)
+   OsTaskTcb taskTcb;                                      ///<Task control block
+   OsStackType taskStack[SCP_SERVER_STACK_SIZE];           ///<Task stack
+#endif
    SshChannelEventDesc eventDesc[SCP_SERVER_MAX_SESSIONS]; ///<The events the application is interested in
    char_t path[SCP_SERVER_MAX_PATH_LEN + 1];               ///<Path name
 };

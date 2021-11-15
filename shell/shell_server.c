@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.1.0
+ * @version 2.1.2
  **/
 
 //Switch to the appropriate trace level
@@ -133,7 +133,7 @@ error_t shellServerStart(ShellServerContext *context)
 {
    error_t error;
    uint_t i;
-   OsTask *task;
+   ShellServerSession *session;
 
    //Make sure the shell server context is valid
    if(context == NULL)
@@ -156,13 +156,22 @@ error_t shellServerStart(ShellServerContext *context)
    //Loop through the shell sessions
    for(i = 0; i < context->numSessions; i++)
    {
-      //Create a task to service a given shell session
-      task = osCreateTask("Shell Session", shellServerTask,
-         &context->sessions[i], SHELL_SERVER_STACK_SIZE,
-         SHELL_SERVER_PRIORITY);
+      //Point to the current session
+      session = &context->sessions[i];
+
+#if (OS_STATIC_TASK_SUPPORT == ENABLED)
+      //Create a task using statically allocated memory
+      session->taskId = osCreateStaticTask("Shell Session",
+         (OsTaskCode) shellServerTask, session, &session->taskTcb,
+         session->taskStack, SHELL_SERVER_STACK_SIZE, SHELL_SERVER_PRIORITY);
+#else
+      //Create a task
+      session->taskId = osCreateTask("Shell Session", shellServerTask,
+         session, SHELL_SERVER_STACK_SIZE, SHELL_SERVER_PRIORITY);
+#endif
 
       //Failed to create task?
-      if(task == NULL)
+      if(session->taskId == OS_INVALID_TASK_ID)
          return ERROR_OUT_OF_RESOURCES;
    }
 
