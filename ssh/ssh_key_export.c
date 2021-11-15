@@ -344,7 +344,7 @@ error_t sshFormatDsaPublicKey(const DsaPublicKey *publicKey,
    *written += n;
 
    //Format DSA prime
-   error = sshFormatMpint(&publicKey->p, p, &n);
+   error = sshFormatMpint(&publicKey->params.p, p, &n);
    //Any error to report?
    if(error)
       return error;
@@ -354,7 +354,7 @@ error_t sshFormatDsaPublicKey(const DsaPublicKey *publicKey,
    *written += n;
 
    //Format DSA group order
-   error = sshFormatMpint(&publicKey->q, p, &n);
+   error = sshFormatMpint(&publicKey->params.q, p, &n);
    //Any error to report?
    if(error)
       return error;
@@ -364,7 +364,7 @@ error_t sshFormatDsaPublicKey(const DsaPublicKey *publicKey,
    *written += n;
 
    //Format DSA group generator
-   error = sshFormatMpint(&publicKey->g, p, &n);
+   error = sshFormatMpint(&publicKey->params.g, p, &n);
    //Any error to report?
    if(error)
       return error;

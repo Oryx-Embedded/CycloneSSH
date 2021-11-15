@@ -492,21 +492,21 @@ error_t sshImportDsaHostKey(const SshDsaHostKey *hostKey,
    size_t k;
 
    //Import DSA prime
-   error = mpiImport(&publicKey->p, hostKey->p.value, hostKey->p.length,
+   error = mpiImport(&publicKey->params.p, hostKey->p.value, hostKey->p.length,
       MPI_FORMAT_BIG_ENDIAN);
    //Any error to report?
    if(error)
       return error;
 
    //Import DSA group order
-   error = mpiImport(&publicKey->q, hostKey->q.value, hostKey->q.length,
+   error = mpiImport(&publicKey->params.q, hostKey->q.value, hostKey->q.length,
       MPI_FORMAT_BIG_ENDIAN);
    //Any error to report?
    if(error)
       return error;
 
    //Import DSA group generator
-   error = mpiImport(&publicKey->g, hostKey->g.value, hostKey->g.length,
+   error = mpiImport(&publicKey->params.g, hostKey->g.value, hostKey->g.length,
       MPI_FORMAT_BIG_ENDIAN);
    //Any error to report?
    if(error)
@@ -520,7 +520,7 @@ error_t sshImportDsaHostKey(const SshDsaHostKey *hostKey,
       return error;
 
    //Get the length of the modulus, in bits
-   k = mpiGetBitLength(&publicKey->p);
+   k = mpiGetBitLength(&publicKey->params.p);
 
    //Applications should enforce minimum and maximum key sizes
    if(k < SSH_MIN_DSA_MODULUS_SIZE || k > SSH_MAX_DSA_MODULUS_SIZE)

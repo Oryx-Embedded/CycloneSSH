@@ -371,7 +371,7 @@ error_t sshGenerateDsaSignature(SshConnection *connection,
    {
       //The DSA signature blob contains R followed by S (which are 160-bit
       //integers)
-      n = mpiGetByteLength(&dsaPrivateKey.q);
+      n = mpiGetByteLength(&dsaPrivateKey.params.q);
 
       //Encode integer R
       error = mpiExport(&dsaSignature.r, p + 4, n, MPI_FORMAT_BIG_ENDIAN);
