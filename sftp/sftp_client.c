@@ -6,7 +6,7 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later
  *
- * Copyright (C) 2019-2021 Oryx Embedded SARL. All rights reserved.
+ * Copyright (C) 2019-2022 Oryx Embedded SARL. All rights reserved.
  *
  * This file is part of CycloneSSH Open.
  *
@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.1.2
+ * @version 2.1.4
  **/
 
 //Switch to the appropriate trace level
@@ -991,7 +991,8 @@ error_t sftpClientWriteFile(SftpClientContext *context, const void *data,
             if(n > 0)
             {
                //Send more data
-               error = sshWriteChannel(&context->sshChannel, data, n, &n, flags);
+               error = sshWriteChannel(&context->sshChannel,
+                  (uint8_t *) data + totalLength, n, &n, flags);
 
                //Check status code
                if(error == NO_ERROR || error == ERROR_TIMEOUT)
@@ -1000,7 +1001,6 @@ error_t sftpClientWriteFile(SftpClientContext *context, const void *data,
                   if(n > 0)
                   {
                      //Advance data pointer
-                     data = (uint8_t *) data + n;
                      totalLength += n;
                      context->dataLen -= n;
 
@@ -1014,7 +1014,12 @@ error_t sftpClientWriteFile(SftpClientContext *context, const void *data,
             }
             else
             {
-               //Wait for the server's response
+               //The total number of data written will be returned to the user
+               //after the SSH_FXP_STATUS response has been received
+               context->dataLen = totalLength;
+               totalLength = 0;
+
+               //Wait for the server's SSH_FXP_STATUS response
                sftpClientChangeState(context, SFTP_CLIENT_STATE_SENDING_COMMAND_1);
             }
          }
@@ -1034,6 +1039,8 @@ error_t sftpClientWriteFile(SftpClientContext *context, const void *data,
          //Check status code
          if(error == NO_ERROR || error == ERROR_UNEXPECTED_RESPONSE)
          {
+            //Retrieve the total number of data written
+            totalLength = context->dataLen;
             //Update SFTP client state
             sftpClientChangeState(context, SFTP_CLIENT_STATE_CONNECTED);
          }
@@ -1049,6 +1056,16 @@ error_t sftpClientWriteFile(SftpClientContext *context, const void *data,
    if(written != NULL)
    {
       *written = totalLength;
+   }
+
+   //Check status code
+   if(error == ERROR_WOULD_BLOCK)
+   {
+      //Any data written?
+      if(totalLength > 0)
+      {
+         error = NO_ERROR;
+      }
    }
 
    //Return status code
@@ -1193,6 +1210,16 @@ error_t sftpClientReadFile(SftpClientContext *context, void *data, size_t size,
       {
          //Invalid state
          error = ERROR_WRONG_STATE;
+      }
+   }
+
+   //Check status code
+   if(error == ERROR_WOULD_BLOCK)
+   {
+      //The user must be satisfied with data already on hand
+      if(*received > 0)
+      {
+         error = NO_ERROR;
       }
    }
 
@@ -1453,6 +1480,8 @@ error_t sftpClientDisconnect(SftpClientContext *context)
          {
             //Catch exception
             error = NO_ERROR;
+            //Set timeout
+            socketSetTimeout(context->sshConnection.socket, context->timeout);
             //Update SFTP client state
             sftpClientChangeState(context, SFTP_CLIENT_STATE_DISCONNECTING_3);
          }
@@ -1463,12 +1492,21 @@ error_t sftpClientDisconnect(SftpClientContext *context)
          error = socketShutdown(context->sshConnection.socket, SOCKET_SD_BOTH);
 
          //Check status code
-         if(!error)
+         if(error == NO_ERROR)
          {
             //Close network connection
             sftpClientCloseConnection(context);
             //Update SFTP client state
             sftpClientChangeState(context, SFTP_CLIENT_STATE_DISCONNECTED);
+         }
+         else if(error == ERROR_WOULD_BLOCK || error == ERROR_TIMEOUT)
+         {
+            //Check whether the timeout has elapsed
+            error = sftpClientCheckTimeout(context);
+         }
+         else
+         {
+            //A communication error has occurred
          }
       }
       else if(context->state == SFTP_CLIENT_STATE_DISCONNECTED)

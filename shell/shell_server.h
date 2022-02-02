@@ -6,7 +6,7 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later
  *
- * Copyright (C) 2019-2021 Oryx Embedded SARL. All rights reserved.
+ * Copyright (C) 2019-2022 Oryx Embedded SARL. All rights reserved.
  *
  * This file is part of CycloneSSH Open.
  *
@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.1.2
+ * @version 2.1.4
  **/
 
 #ifndef _SHELL_SERVER_H
@@ -69,9 +69,23 @@
 
 //Size of buffer used for input/output operations
 #ifndef SHELL_SERVER_BUFFER_SIZE
-   #define SHELL_SERVER_BUFFER_SIZE 512
+   #define SHELL_SERVER_BUFFER_SIZE 256
 #elif (SHELL_SERVER_BUFFER_SIZE < 128)
    #error SHELL_SERVER_BUFFER_SIZE parameter is not valid
+#endif
+
+//Command history support
+#ifndef SHELL_SERVER_HISTORY_SUPPORT
+   #define SHELL_SERVER_HISTORY_SUPPORT ENABLED
+#elif (SHELL_SERVER_HISTORY_SUPPORT != ENABLED && SHELL_SERVER_HISTORY_SUPPORT != DISABLED)
+   #error SHELL_SERVER_HISTORY_SUPPORT parameter is not valid
+#endif
+
+//Size of command history buffer
+#ifndef SHELL_SERVER_HISTORY_SIZE
+   #define SHELL_SERVER_HISTORY_SIZE 256
+#elif (SHELL_SERVER_HISTORY_SIZE < 1)
+   #error SHELL_SERVER_HISTORY_SIZE parameter is not valid
 #endif
 
 //Maximum length of shell prompt
@@ -153,6 +167,14 @@ typedef error_t (*ShellServerCommandLineCallback)(ShellServerSession *session,
 
 
 /**
+ * @brief Session closing callback function
+ **/
+
+typedef void (*ShellServerCloseCallback)(ShellServerSession *session,
+   const char_t *user);
+
+
+/**
  * @brief Shell server settings
  **/
 
@@ -163,6 +185,7 @@ typedef struct
    ShellServerSession *sessions;                       ///<Shell sessions
    ShellServerCheckUserCallback checkUserCallback;     ///<User verification callback function
    ShellServerCommandLineCallback commandLineCallback; ///<Command line processing callback function
+   ShellServerCloseCallback closeCallback;             ///<Session closing callback function
 } ShellServerSettings;
 
 
@@ -172,30 +195,35 @@ typedef struct
 
 struct _ShellServerSession
 {
-   ShellServerSessionState state;                   ///<Session state
+   ShellServerSessionState state;                    ///<Session state
    OsEvent startEvent;
    OsEvent event;
-   OsTaskId taskId;                                 ///<Task identifier
+   OsTaskId taskId;                                  ///<Task identifier
 #if (OS_STATIC_TASK_SUPPORT == ENABLED)
-   OsTaskTcb taskTcb;                               ///<Task control block
-   OsStackType taskStack[SHELL_SERVER_STACK_SIZE];  ///<Task stack
+   OsTaskTcb taskTcb;                                ///<Task control block
+   OsStackType taskStack[SHELL_SERVER_STACK_SIZE];   ///<Task stack
 #endif
-   ShellServerContext *context;                     ///<Shell server context
-   SshChannel *channel;                             ///<Underlying SSH channel
-   char_t prompt[SHELL_SERVER_MAX_PROMPT_LEN + 1];  ///<Shell prompt
-   size_t promptLen;                                ///<Length of the shell prompt
-   char_t buffer[SHELL_SERVER_BUFFER_SIZE];         ///<Memory buffer for input/output operations
-   size_t bufferPos;                                ///<Current position in the buffer
-   size_t bufferLen;                                ///<Actual length of the buffer, in bytes
-   char_t backspaceCode;                            ///<Backspace key code
-   char_t deleteCode;                               ///<Delete key code
-   uint32_t termWidth;                              ///<Current terminal width (in characters)
-   uint32_t termHeight;                             ///<Current terminal height (in rows)
-   uint32_t newTermWidth;                           ///<New terminal width (in characters)
-   uint32_t newTermHeight;                          ///<New terminal height (in rows)
-   bool_t windowResize;                             ///<Window resize event
-   char_t escSeq[SHELL_SERVER_MAX_ESC_SEQ_LEN + 1]; ///<Multibyte escape sequence
-   size_t escSeqLen;                                ///<Length of the multibyte escape sequence
+   ShellServerContext *context;                      ///<Shell server context
+   SshChannel *channel;                              ///<Underlying SSH channel
+   char_t prompt[SHELL_SERVER_MAX_PROMPT_LEN + 1];   ///<Shell prompt
+   size_t promptLen;                                 ///<Length of the shell prompt
+   char_t buffer[SHELL_SERVER_BUFFER_SIZE];          ///<Memory buffer for input/output operations
+   size_t bufferPos;                                 ///<Current position in the buffer
+   size_t bufferLen;                                 ///<Actual length of the buffer, in bytes
+#if (SHELL_SERVER_HISTORY_SUPPORT == ENABLED)
+   char_t history[SHELL_SERVER_HISTORY_SIZE];        ///<Command history buffer
+   size_t historyLen;                                ///<Length of the command history buffer, in bytes
+   size_t historyPos;                                ///<Current position in the command history buffer
+#endif
+   char_t backspaceCode;                             ///<Backspace key code
+   char_t deleteCode;                                ///<Delete key code
+   uint32_t termWidth;                               ///<Current terminal width (in characters)
+   uint32_t termHeight;                              ///<Current terminal height (in rows)
+   uint32_t newTermWidth;                            ///<New terminal width (in characters)
+   uint32_t newTermHeight;                           ///<New terminal height (in rows)
+   bool_t windowResize;                              ///<Window resize event
+   char_t escSeq[SHELL_SERVER_MAX_ESC_SEQ_LEN + 1];  ///<Multibyte escape sequence
+   size_t escSeqLen;                                 ///<Length of the multibyte escape sequence
 };
 
 
@@ -210,6 +238,7 @@ struct _ShellServerContext
    ShellServerSession *sessions;                             ///<Shell sessions
    ShellServerCheckUserCallback checkUserCallback;           ///<User verification callback function
    ShellServerCommandLineCallback commandLineCallback;       ///<Command line processing callback function
+   ShellServerCloseCallback closeCallback;                   ///<Session closing callback function
    bool_t running;                                           ///<Operational state of the shell server
    bool_t stop;                                              ///<Stop request
    OsEvent event;                                            ///<Event object used to poll the channels
@@ -238,6 +267,14 @@ error_t shellServerWriteStream(ShellServerSession *session, const void *data,
 
 error_t shellServerReadStream(ShellServerSession *session, void *data,
    size_t size, size_t *received, uint_t flags);
+
+error_t shellServerSaveHistory(ShellServerSession *session, char_t *history,
+   size_t size, size_t *length);
+
+error_t shellServerRestoreHistory(ShellServerSession *session,
+   const char_t *history, size_t length);
+
+error_t shellServerClearHistory(ShellServerSession *session);
 
 void shellServerTask(void *param);
 

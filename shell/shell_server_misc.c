@@ -6,7 +6,7 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later
  *
- * Copyright (C) 2019-2021 Oryx Embedded SARL. All rights reserved.
+ * Copyright (C) 2019-2022 Oryx Embedded SARL. All rights reserved.
  *
  * This file is part of CycloneSSH Open.
  *
@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.1.2
+ * @version 2.1.4
  **/
 
 //Switch to the appropriate trace level
@@ -254,7 +254,7 @@ error_t shellServerChannelRequestCallback(SshChannel *channel,
                      session->state = SHELL_SERVER_SESSION_STATE_EXEC;
 
                      //Copy command string
-                     memcpy(session->buffer, requestParams.command.value,
+                     osMemcpy(session->buffer, requestParams.command.value,
                         requestParams.command.length);
 
                      //Properly terminate the string with a NULL character
@@ -466,6 +466,12 @@ ShellServerSession *shellServerOpenSession(ShellServerContext *context,
       session->windowResize = FALSE;
       session->escSeqLen = 0;
 
+#if (SHELL_SERVER_HISTORY_SUPPORT == ENABLED)
+      //Clear command history
+      session->historyPos = 0;
+      session->historyLen = 0;
+#endif
+
       //Set initial session state
       session->state = SHELL_SERVER_SESSION_STATE_INIT;
    }
@@ -580,15 +586,322 @@ error_t shellServerProcessCommandLine(ShellServerSession *session,
    //Invoke user-defined callback, if any
    if(context->commandLineCallback != NULL)
    {
+      //Process the received command line
       error = context->commandLineCallback(session, commandLine);
    }
    else
    {
+      //Discard the command line
       error = NO_ERROR;
    }
 
    //Return status code
    return error;
+}
+
+
+/**
+ * @brief Add command line to history
+ * @param[in] session Handle referencing an shell session
+ * @param[in] commandLine NULL-terminated string that contains the command line
+ **/
+
+void shellServerAddCommandLine(ShellServerSession *session,
+   const char_t *commandLine)
+{
+#if (SHELL_SERVER_HISTORY_SUPPORT == ENABLED)
+   size_t i;
+   size_t j;
+   size_t n;
+
+   //Retrieve the length of the command line
+   n = osStrlen(commandLine);
+
+   //Valid command line?
+   if(n > 0 && n < SHELL_SERVER_HISTORY_SIZE)
+   {
+      //Point to the first entry
+      i = 0;
+
+      //Remove duplicate entries from command history
+      while(i < session->historyLen)
+      {
+         //Save current index
+         j = i;
+
+         //Each entry is terminated by a NULL character
+         while(i < session->historyLen && session->history[i] != '\0')
+         {
+            i++;
+         }
+
+         //Check whether the current entry is a duplicate
+         if((i - j) == n && osMemcmp(session->history + j, commandLine, n) == 0)
+         {
+            //Skip the NULL terminator
+            if(i < session->historyLen)
+            {
+               i++;
+            }
+
+            //Remove the duplicate entry
+            osMemmove(session->history + j, session->history + i,
+               session->historyLen - i);
+
+            //Adjust the length of the command history buffer
+            session->historyLen -= i - j;
+         }
+         else
+         {
+            //Skip the NULL terminator
+            i++;
+         }
+      }
+
+      //Rewind to the first entry
+      i = 0;
+
+      //The oldest commands are discarded when the command history buffer runs
+      //out of space
+      while((session->historyLen + n + 1 - i) > SHELL_SERVER_HISTORY_SIZE)
+      {
+         //Each entry is terminated by a NULL character
+         while(i < session->historyLen && session->history[i] != '\0')
+         {
+            i++;
+         }
+
+         //Skip the NULL terminator
+         if(i < session->historyLen)
+         {
+            i++;
+         }
+      }
+
+      //Make room for the new entry
+      if(i > 0)
+      {
+         //Delete the oldest entries
+         osMemmove(session->history, session->history + i, session->historyLen - i);
+         //Adjust the length of the command history buffer
+         session->historyLen -= i;
+      }
+
+      //Add command line to history
+      osMemcpy(session->history + session->historyLen, commandLine, n);
+      //Properly terminate the new entry with a NULL character
+      session->history[session->historyLen + n] = '\0';
+      //Adjust the length of the command history buffer
+      session->historyLen += n + 1;
+   }
+
+   //Change current position in history
+   session->historyPos = session->historyLen;
+#endif
+}
+
+
+/**
+ * @brief Extract previous command line from history
+ * @param[in] session Handle referencing an shell session
+ * @param[out] commandLine Pointer to the previous command line
+ * @param[out] length Length of the command line
+ * @return error code
+ **/
+
+error_t shellServerGetPrevCommandLine(ShellServerSession *session,
+   const char_t **commandLine, size_t *length)
+{
+#if (SHELL_SERVER_HISTORY_SUPPORT == ENABLED)
+   error_t error;
+   size_t i;
+
+   //Check current position in history
+   if(session->historyPos > 0)
+   {
+      //Point to the last character of the previous entry
+      i = session->historyPos - 1;
+
+      //Entries are separated with a NULL character
+      while(i > 0 && session->history[i - 1] != '\0')
+      {
+         i--;
+      }
+
+      //Extract the previous command line
+      *commandLine = session->history + i;
+      *length = osStrlen(session->history + i);
+
+      //Change current position in history
+      session->historyPos = i;
+
+      //Successful processing
+      error = NO_ERROR;
+   }
+   else
+   {
+      //The oldest entry has been reached
+      error = ERROR_NOT_FOUND;
+   }
+
+   //Return status code
+   return error;
+#else
+   //Not implemented
+   return ERROR_NOT_IMPLEMENTED;
+#endif
+}
+
+
+/**
+ * @brief Extract next command line from history
+ * @param[in] session Handle referencing an shell session
+ * @param[out] commandLine Pointer to the next command line
+ * @param[out] length Length of the command line
+ * @return error code
+ **/
+
+error_t shellServerGetNextCommandLine(ShellServerSession *session,
+   const char_t **commandLine, size_t *length)
+{
+#if (SHELL_SERVER_HISTORY_SUPPORT == ENABLED)
+   error_t error;
+   size_t i;
+
+   //Get current position in history
+   i = session->historyPos;
+
+   //Each entry is terminated by a NULL character
+   while(i < session->historyLen && session->history[i] != '\0')
+   {
+      i++;
+   }
+
+   //Skip the NULL terminator
+   if(i < session->historyLen)
+   {
+      i++;
+   }
+
+   //Next command line found?
+   if(i < session->historyLen)
+   {
+      //Extract the next command line
+      *commandLine = session->history + i;
+      *length = osStrlen(session->history + i);
+
+      //Change current position in history
+      session->historyPos = i;
+
+      //Successful processing
+      error = NO_ERROR;
+   }
+   else
+   {
+      //The most recent entry has been reached
+      error = ERROR_NOT_FOUND;
+   }
+
+   //Return status code
+   return error;
+#else
+   //Not implemented
+   return ERROR_NOT_IMPLEMENTED;
+#endif
+}
+
+
+/**
+ * @brief Extract first command line from history
+ * @param[in] session Handle referencing an shell session
+ * @param[out] commandLine Pointer to the first command line
+ * @param[out] length Length of the command line
+ * @return error code
+ **/
+
+error_t shellServerGetFirstCommandLine(ShellServerSession *session,
+   const char_t **commandLine, size_t *length)
+{
+#if (SHELL_SERVER_HISTORY_SUPPORT == ENABLED)
+   error_t error;
+
+   //Check current position in history
+   if(session->historyPos > 0)
+   {
+      //Extract the first command line
+      *commandLine = session->history;
+      *length = osStrlen(session->history);
+
+      //Change current position in history
+      session->historyPos = 0;
+
+      //Successful processing
+      error = NO_ERROR;
+   }
+   else
+   {
+      //The oldest entry has been reached
+      error = ERROR_NOT_FOUND;
+   }
+
+   //Return status code
+   return error;
+#else
+   //Not implemented
+   return ERROR_NOT_IMPLEMENTED;
+#endif
+}
+
+
+/**
+ * @brief Extract last command line from history
+ * @param[in] session Handle referencing an shell session
+ * @param[out] commandLine Pointer to the last command line
+ * @param[out] length Length of the command line
+ * @return error code
+ **/
+
+error_t shellServerGetLastCommandLine(ShellServerSession *session,
+   const char_t **commandLine, size_t *length)
+{
+#if (SHELL_SERVER_HISTORY_SUPPORT == ENABLED)
+   error_t error;
+   size_t i;
+
+   //Any entry found in command history?
+   if(session->historyLen > 0)
+   {
+      //Point to the last character of the last entry
+      i = session->historyLen - 1;
+
+      //Entries are separated with a NULL character
+      while(i > 0 && session->history[i - 1] != '\0')
+      {
+         i--;
+      }
+
+      //Extract the last command line
+      *commandLine = session->history + i;
+      *length = osStrlen(session->history + i);
+
+      //Change current position in history
+      session->historyPos = i;
+
+      //Successful processing
+      error = NO_ERROR;
+   }
+   else
+   {
+      //The command history is empty
+      error = ERROR_NOT_FOUND;
+   }
+
+   //Return status code
+   return error;
+#else
+   //Not implemented
+   return ERROR_NOT_IMPLEMENTED;
+#endif
 }
 
 #endif

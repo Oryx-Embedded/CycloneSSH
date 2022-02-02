@@ -6,7 +6,7 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later
  *
- * Copyright (C) 2019-2021 Oryx Embedded SARL. All rights reserved.
+ * Copyright (C) 2019-2022 Oryx Embedded SARL. All rights reserved.
  *
  * This file is part of CycloneSSH Open.
  *
@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.1.2
+ * @version 2.1.4
  **/
 
 #ifndef _SHELL_SERVER_PTY_H
@@ -160,6 +160,13 @@ error_t shellServerProcessLeftKey(ShellServerSession *session);
 error_t shellServerProcessRightKey(ShellServerSession *session);
 error_t shellServerProcessUpKey(ShellServerSession *session);
 error_t shellServerProcessDownKey(ShellServerSession *session);
+error_t shellServerProcessPageUpKey(ShellServerSession *session);
+error_t shellServerProcessPageDownKey(ShellServerSession *session);
+
+error_t shellClearCommandLine(ShellServerSession *session);
+
+error_t shellRestoreCommandLine(ShellServerSession *session,
+   const char_t *commandLine, size_t length);
 
 //C++ guard
 #ifdef __cplusplus

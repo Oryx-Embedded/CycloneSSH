@@ -6,7 +6,7 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later
  *
- * Copyright (C) 2019-2021 Oryx Embedded SARL. All rights reserved.
+ * Copyright (C) 2019-2022 Oryx Embedded SARL. All rights reserved.
  *
  * This file is part of CycloneSSH Open.
  *
@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.1.2
+ * @version 2.1.4
  **/
 
 //Switch to the appropriate trace level
@@ -110,6 +110,8 @@ error_t sshInit(SshContext *context, SshConnection *connections,
          osMemset(connection, 0, sizeof(SshConnection));
          //Attach SSH context
          connection->context = context;
+         //Index of the selected host key
+         connection->hostKeyIndex = 0;
          //Set default state
          connection->state = SSH_CONN_STATE_CLOSED;
       }
@@ -293,32 +295,6 @@ error_t sshRegisterHostKeyVerifyCallback(SshContext *context,
 
 
 /**
- * @brief Register password authentication callback function
- * @param[in] context Pointer to the SSH context
- * @param[in] callback Password authentication callback function
- * @return Error code
- **/
-
-error_t sshRegisterPasswordAuthCallback(SshContext *context,
-   SshPasswordAuthCallback callback)
-{
-   //Check parameters
-   if(context == NULL || callback == NULL)
-      return ERROR_INVALID_PARAMETER;
-
-   //Acquire exclusive access to the SSH context
-   osAcquireMutex(&context->mutex);
-   //Save callback function
-   context->passwordAuthCallback = callback;
-   //Release exclusive access to the SSH context
-   osReleaseMutex(&context->mutex);
-
-   //Successful processing
-   return NO_ERROR;
-}
-
-
-/**
  * @brief Register public key authentication callback function
  * @param[in] context Pointer to the SSH context
  * @param[in] callback Public key authentication callback function
@@ -328,6 +304,7 @@ error_t sshRegisterPasswordAuthCallback(SshContext *context,
 error_t sshRegisterPublicKeyAuthCallback(SshContext *context,
    SshPublicKeyAuthCallback callback)
 {
+#if (SSH_PUBLIC_KEY_AUTH_SUPPORT == ENABLED)
    //Check parameters
    if(context == NULL || callback == NULL)
       return ERROR_INVALID_PARAMETER;
@@ -341,6 +318,72 @@ error_t sshRegisterPublicKeyAuthCallback(SshContext *context,
 
    //Successful processing
    return NO_ERROR;
+#else
+   //Not implemented
+   return ERROR_NOT_IMPLEMENTED;
+#endif
+}
+
+
+/**
+ * @brief Register password authentication callback function
+ * @param[in] context Pointer to the SSH context
+ * @param[in] callback Password authentication callback function
+ * @return Error code
+ **/
+
+error_t sshRegisterPasswordAuthCallback(SshContext *context,
+   SshPasswordAuthCallback callback)
+{
+#if (SSH_PASSWORD_AUTH_SUPPORT == ENABLED)
+   //Check parameters
+   if(context == NULL || callback == NULL)
+      return ERROR_INVALID_PARAMETER;
+
+   //Acquire exclusive access to the SSH context
+   osAcquireMutex(&context->mutex);
+   //Save callback function
+   context->passwordAuthCallback = callback;
+   //Release exclusive access to the SSH context
+   osReleaseMutex(&context->mutex);
+
+   //Successful processing
+   return NO_ERROR;
+#else
+   //Not implemented
+   return ERROR_NOT_IMPLEMENTED;
+#endif
+}
+
+
+/**
+ * @brief Register password change callback function
+ * @param[in] context Pointer to the SSH context
+ * @param[in] callback Password change callback function
+ * @return Error code
+ **/
+
+error_t sshRegisterPasswordChangeCallback(SshContext *context,
+   SshPasswordChangeCallback callback)
+{
+#if (SSH_PASSWORD_AUTH_SUPPORT == ENABLED)
+   //Check parameters
+   if(context == NULL || callback == NULL)
+      return ERROR_INVALID_PARAMETER;
+
+   //Acquire exclusive access to the SSH context
+   osAcquireMutex(&context->mutex);
+   //Save callback function
+   context->passwordChangeCallback = callback;
+   //Release exclusive access to the SSH context
+   osReleaseMutex(&context->mutex);
+
+   //Successful processing
+   return NO_ERROR;
+#else
+   //Not implemented
+   return ERROR_NOT_IMPLEMENTED;
+#endif
 }
 
 
@@ -997,6 +1040,37 @@ error_t sshUnloadAllHostKeys(SshContext *context)
 
    //Successful processing
    return NO_ERROR;
+}
+
+
+/**
+ * @brief Set password change prompt message
+ * @param[in] connection Pointer to the SSH connection
+ * @param[in] prompt  NULL-terminated string containing the prompt message
+ * @return Error code
+ **/
+
+error_t sshSetPasswordChangePrompt(SshConnection *connection,
+   const char_t *prompt)
+{
+#if (SSH_SERVER_SUPPORT == ENABLED && SSH_PASSWORD_AUTH_SUPPORT == ENABLED)
+   //Check parameters
+   if(connection == NULL || prompt == NULL)
+      return ERROR_INVALID_PARAMETER;
+
+   //Make sure the length of the prompt string is acceptable
+   if(osStrlen(prompt) > SSH_MAX_PASSWORD_CHANGE_PROMPT_LEN)
+      return ERROR_INVALID_LENGTH;
+
+   //Save prompt string
+   osStrcpy(connection->passwordChangePrompt, prompt);
+
+   //Successful processing
+   return NO_ERROR;
+#else
+   //Not implemented
+   return ERROR_NOT_IMPLEMENTED;
+#endif
 }
 
 

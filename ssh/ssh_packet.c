@@ -6,7 +6,7 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later
  *
- * Copyright (C) 2019-2021 Oryx Embedded SARL. All rights reserved.
+ * Copyright (C) 2019-2022 Oryx Embedded SARL. All rights reserved.
  *
  * This file is part of CycloneSSH Open.
  *
@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.1.2
+ * @version 2.1.4
  **/
 
 //Switch to the appropriate trace level
@@ -1407,46 +1407,48 @@ error_t sshVerifyMessageAuthCode(SshEncryptionEngine *decryptionEngine,
 
 void sshIncSequenceNumber(uint8_t *seqNum)
 {
-   int_t i;
+   uint16_t temp;
 
    //Sequence numbers are stored MSB first
-   for(i = 3; i >= 0; i--)
-   {
-      //Increment the current byte
-      seqNum[i]++;
-
-      //Propagate the carry if necessary
-      if(seqNum[i] != 0)
-      {
-         break;
-      }
-   }
+   temp = seqNum[3] + 1;
+   seqNum[3] = temp & 0xFF;
+   temp = (temp >> 8) + seqNum[2];
+   seqNum[2] = temp & 0xFF;
+   temp = (temp >> 8) + seqNum[1];
+   seqNum[1] = temp & 0xFF;
+   temp = (temp >> 8) + seqNum[0];
+   seqNum[0] = temp & 0xFF;
 }
 
 
 /**
  * @brief Increment invocation counter
- * @param[in,out] iv Pointer to the 12-octet IV
+ * @param[in,out] iv Pointer to the 12-octet initialization vector
  **/
 
 void sshIncInvocationCounter(uint8_t *iv)
 {
-   uint_t i;
+   uint16_t temp;
 
    //With AES-GCM, the 12-octet IV is broken into two fields: a 4-octet
    //fixed field and an 8-octet invocation counter field (refer to RFC 5647,
    //section 7.1)
-   for(i = 11; i >= 4; i--)
-   {
-      //Increment the invocation counter
-      iv[i]++;
-
-      //Propagate the carry if necessary
-      if(iv[i] != 0)
-      {
-         break;
-      }
-   }
+   temp = iv[11] + 1;
+   iv[11] = temp & 0xFF;
+   temp = (temp >> 8) + iv[10];
+   iv[10] = temp & 0xFF;
+   temp = (temp >> 8) + iv[9];
+   iv[9] = temp & 0xFF;
+   temp = (temp >> 8) + iv[8];
+   iv[8] = temp & 0xFF;
+   temp = (temp >> 8) + iv[7];
+   iv[7] = temp & 0xFF;
+   temp = (temp >> 8) + iv[6];
+   iv[6] = temp & 0xFF;
+   temp = (temp >> 8) + iv[5];
+   iv[5] = temp & 0xFF;
+   temp = (temp >> 8) + iv[4];
+   iv[4] = temp & 0xFF;
 }
 
 #endif

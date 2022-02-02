@@ -6,7 +6,7 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later
  *
- * Copyright (C) 2019-2021 Oryx Embedded SARL. All rights reserved.
+ * Copyright (C) 2019-2022 Oryx Embedded SARL. All rights reserved.
  *
  * This file is part of CycloneSSH Open.
  *
@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.1.2
+ * @version 2.1.4
  **/
 
 //Switch to the appropriate trace level
@@ -608,7 +608,7 @@ error_t sshEncodePublicKeyFile(const void *input, size_t inputLen,
 
       //The first line of a conforming key file must be a begin marker (refer
       //to RFC 4716, section 3.2)
-      osStrncpy(output, "---- BEGIN SSH2 PUBLIC KEY ----\r\n", 33);
+      osMemcpy(output, "---- BEGIN SSH2 PUBLIC KEY ----\r\n", 33);
 
       //The last line of a conforming key file must be an end marker (refer to
       //RFC 4716, section 3.2)

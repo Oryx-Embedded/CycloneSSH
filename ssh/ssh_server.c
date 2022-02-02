@@ -6,7 +6,7 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later
  *
- * Copyright (C) 2019-2021 Oryx Embedded SARL. All rights reserved.
+ * Copyright (C) 2019-2022 Oryx Embedded SARL. All rights reserved.
  *
  * This file is part of CycloneSSH Open.
  *
@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.1.2
+ * @version 2.1.4
  **/
 
 //Switch to the appropriate trace level
@@ -67,10 +67,17 @@ void sshServerGetDefaultSettings(SshServerSettings *settings)
    settings->prngAlgo = NULL;
    settings->prngContext = NULL;
 
-   //Password authentication callback function
-   settings->passwordAuthCallback = NULL;
+#if (SSH_PUBLIC_KEY_AUTH_SUPPORT == ENABLED)
    //Public key authentication callback function
    settings->publicKeyAuthCallback = NULL;
+#endif
+
+#if (SSH_PASSWORD_AUTH_SUPPORT == ENABLED)
+   //Password authentication callback function
+   settings->passwordAuthCallback = NULL;
+   //Password change callback function
+   settings->passwordChangeCallback = NULL;
+#endif
 
 #if (SSH_SIGN_CALLBACK_SUPPORT == ENABLED)
    //Signature generation callback function
@@ -146,6 +153,20 @@ error_t sshServerInit(SshServerContext *context,
       if(error)
          break;
 
+#if (SSH_PUBLIC_KEY_AUTH_SUPPORT == ENABLED)
+      //Valid public key authentication callback function?
+      if(settings->publicKeyAuthCallback != NULL)
+      {
+         //Register callback function
+         error = sshRegisterPublicKeyAuthCallback(&context->sshContext,
+            settings->publicKeyAuthCallback);
+         //Any error to report?
+         if(error)
+            break;
+      }
+#endif
+
+#if (SSH_PASSWORD_AUTH_SUPPORT == ENABLED)
       //Valid password authentication callback function?
       if(settings->passwordAuthCallback != NULL)
       {
@@ -157,16 +178,17 @@ error_t sshServerInit(SshServerContext *context,
             break;
       }
 
-      //Valid public key authentication callback function?
-      if(settings->publicKeyAuthCallback != NULL)
+      //Valid password change callback function?
+      if(settings->passwordChangeCallback != NULL)
       {
          //Register callback function
-         error = sshRegisterPublicKeyAuthCallback(&context->sshContext,
-            settings->publicKeyAuthCallback);
+         error = sshRegisterPasswordChangeCallback(&context->sshContext,
+            settings->passwordChangeCallback);
          //Any error to report?
          if(error)
             break;
       }
+#endif
 
 #if (SSH_SIGN_CALLBACK_SUPPORT == ENABLED)
       //Valid signature generation callback function?

@@ -6,7 +6,7 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later
  *
- * Copyright (C) 2019-2021 Oryx Embedded SARL. All rights reserved.
+ * Copyright (C) 2019-2022 Oryx Embedded SARL. All rights reserved.
  *
  * This file is part of CycloneSSH Open.
  *
@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.1.2
+ * @version 2.1.4
  **/
 
 #ifndef _SSH_LEGACY_H
@@ -65,5 +65,41 @@
 #endif
 
 #define generateSignatureCallback signGenCallback
+
+#ifdef SCP_SERVER_STACK_SIZE
+   #define SCP_SERVER_TASK_STACK_SIZE SCP_SERVER_STACK_SIZE
+#endif
+
+#ifdef SCP_SERVER_PRIORITY
+   #define SCP_SERVER_TASK_PRIORITY SCP_SERVER_PRIORITY
+#endif
+
+#ifdef SFTP_SERVER_STACK_SIZE
+   #define SFTP_SERVER_TASK_STACK_SIZE SFTP_SERVER_STACK_SIZE
+#endif
+
+#ifdef SFTP_SERVER_PRIORITY
+   #define SFTP_SERVER_TASK_PRIORITY SFTP_SERVER_PRIORITY
+#endif
+
+#ifdef SHELL_SERVER_STACK_SIZE
+   #define SHELL_SERVER_TASK_STACK_SIZE SHELL_SERVER_STACK_SIZE
+#endif
+
+#ifdef SHELL_SERVER_PRIORITY
+   #define SHELL_SERVER_TASK_PRIORITY SHELL_SERVER_PRIORITY
+#endif
+
+#ifdef SSH_SERVER_STACK_SIZE
+   #define SSH_SERVER_TASK_STACK_SIZE SSH_SERVER_STACK_SIZE
+#endif
+
+#ifdef SSH_SERVER_PRIORITY
+   #define SSH_SERVER_TASK_PRIORITY SSH_SERVER_PRIORITY
+#endif
+
+#define SshAccessStatus SshAuthStatus
+#define SSH_ACCESS_DENIED SSH_AUTH_STATUS_FAILURE
+#define SSH_ACCESS_ALLOWED SSH_AUTH_STATUS_SUCCESS
 
 #endif

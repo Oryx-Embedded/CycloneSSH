@@ -6,7 +6,7 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later
  *
- * Copyright (C) 2019-2021 Oryx Embedded SARL. All rights reserved.
+ * Copyright (C) 2019-2022 Oryx Embedded SARL. All rights reserved.
  *
  * This file is part of CycloneSSH Open.
  *
@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.1.2
+ * @version 2.1.4
  **/
 
 //Switch to the appropriate trace level
@@ -900,6 +900,8 @@ error_t shellClientDisconnect(ShellClientContext *context)
          {
             //Catch exception
             error = NO_ERROR;
+            //Set timeout
+            socketSetTimeout(context->sshConnection.socket, context->timeout);
             //Update shell client state
             shellClientChangeState(context, SHELL_CLIENT_STATE_DISCONNECTING_2);
          }
@@ -910,12 +912,21 @@ error_t shellClientDisconnect(ShellClientContext *context)
          error = socketShutdown(context->sshConnection.socket, SOCKET_SD_BOTH);
 
          //Check status code
-         if(!error)
+         if(error == NO_ERROR)
          {
             //Close network connection
             shellClientCloseConnection(context);
             //Update shell client state
             shellClientChangeState(context, SHELL_CLIENT_STATE_DISCONNECTED);
+         }
+         else if(error == ERROR_WOULD_BLOCK || error == ERROR_TIMEOUT)
+         {
+            //Check whether the timeout has elapsed
+            error = shellClientCheckTimeout(context);
+         }
+         else
+         {
+            //A communication error has occurred
          }
       }
       else if(context->state == SHELL_CLIENT_STATE_DISCONNECTED)

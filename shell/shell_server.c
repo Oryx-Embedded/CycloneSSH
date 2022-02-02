@@ -6,7 +6,7 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later
  *
- * Copyright (C) 2019-2021 Oryx Embedded SARL. All rights reserved.
+ * Copyright (C) 2019-2022 Oryx Embedded SARL. All rights reserved.
  *
  * This file is part of CycloneSSH Open.
  *
@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.1.2
+ * @version 2.1.4
  **/
 
 //Switch to the appropriate trace level
@@ -60,6 +60,8 @@ void shellServerGetDefaultSettings(ShellServerSettings *settings)
    settings->checkUserCallback = NULL;
    //Command line processing callback function
    settings->commandLineCallback = NULL;
+   //Session closing callback function
+   settings->closeCallback = NULL;
 }
 
 
@@ -74,6 +76,7 @@ error_t shellServerInit(ShellServerContext *context,
    const ShellServerSettings *settings)
 {
    uint_t i;
+   ShellServerSession *session;
 
    //Debug message
    TRACE_INFO("Initializing shell server...\r\n");
@@ -98,19 +101,25 @@ error_t shellServerInit(ShellServerContext *context,
    context->sessions = settings->sessions;
    context->checkUserCallback = settings->checkUserCallback;
    context->commandLineCallback = settings->commandLineCallback;
+   context->closeCallback = settings->closeCallback;
 
    //Loop through shell sessions
    for(i = 0; i < context->numSessions; i++)
    {
+      //Point to the structure describing the current session
+      session = &context->sessions[i];
+
       //Initialize the structure representing the shell session
-      osMemset(&context->sessions[i], 0, sizeof(ShellServerSession));
+      osMemset(session, 0, sizeof(ShellServerSession));
+      //Attach shell server context
+      session->context = context;
 
       //Create an event object to manage session lifetime
-      if(!osCreateEvent(&context->sessions[i].startEvent))
+      if(!osCreateEvent(&session->startEvent))
          return ERROR_OUT_OF_RESOURCES;
 
       //Create an event object to manage session events
-      if(!osCreateEvent(&context->sessions[i].event))
+      if(!osCreateEvent(&session->event))
          return ERROR_OUT_OF_RESOURCES;
    }
 
@@ -204,7 +213,7 @@ error_t shellServerSetBanner(ShellServerSession *session,
       return ERROR_INVALID_LENGTH;
 
    //Copy the banner message
-   osStrncpy(session->buffer, banner, n);
+   osMemcpy(session->buffer, banner, n);
 
    //Save the length of the banner message
    session->bufferLen = n;
@@ -336,6 +345,139 @@ error_t shellServerReadStream(ShellServerSession *session, void *data,
 
 
 /**
+ * @brief Save command history
+ * @param[in] param Pointer to the shell session
+ * @param[out] history Output buffer where to store the command history
+ * @param[in] size Size of the buffer, in bytes
+ * @param[out] length Actual length of the command history, in bytes
+ * @return Error code
+ **/
+
+error_t shellServerSaveHistory(ShellServerSession *session, char_t *history,
+   size_t size, size_t *length)
+{
+#if (SHELL_SERVER_HISTORY_SUPPORT == ENABLED)
+   size_t i;
+
+   //Check parameters
+   if(session == NULL || history == NULL || length == NULL)
+      return ERROR_INVALID_PARAMETER;
+
+   //If the output buffer is not large enough, then the oldest commands are
+   //discarded
+   for(i = 0; (session->historyLen - i) > size; )
+   {
+      //Each entry is terminated by a NULL character
+      while(i < session->historyLen && session->history[i] != '\0')
+      {
+         i++;
+      }
+
+      //Skip the NULL terminator
+      if(i < session->historyLen)
+      {
+         i++;
+      }
+   }
+
+   //Save the most recent commands
+   osMemcpy(history, session->history + i, session->historyLen - i);
+   //Return the length of the command history
+   *length = session->historyLen - i;
+
+   //Successful processing
+   return NO_ERROR;
+#else
+   //Not implemented
+   return ERROR_NOT_IMPLEMENTED;
+#endif
+}
+
+
+/**
+ * @brief Restore command history
+ * @param[in] param Pointer to the shell session
+ * @param[in] history Pointer to the buffer that contains the command history
+ * @param[in] length Length of the command history, in bytes
+ * @return Error code
+ **/
+
+error_t shellServerRestoreHistory(ShellServerSession *session,
+   const char_t *history, size_t length)
+{
+#if (SHELL_SERVER_HISTORY_SUPPORT == ENABLED)
+   size_t i;
+
+   //Check parameters
+   if(session == NULL || history == NULL)
+      return ERROR_INVALID_PARAMETER;
+
+   //If the command history buffer is not large enough, then the oldest commands
+   //are discarded
+   for(i = 0; (length - i) > SHELL_SERVER_HISTORY_SIZE; )
+   {
+      //Each entry is terminated by a NULL character
+      while(i < length && history[i] != '\0')
+      {
+         i++;
+      }
+
+      //Skip the NULL terminator
+      if(i < length)
+      {
+         i++;
+      }
+   }
+
+   //Restore the most recent commands
+   osMemcpy(session->history, history, length - i);
+
+   //Save the length of the command history
+   session->historyLen = length - i;
+   session->historyPos = length - i;
+
+   //Properly terminate the last entry with a NULL character
+   if(session->historyLen > 0)
+   {
+      session->history[session->historyLen - 1] = '\0';
+   }
+
+   //Successful processing
+   return NO_ERROR;
+#else
+   //Not implemented
+   return ERROR_NOT_IMPLEMENTED;
+#endif
+}
+
+
+/**
+ * @brief Clear command history
+ * @param[in] param Pointer to the shell session
+ * @return Error code
+ **/
+
+error_t shellServerClearHistory(ShellServerSession *session)
+{
+#if (SHELL_SERVER_HISTORY_SUPPORT == ENABLED)
+   //Make sure the shell session is valid
+   if(session == NULL)
+      return ERROR_INVALID_PARAMETER;
+
+   //Clear all entries from command history
+   session->historyLen = 0;
+   session->historyPos = 0;
+
+   //Successful processing
+   return NO_ERROR;
+#else
+   //Not implemented
+   return ERROR_NOT_IMPLEMENTED;
+#endif
+}
+
+
+/**
  * @brief Shell server task
  * @param[in] param Pointer to the shell session
  **/
@@ -344,10 +486,13 @@ void shellServerTask(void *param)
 {
    error_t error;
    SshChannel *channel;
+   ShellServerContext *context;
    ShellServerSession *session;
 
    //Point to the shell session
    session = (ShellServerSession *) param;
+   //Point to the shell server context
+   context = session->context;
 
    //Debug message
    TRACE_INFO("Starting shell task...\r\n");
@@ -435,6 +580,13 @@ void shellServerTask(void *param)
                //A communication error has occurred
                break;
             }
+         }
+
+         //Invoke user-defined callback, if any
+         if(context->closeCallback != NULL)
+         {
+            //The session is about to close
+            context->closeCallback(session, session->channel->connection->user);
          }
       }
       else if(session->state == SHELL_SERVER_SESSION_STATE_EXEC)

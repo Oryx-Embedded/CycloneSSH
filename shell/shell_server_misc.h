@@ -6,7 +6,7 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later
  *
- * Copyright (C) 2019-2021 Oryx Embedded SARL. All rights reserved.
+ * Copyright (C) 2019-2022 Oryx Embedded SARL. All rights reserved.
  *
  * This file is part of CycloneSSH Open.
  *
@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.1.2
+ * @version 2.1.4
  **/
 
 #ifndef _SHELL_SERVER_MISC_H
@@ -60,6 +60,21 @@ error_t shellServerParseTermModes(ShellServerSession *session,
 
 error_t shellServerProcessCommandLine(ShellServerSession *session,
    char_t *commandLine);
+
+void shellServerAddCommandLine(ShellServerSession *session,
+   const char_t *commandLine);
+
+error_t shellServerGetPrevCommandLine(ShellServerSession *session,
+   const char_t **commandLine, size_t *length);
+
+error_t shellServerGetNextCommandLine(ShellServerSession *session,
+   const char_t **commandLine, size_t *length);
+
+error_t shellServerGetFirstCommandLine(ShellServerSession *session,
+   const char_t **commandLine, size_t *length);
+
+error_t shellServerGetLastCommandLine(ShellServerSession *session,
+   const char_t **commandLine, size_t *length);
 
 //C++ guard
 #ifdef __cplusplus

@@ -6,7 +6,7 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later
  *
- * Copyright (C) 2019-2021 Oryx Embedded SARL. All rights reserved.
+ * Copyright (C) 2019-2022 Oryx Embedded SARL. All rights reserved.
  *
  * This file is part of CycloneSSH Open.
  *
@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.1.2
+ * @version 2.1.4
  **/
 
 //Switch to the appropriate trace level
@@ -822,7 +822,7 @@ error_t sshParseNoneAuthParams(SshConnection *connection,
    const SshString *userName, const uint8_t *p, size_t length)
 {
    error_t error;
-   SshAccessStatus status;
+   SshAuthStatus status;
    SshContext *context;
 
    //Point to the SSH context
@@ -840,7 +840,9 @@ error_t sshParseNoneAuthParams(SshConnection *connection,
       //Properly terminate the command line with a NULL character
       connection->user[userName->length] = '\0';
 
-      //Invoke user-defined callback, if any
+#if (SSH_PASSWORD_AUTH_SUPPORT == ENABLED)
+      //The server must always reject this request, unless the client is to be
+      //granted access without any authentication (refer to RFC 4552, section 4)
       if(context->passwordAuthCallback != NULL)
       {
          //Manage authentication policy
@@ -848,19 +850,20 @@ error_t sshParseNoneAuthParams(SshConnection *connection,
             "", 0);
       }
       else
+#endif
       {
-         //Access is refused
-         status = SSH_ACCESS_DENIED;
+         //Access is denied
+         status = SSH_AUTH_STATUS_FAILURE;
       }
    }
    else
    {
-      //Access is refused
-      status = SSH_ACCESS_DENIED;
+      //Access is denied
+      status = SSH_AUTH_STATUS_FAILURE;
    }
 
    //Check whether access is granted to the user
-   if(status == SSH_ACCESS_ALLOWED)
+   if(status == SSH_AUTH_STATUS_SUCCESS)
    {
       //If no authentication is needed for the user, the server must return
       //an SSH_MSG_USERAUTH_SUCCESS message

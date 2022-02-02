@@ -6,7 +6,7 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later
  *
- * Copyright (C) 2019-2021 Oryx Embedded SARL. All rights reserved.
+ * Copyright (C) 2019-2022 Oryx Embedded SARL. All rights reserved.
  *
  * This file is part of CycloneSSH Open.
  *
@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.1.2
+ * @version 2.1.4
  **/
 
 //Switch to the appropriate trace level
@@ -393,8 +393,8 @@ error_t sshFormatNewKeys(SshConnection *connection, uint8_t *p,
  * @return Error code
  **/
 
-error_t sshParseKexInit(SshConnection *connection,
-   const uint8_t *message, size_t length)
+error_t sshParseKexInit(SshConnection *connection, const uint8_t *message,
+   size_t length)
 {
    error_t error;
    size_t n;
@@ -413,7 +413,7 @@ error_t sshParseKexInit(SshConnection *connection,
    TRACE_VERBOSE_ARRAY("  ", message, length);
 
    //Check whether SSH operates as a client or a server
-   if(connection->context->mode == SSH_OPERATION_MODE_CLIENT)
+   if(context->mode == SSH_OPERATION_MODE_CLIENT)
    {
       //Check connection state
       if(connection->state != SSH_CONN_STATE_SERVER_KEX_INIT &&
@@ -493,7 +493,7 @@ error_t sshParseKexInit(SshConnection *connection,
       return ERROR_UNSUPPORTED_ALGO;
 
    //Server operation mode?
-   if(connection->context->mode == SSH_OPERATION_MODE_SERVER)
+   if(context->mode == SSH_OPERATION_MODE_SERVER)
    {
       //Select the host key to use
       connection->hostKeyIndex = sshSelectHostKey(context,
@@ -754,7 +754,7 @@ error_t sshParseKexInit(SshConnection *connection,
    }
 
    //Check whether SSH operates as a client or a server
-   if(connection->context->mode == SSH_OPERATION_MODE_CLIENT)
+   if(context->mode == SSH_OPERATION_MODE_CLIENT)
    {
       //Update exchange hash H with I_C (payload of the client's SSH_MSG_KEXINIT)
       error = sshDigestClientKexInit(connection);
@@ -857,8 +857,8 @@ error_t sshParseKexInit(SshConnection *connection,
  * @return Error code
  **/
 
-error_t sshParseNewKeys(SshConnection *connection,
-   const uint8_t *message, size_t length)
+error_t sshParseNewKeys(SshConnection *connection, const uint8_t *message,
+   size_t length)
 {
    error_t error;
    uint8_t x;

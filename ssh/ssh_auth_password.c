@@ -6,7 +6,7 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later
  *
- * Copyright (C) 2019-2021 Oryx Embedded SARL. All rights reserved.
+ * Copyright (C) 2019-2022 Oryx Embedded SARL. All rights reserved.
  *
  * This file is part of CycloneSSH Open.
  *
@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.1.2
+ * @version 2.1.4
  **/
 
 //Switch to the appropriate trace level
@@ -36,11 +36,61 @@
 #include "ssh/ssh_transport.h"
 #include "ssh/ssh_auth.h"
 #include "ssh/ssh_auth_password.h"
+#include "ssh/ssh_packet.h"
 #include "ssh/ssh_misc.h"
 #include "debug.h"
 
 //Check SSH stack configuration
 #if (SSH_SUPPORT == ENABLED && SSH_PASSWORD_AUTH_SUPPORT == ENABLED)
+
+
+/**
+ * @brief Send SSH_MSG_USERAUTH_PASSWD_CHANGEREQ message
+ * @param[in] connection Pointer to the SSH connection
+ * @param[in] prompt  NULL-terminated string containing the prompt message
+ * @return Error code
+ **/
+
+error_t sshSendUserAuthPasswdChangeReq(SshConnection *connection,
+   const char_t *prompt)
+{
+#if (SSH_SERVER_SUPPORT == ENABLED)
+   error_t error;
+   size_t length;
+   uint8_t *message;
+
+   //Point to the buffer where to format the message
+   message = connection->buffer + SSH_PACKET_HEADER_SIZE;
+
+   //Format SSH_MSG_USERAUTH_PASSWD_CHANGEREQ message
+   error = sshFormatUserAuthPasswdChangeReq(connection, prompt, message,
+      &length);
+
+   //Check status code
+   if(!error)
+   {
+      //Debug message
+      TRACE_INFO("Sending SSH_MSG_USERAUTH_PASSWD_CHANGEREQ message (%" PRIuSIZE " bytes)...\r\n", length);
+      TRACE_VERBOSE_ARRAY("  ", message, length);
+
+      //Send message
+      error = sshSendPacket(connection, message, length);
+   }
+
+   //Check status code
+   if(!error)
+   {
+      //Wait for an SSH_MSG_USERAUTH_REQUEST message
+      connection->state = SSH_CONN_STATE_USER_AUTH_REQUEST;
+   }
+
+   //Return status code
+   return error;
+#else
+   //Server operation mode is not implemented
+   return ERROR_NOT_IMPLEMENTED;
+#endif
+}
 
 
 /**
@@ -97,6 +147,60 @@ error_t sshFormatPasswordAuthParams(SshConnection *connection, uint8_t *p,
 
 
 /**
+ * @brief Format SSH_MSG_USERAUTH_PASSWD_CHANGEREQ message
+ * @param[in] connection Pointer to the SSH connection
+ * @param[in] prompt  NULL-terminated string containing the prompt message
+ * @param[out] p Buffer where to format the message
+ * @param[out] length Length of the resulting message, in bytes
+ * @return Error code
+ **/
+
+error_t sshFormatUserAuthPasswdChangeReq(SshConnection *connection,
+   const char_t *prompt, uint8_t *p, size_t *length)
+{
+#if (SSH_SERVER_SUPPORT == ENABLED)
+   error_t error;
+   size_t n;
+
+   //Total length of the message
+   *length = 0;
+
+   //Set message type
+   p[0] = SSH_MSG_USERAUTH_PASSWD_CHANGEREQ;
+
+   //Point to the first field of the message
+   p += sizeof(uint8_t);
+   *length += sizeof(uint8_t);
+
+   //Format prompt string
+   error = sshFormatString(prompt, p, &n);
+   //Any error to report?
+   if(error)
+      return error;
+
+   //Point to the next field
+   p += n;
+   *length += n;
+
+   //Format language tag
+   error = sshFormatString("en", p, &n);
+   //Any error to report?
+   if(error)
+      return error;
+
+   //Total length of the message
+   *length += n;
+
+   //Successful processing
+   return NO_ERROR;
+#else
+   //Server operation mode is not implemented
+   return ERROR_NOT_IMPLEMENTED;
+#endif
+}
+
+
+/**
  * @brief Parse "password" method specific fields
  * @param[in] connection Pointer to the SSH connection
  * @param[in] userName Pointer to the user name
@@ -113,7 +217,7 @@ error_t sshParsePasswordAuthParams(SshConnection *connection,
    SshBoolean flag;
    SshString oldPassword;
    SshString newPassword;
-   SshAccessStatus status;
+   SshAuthStatus status;
    SshContext *context;
 
    //Point to the SSH context
@@ -173,30 +277,55 @@ error_t sshParsePasswordAuthParams(SshConnection *connection,
       connection->user[userName->length] = '\0';
 
       //Invoke user-defined callback, if any
-      if(context->passwordAuthCallback != NULL)
+      if(context->passwordAuthCallback != NULL && !flag)
       {
-         //Manage authentication policy
+         //The user requests password authentication
          status = context->passwordAuthCallback(connection, connection->user,
             oldPassword.value, oldPassword.length);
       }
+      else if(context->passwordChangeCallback != NULL && flag)
+      {
+         //The user requests a password change
+         status = context->passwordChangeCallback(connection,
+            connection->user, oldPassword.value, oldPassword.length,
+            newPassword.value, newPassword.length);
+      }
       else
       {
-         //Access is refused
-         status = SSH_ACCESS_DENIED;
+         //Access is denied
+         status = SSH_AUTH_STATUS_FAILURE;
       }
    }
    else
    {
-      //Access is refused
-      status = SSH_ACCESS_DENIED;
+      //Access is denied
+      status = SSH_AUTH_STATUS_FAILURE;
    }
 
    //Successful authentication?
-   if(status == SSH_ACCESS_ALLOWED)
+   if(status == SSH_AUTH_STATUS_SUCCESS)
    {
-      //When the server accepts authentication, it must respond with a
+      //When the server accepts authentication, it must respond with an
       //SSH_MSG_USERAUTH_SUCCESS message
       error = sshSendUserAuthSuccess(connection);
+   }
+   else if(status == SSH_AUTH_STATUS_PASSWORD_EXPIRED)
+   {
+      //Limit the number of authentication attempts
+      if(connection->authAttempts <= SSH_MAX_AUTH_ATTEMPTS)
+      {
+         //If the password has expired, the server should respond with an
+         //SSH_MSG_USERAUTH_PASSWD_CHANGEREQ message
+         error = sshSendUserAuthPasswdChangeReq(connection,
+            connection->passwordChangePrompt);
+      }
+      else
+      {
+         //If the threshold is exceeded, the server should disconnect (refer
+         //to RFC 4252, section 4)
+         error = sshSendDisconnect(connection, SSH_DISCONNECT_BY_APPLICATION,
+            "Too many authentication attempts");
+      }
    }
    else
    {

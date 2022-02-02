@@ -6,7 +6,7 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later
  *
- * Copyright (C) 2019-2021 Oryx Embedded SARL. All rights reserved.
+ * Copyright (C) 2019-2022 Oryx Embedded SARL. All rights reserved.
  *
  * This file is part of CycloneSSH Open.
  *
@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.1.2
+ * @version 2.1.4
  **/
 
 #ifndef _SSH_SERVER_H
@@ -80,8 +80,13 @@ typedef struct
    SshChannel *channels;                                         ///<SSH channels
    const PrngAlgo *prngAlgo;                                     ///<Pseudo-random number generator to be used
    void *prngContext;                                            ///<Pseudo-random number generator context
-   SshPasswordAuthCallback passwordAuthCallback;                 ///<Password authentication callback
+#if (SSH_PUBLIC_KEY_AUTH_SUPPORT == ENABLED)
    SshPublicKeyAuthCallback publicKeyAuthCallback;               ///<Public key authentication callback
+#endif
+#if (SSH_PASSWORD_AUTH_SUPPORT == ENABLED)
+   SshPasswordAuthCallback passwordAuthCallback;                 ///<Password authentication callback
+   SshPasswordChangeCallback passwordChangeCallback;             ///<Password change callback
+#endif
 #if (SSH_SIGN_CALLBACK_SUPPORT == ENABLED)
    SshSignGenCallback signGenCallback;                           ///<Signature generation callback
    SshSignVerifyCallback signVerifyCallback;                     ///<Signature verification callback

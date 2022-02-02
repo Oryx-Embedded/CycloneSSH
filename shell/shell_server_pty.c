@@ -6,7 +6,7 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later
  *
- * Copyright (C) 2019-2021 Oryx Embedded SARL. All rights reserved.
+ * Copyright (C) 2019-2022 Oryx Embedded SARL. All rights reserved.
  *
  * This file is part of CycloneSSH Open.
  *
@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.1.2
+ * @version 2.1.4
  **/
 
 //Switch to the appropriate trace level
@@ -111,6 +111,7 @@ error_t shellServerProcessWindowResize(ShellServerSession *session)
          //Determine the current position of the cursor
          cursorPos = session->promptLen + session->bufferLen;
 
+         //Wrap to the next line if necessary
          if((cursorPos % newTermWidth) == 0)
          {
             error = sshWriteChannel(session->channel, " \r", 2, NULL, 0);
@@ -269,6 +270,14 @@ error_t shellServerProcessChar(ShellServerSession *session)
             {
                error = shellServerProcessDownKey(session);
             }
+            if(!osStrcmp(session->escSeq, VT100_PAGE_UP))
+            {
+               error = shellServerProcessPageUpKey(session);
+            }
+            else if(!osStrcmp(session->escSeq, VT100_PAGE_DOWN))
+            {
+               error = shellServerProcessPageDownKey(session);
+            }
             else
             {
                //Unknown escape sequence
@@ -294,6 +303,8 @@ error_t shellServerProcessChar(ShellServerSession *session)
          {
             //Properly terminate the command line with a NULL character
             session->buffer[session->bufferLen] = '\0';
+            //Add command line to history
+            shellServerAddCommandLine(session, session->buffer);
             //Process command line
             error = shellServerProcessCommandLine(session, session->buffer);
          }
@@ -642,8 +653,32 @@ error_t shellServerProcessRightKey(ShellServerSession *session)
 
 error_t shellServerProcessUpKey(ShellServerSession *session)
 {
-   //Ignore key
+#if (SHELL_SERVER_HISTORY_SUPPORT == ENABLED)
+   error_t error;
+   size_t n;
+   const char_t *p;
+
+   //Retrieve the previous command line from history
+   error = shellServerGetPrevCommandLine(session, &p, &n);
+
+   //Any entry found in history?
+   if(!error)
+   {
+      //Restore command line
+      error = shellRestoreCommandLine(session, p, n);
+   }
+   else
+   {
+      //The command history is empty
+      error = NO_ERROR;
+   }
+
+   //Return status code
+   return error;
+#else
+   //Ignore up key
    return NO_ERROR;
+#endif
 }
 
 
@@ -655,8 +690,202 @@ error_t shellServerProcessUpKey(ShellServerSession *session)
 
 error_t shellServerProcessDownKey(ShellServerSession *session)
 {
-   //Ignore key
+#if (SHELL_SERVER_HISTORY_SUPPORT == ENABLED)
+   error_t error;
+   size_t n;
+   const char_t *p;
+
+   //Retrieve the next command line from history
+   error = shellServerGetNextCommandLine(session, &p, &n);
+
+   //Any entry found in history?
+   if(!error)
+   {
+      //Restore command line
+      error = shellRestoreCommandLine(session, p, n);
+   }
+   else
+   {
+      //The command history is empty
+      error = NO_ERROR;
+   }
+
+   //Return status code
+   return error;
+#else
+   //Ignore down key
    return NO_ERROR;
+#endif
+}
+
+
+/**
+ * @brief Process page up key
+ * @param[in] session Handle referencing an shell session
+ * @return Error code
+ **/
+
+error_t shellServerProcessPageUpKey(ShellServerSession *session)
+{
+#if (SHELL_SERVER_HISTORY_SUPPORT == ENABLED)
+   error_t error;
+   size_t n;
+   const char_t *p;
+
+   //Retrieve the first command line from history
+   error = shellServerGetFirstCommandLine(session, &p, &n);
+
+   //Any entry found in history?
+   if(!error)
+   {
+      //Restore command line
+      error = shellRestoreCommandLine(session, p, n);
+   }
+   else
+   {
+      //The command history is empty
+      error = NO_ERROR;
+   }
+
+   //Return status code
+   return error;
+#else
+   //Ignore page up key
+   return NO_ERROR;
+#endif
+}
+
+
+/**
+ * @brief Process page down key
+ * @param[in] session Handle referencing an shell session
+ * @return Error code
+ **/
+
+error_t shellServerProcessPageDownKey(ShellServerSession *session)
+{
+#if (SHELL_SERVER_HISTORY_SUPPORT == ENABLED)
+   error_t error;
+   size_t n;
+   const char_t *p;
+
+   //Retrieve the last command line from history
+   error = shellServerGetLastCommandLine(session, &p, &n);
+
+   //Any entry found in history?
+   if(!error)
+   {
+      //Restore command line
+      error = shellRestoreCommandLine(session, p, n);
+   }
+   else
+   {
+      //The command history is empty
+      error = NO_ERROR;
+   }
+
+   //Return status code
+   return error;
+#else
+   //Ignore page down key
+   return NO_ERROR;
+#endif
+}
+
+
+/**
+ * @brief Clear command line
+ * @param[in] session Handle referencing an shell session
+ * @return error code
+ **/
+
+error_t shellClearCommandLine(ShellServerSession *session)
+{
+   error_t error;
+   uint_t y;
+   uint_t cursorPos;
+   char_t buffer[32];
+   size_t n;
+
+   //Determine the current position of the cursor
+   cursorPos = session->promptLen + session->bufferPos;
+   y = cursorPos / session->termWidth;
+
+   //Flush buffer
+   session->bufferLen = 0;
+   session->bufferPos = 0;
+
+   //Clear command line
+   n = osSprintf(buffer, "\r");
+
+   if(y > 0)
+   {
+      n += osSprintf(buffer + n, VT100_MOVE_CURSOR_UP_N, y);
+   }
+
+   n += osSprintf(buffer + n, VT100_CLEAR_SCREEN_DOWN);
+
+   error = sshWriteChannel(session->channel, buffer, osStrlen(buffer),
+      NULL, 0);
+
+   //Check status code
+   if(!error)
+   {
+      //Display shell prompt
+      error = sshWriteChannel(session->channel, session->prompt,
+         session->promptLen, NULL, 0);
+   }
+
+   //Return status code
+   return error;
+}
+
+
+/**
+ * @brief Restore command line
+ * @param[in] session Handle referencing an shell session
+ * @param[in] commandLine Pointer to the command line
+ * @param[in] length Length of the command line
+ * @return error code
+ **/
+
+error_t shellRestoreCommandLine(ShellServerSession *session,
+   const char_t *commandLine, size_t length)
+{
+   error_t error;
+   uint_t cursorPos;
+
+   //Clear entire line
+   error = shellClearCommandLine(session);
+
+   //Check status code
+   if(!error)
+   {
+      //Restore command line
+      osMemcpy(session->buffer, commandLine, length);
+      session->bufferLen = length;
+      session->bufferPos = length;
+
+      //Display command line
+      error = sshWriteChannel(session->channel, session->buffer,
+         session->bufferLen, NULL, 0);
+    }
+
+   //Check status code
+   if(!error)
+   {
+      //Determine the current position of the cursor
+      cursorPos = session->promptLen + session->bufferLen;
+
+      //Wrap to the next line if necessary
+      if((cursorPos % session->termWidth) == 0)
+      {
+         error = sshWriteChannel(session->channel, " \r", 2, NULL, 0);
+      }
+   }
+
+   //Return status code
+   return error;
 }
 
 #endif
