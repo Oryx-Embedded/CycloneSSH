@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.1.4
+ * @version 2.1.6
  **/
 
 //Switch to the appropriate trace level
@@ -76,6 +76,7 @@ void scpServerGetDefaultSettings(ScpServerSettings *settings)
 error_t scpServerInit(ScpServerContext *context,
    const ScpServerSettings *settings)
 {
+   error_t error;
    uint_t i;
 
    //Debug message
@@ -98,6 +99,9 @@ error_t scpServerInit(ScpServerContext *context,
    {
       return ERROR_INVALID_PARAMETER;
    }
+
+   //Initialize status code
+   error = NO_ERROR;
 
    //Clear SCP server context
    osMemset(context, 0, sizeof(ScpServerContext));
@@ -126,12 +130,19 @@ error_t scpServerInit(ScpServerContext *context,
    //Create an event object to poll the state of channels
    if(!osCreateEvent(&context->event))
    {
+      //Report an error
+      error = ERROR_OUT_OF_RESOURCES;
+   }
+
+   //Check status code
+   if(error)
+   {
       //Clean up side effects
       scpServerDeinit(context);
    }
 
-   //Successful initialization
-   return NO_ERROR;
+   //Return status code
+   return error;
 }
 
 
@@ -320,7 +331,7 @@ error_t scpServerSetHomeDir(ScpServerSession *session, const char_t *homeDir)
 
 /**
  * @brief SCP server task
- * @param[in] param Pointer to the SCP session
+ * @param[in] param Pointer to the SCP server context
  **/
 
 void scpServerTask(void *param)

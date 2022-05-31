@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.1.4
+ * @version 2.1.6
  **/
 
 //Switch to the appropriate trace level
@@ -207,97 +207,108 @@ error_t shellServerChannelRequestCallback(SshChannel *channel,
    }
    else if(sshCompareString(type, "exec"))
    {
-      SshExecReqParams requestParams;
+      SshString arg;
+      SshExecParams requestParams;
 
       //This message will request that the server start the execution of the
       //given command
-      error = sshParseExecReqParams(data, length, &requestParams);
+      error = sshParseExecParams(data, length, &requestParams);
 
       //Successful parsing?
       if(!error)
       {
-         //Check the length of the command line
-         if(requestParams.command.length < SHELL_SERVER_BUFFER_SIZE)
+         //Check the first argument of the command line
+         if(sshGetExecArg(&requestParams, 0, &arg) &&
+            sshCompareString(&arg, "scp"))
          {
-            //Retrieve the session that matches the channel number
-            session = shellServerFindSession(context, channel);
-
-            //If no matching session exists, a new session is started
-            if(session == NULL)
+            //Always reject SCP requests
+            error = ERROR_UNKNOWN_REQUEST;
+         }
+         else
+         {
+            //Check the length of the command line
+            if(requestParams.command.length < SHELL_SERVER_BUFFER_SIZE)
             {
-               //Allocate a new session
-               session = shellServerOpenSession(context, channel);
-            }
+               //Retrieve the session that matches the channel number
+               session = shellServerFindSession(context, channel);
 
-            //Valid session handle?
-            if(session != NULL)
-            {
-               //Check session state
-               if(session->state == SHELL_SERVER_SESSION_STATE_INIT)
+               //If no matching session exists, a new session is started
+               if(session == NULL)
                {
-                  //Invoke user-defined callback, if any
-                  if(context->checkUserCallback != NULL)
+                  //Allocate a new session
+                  session = shellServerOpenSession(context, channel);
+               }
+
+               //Valid session handle?
+               if(session != NULL)
+               {
+                  //Check session state
+                  if(session->state == SHELL_SERVER_SESSION_STATE_INIT)
                   {
-                     //Check user name
-                     status = context->checkUserCallback(session,
-                        channel->connection->user);
+                     //Invoke user-defined callback, if any
+                     if(context->checkUserCallback != NULL)
+                     {
+                        //Check user name
+                        status = context->checkUserCallback(session,
+                           channel->connection->user);
+                     }
+                     else
+                     {
+                        status = SHELL_ACCESS_ALLOWED;
+                     }
+
+                     //Check if user is granted access to the shell
+                     if(status == SHELL_ACCESS_ALLOWED)
+                     {
+                        //Set initial session state
+                        session->state = SHELL_SERVER_SESSION_STATE_EXEC;
+
+                        //Copy command string
+                        osMemcpy(session->buffer, requestParams.command.value,
+                           requestParams.command.length);
+
+                        //Properly terminate the string with a NULL character
+                        session->buffer[requestParams.command.length] = '\0';
+                        //Save the length of the command
+                        session->bufferLen = requestParams.command.length;
+
+                        //Start the execution of the given command
+                        osSetEvent(&session->startEvent);
+                     }
+                     else
+                     {
+                        //Access denied
+                        shellServerCloseSession(session);
+                     }
                   }
                   else
                   {
-                     status = SHELL_ACCESS_ALLOWED;
-                  }
-
-                  //Check if user is granted access to the shell
-                  if(status == SHELL_ACCESS_ALLOWED)
-                  {
-                     //Set initial session state
-                     session->state = SHELL_SERVER_SESSION_STATE_EXEC;
-
-                     //Copy command string
-                     osMemcpy(session->buffer, requestParams.command.value,
-                        requestParams.command.length);
-
-                     //Properly terminate the string with a NULL character
-                     session->buffer[requestParams.command.length] = '\0';
-                     //Save the length of the command
-                     session->bufferLen = requestParams.command.length;
-
-                     //Start the execution of the given command
-                     osSetEvent(&session->startEvent);
-                  }
-                  else
-                  {
-                     //Access denied
-                     shellServerCloseSession(session);
+                     //Only one of the "shell", "exec" and "subsystem" requests
+                     //can succeed per channel (refer to RFC 4254, section 6.5)
+                     error = ERROR_WRONG_STATE;
                   }
                }
                else
                {
-                  //Only one of the "shell", "exec" and "subsystem" requests can
-                  //succeed per channel (refer to RFC 4254, section 6.5)
-                  error = ERROR_WRONG_STATE;
+                  //The session table runs out of resources
+                  error = ERROR_OUT_OF_RESOURCES;
                }
             }
             else
             {
-               //The session table runs out of resources
-               error = ERROR_OUT_OF_RESOURCES;
+               //The command line is too long
+               error = ERROR_INVALID_LENGTH;
             }
-         }
-         else
-         {
-            //The command line is too long
-            error = ERROR_INVALID_LENGTH;
          }
       }
    }
    else if(sshCompareString(type, "window-change"))
    {
-      SshWindowChangeReqParams requestParams;
+      SshWindowChangeParams requestParams;
 
       //When the window (terminal) size changes on the client side, it may
       //send a message to the other side to inform it of the new dimensions
-      error = sshParseWindowChangeReqParams(data, length, &requestParams);
+      error = sshParseWindowChangeParams(data, length, &requestParams);
 
       //Successful parsing?
       if(!error)
@@ -337,17 +348,17 @@ error_t shellServerChannelRequestCallback(SshChannel *channel,
    }
    else if(sshCompareString(type, "signal"))
    {
-      SshSignalReqParams requestParams;
+      SshSignalParams requestParams;
 
       //Parse type-specific data
-      error = sshParseSignalReqParams(data, length, &requestParams);
+      error = sshParseSignalParams(data, length, &requestParams);
    }
    else if(sshCompareString(type, "break"))
    {
-      SshBreakReqParams requestParams;
+      SshBreakParams requestParams;
 
       //Parse type-specific data
-      error = sshParseBreakReqParams(data, length, &requestParams);
+      error = sshParseBreakParams(data, length, &requestParams);
    }
    else
    {

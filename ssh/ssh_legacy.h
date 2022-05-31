@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.1.4
+ * @version 2.1.6
  **/
 
 #ifndef _SSH_LEGACY_H
@@ -33,7 +33,6 @@
 
 //Deprecated definitions
 #define SshClientConnection SshConnection
-#define SshWindowChangeParams SshWindowChangeReqParams
 #define passwordCallback passwordAuthCallback
 #define termWidthChar termWidthChars
 #define termHeightChar termHeightRows
@@ -45,7 +44,6 @@
 #define sshServerWriteChannel sshWriteChannel
 #define sshServerReadChannel sshReadChannel
 #define sshServerTerminateChannel sshCloseChannel
-#define sshParseWindowChangeParams sshParseWindowChangeReqParams
 
 #ifdef SSH_RC4_SUPPORT
    #define SSH_RC4_128_SUPPORT SSH_RC4_SUPPORT
@@ -101,5 +99,8 @@
 #define SshAccessStatus SshAuthStatus
 #define SSH_ACCESS_DENIED SSH_AUTH_STATUS_FAILURE
 #define SSH_ACCESS_ALLOWED SSH_AUTH_STATUS_SUCCESS
+
+#define SshWindowChangeReqParams SshWindowChangeParams
+#define sshParseWindowChangeReqParams sshParseWindowChangeParams
 
 #endif

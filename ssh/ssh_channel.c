@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.1.4
+ * @version 2.1.6
  **/
 
 //Switch to the appropriate trace level
@@ -579,7 +579,7 @@ error_t sshUpdateChannelWindow(SshChannel *channel, uint32_t windowSizeInc)
    //Update window size increment
    channel->rxWindowSizeInc += windowSizeInc;
 
-   //Notify the SSH server that the flow-control window should be updated
+   //Notify the SSH core that the flow-control window should be updated
    sshNotifyEvent(channel->context);
 
    //Return status code

@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.1.4
+ * @version 2.1.6
  **/
 
 #ifndef _SSH_ALGORITHMS_H
@@ -40,7 +40,8 @@ extern "C" {
 #endif
 
 //SSH related functions
-error_t sshFormatKexAlgoList(SshContext *context, uint8_t *p, size_t *written);
+error_t sshFormatKexAlgoList(SshConnection *connection, uint8_t *p,
+   size_t *written);
 
 error_t sshFormatHostKeyAlgoList(SshContext *context, uint8_t *p,
    size_t *written);
@@ -51,10 +52,13 @@ error_t sshFormatMacAlgoList(SshContext *context, uint8_t *p, size_t *written);
 error_t sshFormatCompressionAlgoList(SshContext *context, uint8_t *p,
    size_t *written);
 
-const char_t *sshSelectAlgo(SshContext *context, const SshNameList *peerAlgoList,
-   const char_t **supportedAlgoList, uint_t supportedAlgoListLen);
+error_t sshFormatPublicKeyAlgoList(SshContext *context, uint8_t *p,
+   size_t *written);
 
-const char_t *sshSelectKexAlgo(SshContext *context,
+const char_t *sshSelectAlgo(SshContext *context, const SshNameList *peerAlgoList,
+   const char_t *const *supportedAlgoList, uint_t supportedAlgoListLen);
+
+const char_t *sshSelectKexAlgo(SshConnection *connection,
    const SshNameList *peerAlgoList);
 
 const char_t *sshSelectHostKeyAlgo(SshContext *context,
@@ -63,19 +67,24 @@ const char_t *sshSelectHostKeyAlgo(SshContext *context,
 const char_t *sshSelectEncAlgo(SshContext *context,
    const SshNameList *peerAlgoList);
 
-const char_t *sshSelectMacAlgo(SshContext *context,
+const char_t *sshSelectMacAlgo(SshContext *context, const char_t *encAlgo,
    const SshNameList *peerAlgoList);
 
 const char_t *sshSelectCompressionAlgo(SshContext *context,
    const SshNameList *peerAlgoList);
 
-const char_t *sshSelectPublicKeyAlgo(const char_t *keyFormatId);
+const char_t *sshSelectPublicKeyAlgo(SshContext *context,
+   const char_t *keyFormatId, const SshNameList *peerAlgoList);
+
+const char_t *sshGetKeyFormatId(const SshString *publicKeyAlgo);
+const char_t *sshGetSignFormatId(const SshString *publicKeyAlgo);
 
 bool_t sshIsGuessCorrect(SshContext *context, const SshNameList *kexAlgoList,
    const SshNameList *hostKeyAlgoList);
 
 bool_t sshIsDhKexAlgo(const char_t *kexAlgo);
 bool_t sshIsEcdhKexAlgo(const char_t *kexAlgo);
+bool_t sshIsCertPublicKeyAlgo(const SshString *publicKeyAlgo);
 
 //C++ guard
 #ifdef __cplusplus

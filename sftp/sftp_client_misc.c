@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.1.4
+ * @version 2.1.6
  **/
 
 //Switch to the appropriate trace level
@@ -223,7 +223,7 @@ error_t sftpClientEstablishConnection(SftpClientContext *context)
       }
       else if(context->state == SFTP_CLIENT_STATE_CHANNEL_REQUEST)
       {
-         SshSubsystemReqParams requestParams;
+         SshSubsystemParams requestParams;
 
          //Set "subsystem" request parameters
          requestParams.subsystemName.value = "sftp";

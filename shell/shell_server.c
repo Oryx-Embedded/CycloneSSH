@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.1.4
+ * @version 2.1.6
  **/
 
 //Switch to the appropriate trace level
@@ -396,7 +396,7 @@ error_t shellServerSaveHistory(ShellServerSession *session, char_t *history,
 
 /**
  * @brief Restore command history
- * @param[in] param Pointer to the shell session
+ * @param[in] session Pointer to the shell session
  * @param[in] history Pointer to the buffer that contains the command history
  * @param[in] length Length of the command history, in bytes
  * @return Error code
@@ -453,7 +453,7 @@ error_t shellServerRestoreHistory(ShellServerSession *session,
 
 /**
  * @brief Clear command history
- * @param[in] param Pointer to the shell session
+ * @param[in] session Pointer to the shell session
  * @return Error code
  **/
 

@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.1.4
+ * @version 2.1.6
  **/
 
 //Switch to the appropriate trace level
@@ -409,6 +409,16 @@ error_t sshFormatChannelOpen(SshChannel *channel, const char_t *channelType,
       //A "session" channel does not specify any type-specific data
       n = 0;
    }
+   else if(!osStrcmp(channelType, "forwarded-tcpip"))
+   {
+      //Format "forwarded-tcpip" channel specific data
+      error = sshFormatForwardedTcpIpParams(channelParams, p, &n);
+   }
+   else if(!osStrcmp(channelType, "direct-tcpip"))
+   {
+      //Format "direct-tcpip" channel specific data
+      error = sshFormatDirectTcpIpParams(channelParams, p, &n);
+   }
    else
    {
       //Report an error
@@ -424,6 +434,132 @@ error_t sshFormatChannelOpen(SshChannel *channel, const char_t *channelType,
 
    //Return status code
    return error;
+}
+
+
+/**
+ * @brief Format "forwarded-tcpip" channel parameters
+ * @param[in] params Pointer to the channel specific parameters
+ * @param[out] p Output stream where to write the channel specific data
+ * @param[out] written Total number of bytes that have been written
+ * @return Error code
+ **/
+
+error_t sshFormatForwardedTcpIpParams(const SshForwardedTcpIpParams *params,
+   uint8_t *p, size_t *written)
+{
+   error_t error;
+   size_t n;
+
+   //Check parameters
+   if(params == NULL)
+      return ERROR_INVALID_PARAMETER;
+
+   //Total length of the channel specific data
+   *written = 0;
+
+   //Set 'address that was connected' field
+   error = sshFormatBinaryString(params->addrConnected.value,
+      params->addrConnected.length, p, &n);
+   //Any error to report?
+   if(error)
+      return error;
+
+   //Point to the next field
+   p += n;
+   *written += n;
+
+   //Set 'port that was connected' field
+   STORE32BE(params->portConnected, p);
+
+   //Point to the next field
+   p += sizeof(uint32_t);
+   *written += sizeof(uint32_t);
+
+   //Set 'originator IP address' field
+   error = sshFormatBinaryString(params->originIpAddr.value,
+      params->originIpAddr.length, p, &n);
+   //Any error to report?
+   if(error)
+      return error;
+
+   //Point to the next field
+   p += n;
+   *written += n;
+
+   //Set 'originator port' field
+   STORE32BE(params->originPort, p);
+
+   //Total number of bytes that have been written
+   *written += n;
+
+   //Successful processing
+   return NO_ERROR;
+}
+
+
+/**
+ * @brief Format "direct-tcpip" channel parameters
+ * @param[in] params Pointer to the channel specific parameters
+ * @param[out] p Output stream where to write the channel specific data
+ * @param[out] written Total number of bytes that have been written
+ * @return Error code
+ **/
+
+error_t sshFormatDirectTcpIpParams(const SshDirectTcpIpParams *params,
+   uint8_t *p, size_t *written)
+{
+   error_t error;
+   size_t n;
+
+   //Check parameters
+   if(params == NULL)
+      return ERROR_INVALID_PARAMETER;
+
+   //Total length of the channel specific data
+   *written = 0;
+
+   //The 'host to connect' field specifies the TCP/IP host where the recipient
+   //should connect the channel
+   error = sshFormatBinaryString(params->hostToConnect.value,
+      params->hostToConnect.length, p, &n);
+   //Any error to report?
+   if(error)
+      return error;
+
+   //Point to the next field
+   p += n;
+   *written += n;
+
+   //The 'port to connect' field specifies the port where the recipient should
+   //connect the channel
+   STORE32BE(params->portToConnect, p);
+
+   //Point to the next field
+   p += sizeof(uint32_t);
+   *written += sizeof(uint32_t);
+
+   //The 'originator IP address' field is the numeric IP address of the machine
+   //from where the connection request originates
+   error = sshFormatBinaryString(params->originIpAddr.value,
+      params->originIpAddr.length, p, &n);
+   //Any error to report?
+   if(error)
+      return error;
+
+   //Point to the next field
+   p += n;
+   *written += n;
+
+   //The 'originator port' field is the port on the host from where the
+   //connection originated
+   STORE32BE(params->originPort, p);
+
+   //Total number of bytes that have been written
+   *written += n;
+
+   //Successful processing
+   return NO_ERROR;
 }
 
 
@@ -731,12 +867,17 @@ error_t sshParseChannelOpen(SshConnection *connection,
    const uint8_t *message, size_t length)
 {
    error_t error;
+   uint_t i;
    const uint8_t *p;
    uint32_t senderChannel;
    uint32_t initialWindowSize;
    uint32_t maxPacketSize;
    SshString channelType;
    SshChannel *channel;
+   SshContext *context;
+
+   //Point to the SSH context
+   context = connection->context;
 
    //Debug message
    TRACE_INFO("SSH_MSG_CHANNEL_OPEN message received (%" PRIuSIZE " bytes)...\r\n", length);
@@ -787,8 +928,16 @@ error_t sshParseChannelOpen(SshConnection *connection,
    p += sizeof(uint32_t);
    length -= sizeof(uint32_t);
 
+   //Malformed message?
+   if(length < sizeof(uint32_t))
+       return ERROR_INVALID_MESSAGE;
+
    //Get maximum packet size
    maxPacketSize = LOAD32BE(p);
+
+   //Point to the next field
+   p += sizeof(uint32_t);
+   length -= sizeof(uint32_t);
 
    //Debug message
    TRACE_DEBUG("  Sender Channel = %" PRIu32 "\r\n", senderChannel);
@@ -803,22 +952,24 @@ error_t sshParseChannelOpen(SshConnection *connection,
    if(!sshCheckRemoteChannelNum(connection, senderChannel))
       return ERROR_ILLEGAL_PARAMETER;
 
-   //Check whether SSH operates as a client or a server?
-   if(connection->context->mode == SSH_OPERATION_MODE_CLIENT)
+   //Check channel type
+   if(sshCompareString(&channelType, "session"))
    {
-      //The client implementation rejects server's requests
-      error = sshSendChannelOpenFailure(connection, senderChannel,
-         SSH_OPEN_ADMINISTRATIVELY_PROHIBITED, "Administratively prohibited");
-   }
-   else
-   {
-      //Check channel type
-      if(sshCompareString(&channelType, "session"))
-      {
-         //Malformed message?
-         if(length != sizeof(uint32_t))
-            return ERROR_INVALID_MESSAGE;
+      //A "session" channel does not specify any type-specific data
+      if(length != 0)
+         return ERROR_INVALID_MESSAGE;
 
+      //Check whether SSH operates as a client or a server
+      if(connection->context->mode == SSH_OPERATION_MODE_CLIENT)
+      {
+         //Client implementations should reject any session channel open
+         //requests to make it more difficult for a corrupt server to attack
+         //the client (refer to RFC 4254, section 6.1)
+         error = sshSendChannelOpenFailure(connection, senderChannel,
+            SSH_OPEN_ADMINISTRATIVELY_PROHIBITED, "Administratively prohibited");
+      }
+      else
+      {
          //The server decides whether it can open the channel
          channel = sshCreateChannel(connection);
 
@@ -842,9 +993,30 @@ error_t sshParseChannelOpen(SshConnection *connection,
                SSH_OPEN_RESOURCE_SHORTAGE, "Maximum number of channels exceeded");
          }
       }
-      else
+   }
+   else
+   {
+      //Initialize status code
+      error = ERROR_UNKNOWN_TYPE;
+
+      //Multiple callbacks may be registered
+      for(i = 0; i < SSH_MAX_CHANNEL_OPEN_CALLBACKS &&
+         error == ERROR_UNKNOWN_TYPE; i++)
       {
-         //Send an SSH_MSG_CHANNEL_OPEN_FAILURE message to the client
+         //Valid callback function?
+         if(context->channelOpenCallback[i] != NULL)
+         {
+            //Process channel open request
+            error = context->channelOpenCallback[i](connection, &channelType,
+               senderChannel, initialWindowSize, maxPacketSize, p, length,
+               context->channelOpenParam[i]);
+         }
+      }
+
+      //Check status code
+      if(error == ERROR_UNKNOWN_TYPE)
+      {
+         //Send an SSH_MSG_CHANNEL_OPEN_FAILURE message to the peer
          error = sshSendChannelOpenFailure(connection, senderChannel,
             SSH_OPEN_UNKNOWN_CHANNEL_TYPE, "Unknown channel type");
       }
@@ -852,6 +1024,122 @@ error_t sshParseChannelOpen(SshConnection *connection,
 
    //Return status code
    return error;
+}
+
+
+/**
+ * @brief Parse "forwarded-tcpip" channel parameters
+ * @param[in] p Pointer to the channel specific data
+ * @param[in] length Length of the channel specific data, in bytes
+ * @param[out] params Information resulting from the parsing process
+ * @return Error code
+ **/
+
+error_t sshParseForwardedTcpIpParams(const uint8_t *p, size_t length,
+   SshForwardedTcpIpParams *params)
+{
+   error_t error;
+
+   //Parse 'address that was connected' field
+   error = sshParseString(p, length, &params->addrConnected);
+   //Any error to report?
+   if(error)
+      return error;
+
+   //Point to the next field
+   p += sizeof(uint32_t) + params->addrConnected.length;
+   length -= sizeof(uint32_t) + params->addrConnected.length;
+
+   //Malformed message?
+   if(length < sizeof(uint32_t))
+      return ERROR_INVALID_MESSAGE;
+
+   //Parse 'port that was connected' field
+   params->portConnected = LOAD32BE(p);
+
+   //Point to the next field
+   p += sizeof(uint32_t);
+   length -= sizeof(uint32_t);
+
+   //Parse 'originator IP address' field
+   error = sshParseString(p, length, &params->originIpAddr);
+   //Any error to report?
+   if(error)
+      return error;
+
+   //Point to the next field
+   p += sizeof(uint32_t) + params->originIpAddr.length;
+   length -= sizeof(uint32_t) + params->originIpAddr.length;
+
+   //Malformed message?
+   if(length != sizeof(uint32_t))
+      return ERROR_INVALID_MESSAGE;
+
+   //Parse 'originator port' field
+   params->originPort = LOAD32BE(p);
+
+   //Successful processing
+   return NO_ERROR;
+}
+
+
+/**
+ * @brief Parse "direct-tcpip" channel parameters
+ * @param[in] p Pointer to the channel specific data
+ * @param[in] length Length of the channel specific data, in bytes
+ * @param[out] params Information resulting from the parsing process
+ * @return Error code
+ **/
+
+error_t sshParseDirectTcpIpParams(const uint8_t *p, size_t length,
+   SshDirectTcpIpParams *params)
+{
+   error_t error;
+
+   //The 'host to connect' field specifies the TCP/IP host where the recipient
+   //should connect the channel
+   error = sshParseString(p, length, &params->hostToConnect);
+   //Any error to report?
+   if(error)
+      return error;
+
+   //Point to the next field
+   p += sizeof(uint32_t) + params->hostToConnect.length;
+   length -= sizeof(uint32_t) + params->hostToConnect.length;
+
+   //Malformed message?
+   if(length < sizeof(uint32_t))
+      return ERROR_INVALID_MESSAGE;
+
+   //The 'port to connect' field specifies the port where the recipient should
+   //connect the channel
+   params->portToConnect = LOAD32BE(p);
+
+   //Point to the next field
+   p += sizeof(uint32_t);
+   length -= sizeof(uint32_t);
+
+   //The 'originator IP address' field is the numeric IP address of the machine
+   //from where the connection request originates
+   error = sshParseString(p, length, &params->originIpAddr);
+   //Any error to report?
+   if(error)
+      return error;
+
+   //Point to the next field
+   p += sizeof(uint32_t) + params->originIpAddr.length;
+   length -= sizeof(uint32_t) + params->originIpAddr.length;
+
+   //Malformed message?
+   if(length != sizeof(uint32_t))
+      return ERROR_INVALID_MESSAGE;
+
+   //The 'originator port' field is the port on the host from where the
+   //connection originated
+   params->originPort = LOAD32BE(p);
+
+   //Successful processing
+   return NO_ERROR;
 }
 
 

@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.1.4
+ * @version 2.1.6
  **/
 
 //Switch to the appropriate trace level
@@ -215,6 +215,7 @@ error_t sshGenerateExchangeHashSignature(SshConnection *connection, uint8_t *p,
 {
    error_t error;
    SshHostKey *hostKey;
+   SshBinaryString exchangeHash;
 
    //Compute H = hash(V_C || V_S || I_C || I_S || K_S || e || f || K)
    error = sshFinalizeExchangeHash(connection, connection->h,
@@ -240,9 +241,13 @@ error_t sshGenerateExchangeHashSignature(SshConnection *connection, uint8_t *p,
       //Valid host key?
       if(hostKey != NULL)
       {
+         //Get the resulting exchange hash
+         exchangeHash.value = connection->h;
+         exchangeHash.length = connection->hLen;
+
          //Compute the signature on the exchange hash
          error = sshGenerateSignature(connection, connection->serverHostKeyAlgo,
-            hostKey, connection->h, connection->hLen, p, written);
+            hostKey, NULL, &exchangeHash, p, written);
       }
       else
       {
@@ -269,6 +274,7 @@ error_t sshVerifyExchangeHashSignature(SshConnection *connection,
 {
    error_t error;
    SshString serverHostKeyAlgo;
+   SshBinaryString exchangeHash;
 
    //Compute H = hash(V_C || V_S || I_C || I_S || K_S || e || f || K)
    error = sshFinalizeExchangeHash(connection, connection->h,
@@ -292,9 +298,13 @@ error_t sshVerifyExchangeHashSignature(SshConnection *connection,
       serverHostKeyAlgo.value = connection->serverHostKeyAlgo;
       serverHostKeyAlgo.length = osStrlen(connection->serverHostKeyAlgo);
 
+      //Get the resulting exchange hash
+      exchangeHash.value = connection->h;
+      exchangeHash.length = connection->hLen;
+
       //Verify the signature on the exchange hash
       error = sshVerifySignature(connection, &serverHostKeyAlgo, serverHostKey,
-         connection->h, connection->hLen, signature);
+         NULL, &exchangeHash, signature);
    }
 
    //Return status code

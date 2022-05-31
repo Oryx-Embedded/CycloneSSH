@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.1.4
+ * @version 2.1.6
  **/
 
 //Switch to the appropriate trace level
@@ -33,6 +33,8 @@
 
 //Dependencies
 #include "ssh/ssh.h"
+#include "ssh/ssh_algorithms.h"
+#include "ssh/ssh_extensions.h"
 #include "ssh/ssh_transport.h"
 #include "ssh/ssh_kex.h"
 #include "ssh/ssh_kex_dh.h"
@@ -41,9 +43,9 @@
 #include "ssh/ssh_channel.h"
 #include "ssh/ssh_packet.h"
 #include "ssh/ssh_key_import.h"
-#include "ssh/ssh_key_export.h"
+#include "ssh/ssh_key_format.h"
+#include "ssh/ssh_cert_import.h"
 #include "ssh/ssh_misc.h"
-#include "pkix/pem_import.h"
 #include "debug.h"
 
 //Check SSH stack configuration
@@ -59,6 +61,7 @@
 
 SshConnection *sshOpenConnection(SshContext *context, Socket *socket)
 {
+   error_t error;
    uint_t i;
    SshConnection *connection;
 
@@ -71,24 +74,47 @@ SshConnection *sshOpenConnection(SshContext *context, Socket *socket)
    //Loop through the connection table
    for(i = 0; i < context->numConnections; i++)
    {
-      //Unused SSH channel?
+      //Unused SSH connection?
       if(context->connections[i].state == SSH_CONN_STATE_CLOSED)
       {
-         //Point to the current SSH connection
          connection = &context->connections[i];
+         break;
+      }
+   }
 
-         //Clear the structure describing the connection
-         osMemset(connection, 0, sizeof(SshConnection));
+   //Valid connection handle?
+   if(connection != NULL)
+   {
+      //Clear the structure describing the connection
+      osMemset(connection, 0, sizeof(SshConnection));
 
-         //Attach SSH server context
-         connection->context = context;
-         //Attach socket handle
-         connection->socket = socket;
-         //Index of the selected host key
-         connection->hostKeyIndex = 0;
-         //Initialize time stamp
-         connection->timestamp = osGetSystemTime();
+      //Attach SSH context
+      connection->context = context;
+      //Attach socket handle
+      connection->socket = socket;
+      //Index of the selected host key
+      connection->hostKeyIndex = -1;
+      //Initialize time stamp
+      connection->timestamp = osGetSystemTime();
 
+      //Initialize status code
+      error = NO_ERROR;
+
+      //Multiple callbacks may be registered
+      for(i = 0; i < SSH_MAX_CONN_OPEN_CALLBACKS && !error; i++)
+      {
+         //Valid callback function?
+         if(context->connectionOpenCallback[i] != NULL)
+         {
+            //Invoke callback function
+            error = context->connectionOpenCallback[i](connection,
+               context->connectionOpenParam[i]);
+         }
+      }
+
+      //Check status code
+      if(!error)
+      {
 #if (SSH_DH_SUPPORT == ENABLED)
          //Initialize Diffie-Hellman context
          dhInit(&connection->dhContext);
@@ -112,9 +138,13 @@ SshConnection *sshOpenConnection(SshContext *context, Socket *socket)
          {
             connection->state = SSH_CONN_STATE_SERVER_ID;
          }
-
-         //We are done
-         break;
+      }
+      else
+      {
+         //Clean up side effects
+         connection->socket = NULL;
+         //Return an invalid handle
+         connection = NULL;
       }
    }
 
@@ -181,6 +211,9 @@ void sshCloseConnection(SshConnection *connection)
       connection->socket = NULL;
    }
 
+   //Deselect the host key
+   connection->hostKeyIndex = -1;
+
 #if (SSH_DH_SUPPORT == ENABLED)
    //Release Diffie-Hellman context
    dhFree(&connection->dhContext);
@@ -189,6 +222,18 @@ void sshCloseConnection(SshConnection *connection)
    //Release ECDH context
    ecdhFree(&connection->ecdhContext);
 #endif
+
+   //Multiple callbacks may be registered
+   for(i = 0; i < SSH_MAX_CONN_CLOSE_CALLBACKS; i++)
+   {
+      //Valid callback function?
+      if(context->connectionCloseCallback[i] != NULL)
+      {
+         //Invoke callback function
+         context->connectionCloseCallback[i](connection,
+            context->connectionCloseParam[i]);
+      }
+   }
 
    //Mark the connection as closed
    connection->state = SSH_CONN_STATE_CLOSED;
@@ -235,6 +280,7 @@ void sshRegisterConnectionEvents(SshContext *context, SshConnection *connection,
          connection->state == SSH_CONN_STATE_KEX_DH_INIT ||
          connection->state == SSH_CONN_STATE_KEX_ECDH_INIT ||
          connection->state == SSH_CONN_STATE_CLIENT_NEW_KEYS ||
+         connection->state == SSH_CONN_STATE_CLIENT_EXT_INFO ||
          connection->state == SSH_CONN_STATE_SERVICE_REQUEST ||
          connection->state == SSH_CONN_STATE_USER_AUTH_REQUEST)
       {
@@ -247,9 +293,12 @@ void sshRegisterConnectionEvents(SshContext *context, SshConnection *connection,
       }
       else if(connection->state == SSH_CONN_STATE_SERVER_ID ||
          connection->state == SSH_CONN_STATE_SERVER_KEX_INIT ||
-         connection->state == SSH_CONN_STATE_SERVER_NEW_KEYS)
+         connection->state == SSH_CONN_STATE_SERVER_NEW_KEYS ||
+         connection->state == SSH_CONN_STATE_SERVER_EXT_INFO_1 ||
+         connection->state == SSH_CONN_STATE_SERVER_EXT_INFO_2 ||
+         connection->state == SSH_CONN_STATE_USER_AUTH_SUCCESS)
       {
-         //Client operation mode?
+         //Server operation mode?
          if(connection->context->mode == SSH_OPERATION_MODE_SERVER)
          {
             //Wait until there is more room in the send buffer
@@ -381,6 +430,13 @@ error_t sshProcessConnectionEvents(SshContext *context,
                error = sshSendKexEcdhInit(connection);
             }
 #endif
+#if (SSH_EXT_INFO_SUPPORT == ENABLED)
+            else if(connection->state == SSH_CONN_STATE_CLIENT_EXT_INFO)
+            {
+               //Send SSH_MSG_EXT_INFO message
+               error = sshSendExtInfo(connection);
+            }
+#endif
             else if(connection->state == SSH_CONN_STATE_SERVICE_REQUEST)
             {
                //Send SSH_MSG_SERVICE_REQUEST message
@@ -396,8 +452,11 @@ error_t sshProcessConnectionEvents(SshContext *context,
                connection->state == SSH_CONN_STATE_KEX_DH_REPLY ||
                connection->state == SSH_CONN_STATE_KEX_ECDH_REPLY ||
                connection->state == SSH_CONN_STATE_SERVER_NEW_KEYS ||
+               connection->state == SSH_CONN_STATE_SERVER_EXT_INFO_1 ||
+               connection->state == SSH_CONN_STATE_SERVER_EXT_INFO_2 ||
                connection->state == SSH_CONN_STATE_SERVICE_ACCEPT ||
                connection->state == SSH_CONN_STATE_USER_AUTH_REPLY ||
+               connection->state == SSH_CONN_STATE_USER_AUTH_SUCCESS ||
                connection->state == SSH_CONN_STATE_OPEN)
             {
                //Receive incoming packet
@@ -437,11 +496,25 @@ error_t sshProcessConnectionEvents(SshContext *context,
                //Send SSH_MSG_NEWKEYS message
                error = sshSendNewKeys(connection);
             }
+#if (SSH_EXT_INFO_SUPPORT == ENABLED)
+            else if(connection->state == SSH_CONN_STATE_SERVER_EXT_INFO_1 ||
+               connection->state == SSH_CONN_STATE_SERVER_EXT_INFO_2)
+            {
+               //Send SSH_MSG_EXT_INFO message
+               error = sshSendExtInfo(connection);
+            }
+#endif
+            else if(connection->state == SSH_CONN_STATE_USER_AUTH_SUCCESS)
+            {
+               //Send SSH_MSG_USERAUTH_SUCCESS message
+               error = sshSendUserAuthSuccess(connection);
+            }
             else if(connection->state == SSH_CONN_STATE_CLIENT_ID ||
                connection->state == SSH_CONN_STATE_CLIENT_KEX_INIT ||
                connection->state == SSH_CONN_STATE_KEX_DH_INIT ||
                connection->state == SSH_CONN_STATE_KEX_ECDH_INIT ||
                connection->state == SSH_CONN_STATE_CLIENT_NEW_KEYS ||
+               connection->state == SSH_CONN_STATE_CLIENT_EXT_INFO ||
                connection->state == SSH_CONN_STATE_SERVICE_REQUEST ||
                connection->state == SSH_CONN_STATE_USER_AUTH_REQUEST ||
                connection->state == SSH_CONN_STATE_OPEN)
@@ -583,7 +656,7 @@ void sshNotifyEvent(SshContext *context)
 /**
  * @brief Get the currently selected host key
  * @param[in] connection Pointer to the SSH connection
- * @return Selected host key
+ * @return Pointer to the selected host key
  **/
 
 SshHostKey *sshGetHostKey(SshConnection *connection)
@@ -594,17 +667,19 @@ SshHostKey *sshGetHostKey(SshConnection *connection)
    //Point to the SSH context
    context = connection->context;
 
+   //No host key is currently selected
+   hostKey = NULL;
+
    //Ensure the index is valid
-   if(connection->hostKeyIndex >= 1 &&
-      connection->hostKeyIndex <= context->numHostKeys)
+   if(connection->hostKeyIndex >= 0 &&
+      connection->hostKeyIndex < SSH_MAX_HOST_KEYS)
    {
-      //Point to the selected host key
-      hostKey = &context->hostKeys[connection->hostKeyIndex - 1];
-   }
-   else
-   {
-      //No host key is currently selected
-      hostKey = NULL;
+      //Valid host key?
+      if(context->hostKeys[connection->hostKeyIndex].keyFormatId != NULL)
+      {
+         //Point to the selected host key
+         hostKey = &context->hostKeys[connection->hostKeyIndex];
+      }
    }
 
    //Return the selected host key
@@ -616,107 +691,104 @@ SshHostKey *sshGetHostKey(SshConnection *connection)
  * @brief Select a host key that matches then specified algorithm
  * @param[in] context Pointer to the SSH context
  * @param[in] hostKeyAlgo Selected host key algorithm name
- * @return Index of the selected host key
+ * @return Index of the selected host key, if any
  **/
 
-uint_t sshSelectHostKey(SshContext *context, const char_t *hostKeyAlgo)
+int_t sshSelectHostKey(SshContext *context, const char_t *hostKeyAlgo)
 {
-   uint_t i;
+   int_t i;
+   int_t index;
+   SshString name;
    SshHostKey *hostKey;
+   const char_t *keyFormatId;
 
-   //Loop through the host keys
-   for(i = 0; i < context->numHostKeys; i++)
-   {
-      //Point to the current host key
-      hostKey = &context->hostKeys[i];
+   //Initialize index
+   index = -1;
 
-#if (SSH_RSA_SUPPORT == ENABLED)
-      //RSA host key algorithm?
-      if(sshCompareAlgo(hostKeyAlgo, "ssh-rsa") ||
-         sshCompareAlgo(hostKeyAlgo, "rsa-sha2-256") ||
-         sshCompareAlgo(hostKeyAlgo, "rsa-sha2-512"))
-      {
-         //Check key format identifier
-         if(sshCompareAlgo(hostKey->keyFormatId, "ssh-rsa"))
-         {
-            //The current host key is acceptable
-            break;
-         }
-      }
-      else
-#endif
-#if (SSH_DSA_SUPPORT == ENABLED)
-      //DSA host key algorithm?
-      if(sshCompareAlgo(hostKeyAlgo, "ssh-dss"))
-      {
-         //Check key format identifier
-         if(sshCompareAlgo(hostKey->keyFormatId, hostKeyAlgo))
-         {
-            //The current host key is acceptable
-            break;
-         }
-      }
-      else
-#endif
-#if (SSH_ECDSA_SUPPORT == ENABLED)
-      //ECDSA host key algorithm?
-      if(sshCompareAlgo(hostKeyAlgo, "ecdsa-sha2-nistp256") ||
-         sshCompareAlgo(hostKeyAlgo, "ecdsa-sha2-nistp384") ||
-         sshCompareAlgo(hostKeyAlgo, "ecdsa-sha2-nistp521"))
-      {
-         //Check key format identifier
-         if(sshCompareAlgo(hostKey->keyFormatId, hostKeyAlgo))
-         {
-            //The current host key is acceptable
-            break;
-         }
-      }
-      else
-#endif
-#if (SSH_ED25519_SUPPORT == ENABLED)
-      //Ed22519 host key algorithm?
-      if(sshCompareAlgo(hostKeyAlgo, "ssh-ed25519"))
-      {
-         //Check key format identifier
-         if(sshCompareAlgo(hostKey->keyFormatId, hostKeyAlgo))
-         {
-            //The current host key is acceptable
-            break;
-         }
-      }
-      else
-#endif
-#if (SSH_ED448_SUPPORT == ENABLED)
-      //Ed448 host key algorithm?
-      if(sshCompareAlgo(hostKeyAlgo, "ssh-ed448"))
-      {
-         //Check key format identifier
-         if(sshCompareAlgo(hostKey->keyFormatId, hostKeyAlgo))
-         {
-            //The current host key is acceptable
-            break;
-         }
-      }
-      else
-#endif
-      //Unknown host key type?
-      {
-         //Just for sanity
-      }
-   }
+   //Get the name of the selected host key algorithm
+   name.value = hostKeyAlgo;
+   name.length = osStrlen(hostKeyAlgo);
 
-   //Check whether a suitable host key has been found
-   if(i < context->numHostKeys)
+   //Retrieve the corresponding key format identifier
+   keyFormatId = sshGetKeyFormatId(&name);
+
+   //Valid key format identifier?
+   if(keyFormatId != NULL)
    {
-      i++;
-   }
-   else
-   {
-      i = 0;
+      //Loop through the host keys
+      for(i = 0; i < SSH_MAX_HOST_KEYS && index < 0; i++)
+      {
+         //Point to the current host key
+         hostKey = &context->hostKeys[i];
+
+         //Valid host key?
+         if(hostKey->keyFormatId != NULL)
+         {
+            //Compare key format identifiers
+            if(sshCompareAlgo(hostKey->keyFormatId, keyFormatId))
+            {
+               //The current host key is acceptable
+               index = i;
+            }
+         }
+      }
    }
 
    //Return the index of the host key
-   return i;
+   return index;
+}
+
+
+/**
+ * @brief Select the next acceptable host key
+ * @param[in] connection Pointer to the SSH connection
+ * @return Index of the next acceptable host key, if any
+ **/
+
+int_t sshSelectNextHostKey(SshConnection *connection)
+{
+#if (SSH_CLIENT_SUPPORT == ENABLED)
+   int_t index;
+   SshHostKey *hostKey;
+
+   //Initialize index
+   index = -1;
+
+   //Loop through the host keys
+   while(connection->hostKeyIndex < SSH_MAX_HOST_KEYS)
+   {
+      //Increment index
+      if(connection->hostKeyIndex < 0)
+      {
+         connection->hostKeyIndex = 0;
+      }
+      else
+      {
+         connection->hostKeyIndex++;
+      }
+
+      //Point to the corresponding host key
+      hostKey = sshGetHostKey(connection);
+
+      //Valid host key?
+      if(hostKey != NULL)
+      {
+         //Make sure the public key algorithm is valid
+         if(hostKey->publicKeyAlgo != NULL)
+         {
+            //The current host key is acceptable
+            index = connection->hostKeyIndex;
+            break;
+         }
+      }
+   }
+
+   //Return the index of the next acceptable host key, if any
+   return index;
+#else
+   //Client operation mode is not implemented
+   return -1;
+#endif
 }
 
 
@@ -750,7 +822,7 @@ error_t sshFormatHostKey(SshConnection *connection, uint8_t *p,
          rsaInitPublicKey(&rsaPublicKey);
 
          //Load RSA public key
-         error = pemImportRsaPublicKey(hostKey->publicKey,
+         error = sshImportRsaPublicKey(hostKey->publicKey,
             hostKey->publicKeyLen, &rsaPublicKey);
 
          //Check status code
@@ -765,6 +837,16 @@ error_t sshFormatHostKey(SshConnection *connection, uint8_t *p,
       }
       else
 #endif
+#if (SSH_RSA_SUPPORT == ENABLED && SSH_CERT_SUPPORT == ENABLED)
+      //RSA certificate?
+      if(sshCompareAlgo(hostKey->keyFormatId, "ssh-rsa-cert-v01@openssh.com"))
+      {
+         //Extract RSA certificate
+         error = sshImportCertificate(hostKey->publicKey, hostKey->publicKeyLen,
+            p, written);
+      }
+      else
+#endif
 #if (SSH_DSA_SUPPORT == ENABLED)
       //DSA host key?
       if(sshCompareAlgo(hostKey->keyFormatId, "ssh-dss"))
@@ -775,7 +857,7 @@ error_t sshFormatHostKey(SshConnection *connection, uint8_t *p,
          dsaInitPublicKey(&dsaPublicKey);
 
          //Load DSA public key
-         error = pemImportDsaPublicKey(hostKey->publicKey,
+         error = sshImportDsaPublicKey(hostKey->publicKey,
             hostKey->publicKeyLen, &dsaPublicKey);
 
          //Check status code
@@ -790,13 +872,22 @@ error_t sshFormatHostKey(SshConnection *connection, uint8_t *p,
       }
       else
 #endif
+#if (SSH_DSA_SUPPORT == ENABLED && SSH_CERT_SUPPORT == ENABLED)
+      //DSA certificate?
+      if(sshCompareAlgo(hostKey->keyFormatId, "ssh-dss-cert-v01@openssh.com"))
+      {
+         //Extract DSA certificate
+         error = sshImportCertificate(hostKey->publicKey, hostKey->publicKeyLen,
+            p, written);
+      }
+      else
+#endif
 #if (SSH_ECDSA_SUPPORT == ENABLED)
       //ECDSA host key?
       if(sshCompareAlgo(hostKey->keyFormatId, "ecdsa-sha2-nistp256") ||
          sshCompareAlgo(hostKey->keyFormatId, "ecdsa-sha2-nistp384") ||
          sshCompareAlgo(hostKey->keyFormatId, "ecdsa-sha2-nistp521"))
       {
-         const EcCurveInfo *curveInfo;
          EcDomainParameters ecParams;
          EcPublicKey ecPublicKey;
 
@@ -805,45 +896,9 @@ error_t sshFormatHostKey(SshConnection *connection, uint8_t *p,
          //Initialize EC public key
          ecInitPublicKey(&ecPublicKey);
 
-#if (SSH_NISTP256_SUPPORT == ENABLED)
-         //NIST P-256 elliptic curve?
-         if(sshCompareAlgo(hostKey->keyFormatId, "ecdsa-sha2-nistp256"))
-         {
-            curveInfo = SECP256R1_CURVE;
-         }
-         else
-#endif
-#if (SSH_NISTP384_SUPPORT == ENABLED)
-         //NIST P-384 elliptic curve?
-         if(sshCompareAlgo(hostKey->keyFormatId, "ecdsa-sha2-nistp384"))
-         {
-            curveInfo = SECP384R1_CURVE;
-         }
-         else
-#endif
-#if (SSH_NISTP521_SUPPORT == ENABLED)
-         //NIST P-512 elliptic curve?
-         if(sshCompareAlgo(hostKey->keyFormatId, "ecdsa-sha2-nistp521"))
-         {
-            curveInfo = SECP521R1_CURVE;
-         }
-         else
-#endif
-         //Unknown elliptic curve?
-         {
-            curveInfo = NULL;
-         }
-
-         //Load EC domain parameters
-         error = ecLoadDomainParameters(&ecParams, curveInfo);
-
-         //Check status code
-         if(!error)
-         {
-            //Load ECDSA public key
-            error = pemImportEcPublicKey(hostKey->publicKey,
-               hostKey->publicKeyLen, &ecPublicKey);
-         }
+         //Load ECDSA public key
+         error = sshImportEcdsaPublicKey(hostKey->publicKey,
+            hostKey->publicKeyLen, &ecParams, &ecPublicKey);
 
          //Check status code
          if(!error)
@@ -859,6 +914,18 @@ error_t sshFormatHostKey(SshConnection *connection, uint8_t *p,
       }
       else
 #endif
+#if (SSH_ECDSA_SUPPORT == ENABLED && SSH_CERT_SUPPORT == ENABLED)
+      //ECDSA certificate?
+      if(sshCompareAlgo(hostKey->keyFormatId, "ecdsa-sha2-nistp256-cert-v01@openssh.com") ||
+         sshCompareAlgo(hostKey->keyFormatId, "ecdsa-sha2-nistp384-cert-v01@openssh.com") ||
+         sshCompareAlgo(hostKey->keyFormatId, "ecdsa-sha2-nistp521-cert-v01@openssh.com"))
+      {
+         //Extract ECDSA certificate
+         error = sshImportCertificate(hostKey->publicKey, hostKey->publicKeyLen,
+            p, written);
+      }
+      else
+#endif
 #if (SSH_ED25519_SUPPORT == ENABLED)
       //Ed25519 host key?
       if(sshCompareAlgo(hostKey->keyFormatId, "ssh-ed25519"))
@@ -868,8 +935,8 @@ error_t sshFormatHostKey(SshConnection *connection, uint8_t *p,
          //Initialize EdDSA public key
          eddsaInitPublicKey(&eddsaPublicKey);
 
-         //Load RSA public key
-         error = pemImportEddsaPublicKey(hostKey->publicKey,
+         //Load EdDSA public key
+         error = sshImportEd25519PublicKey(hostKey->publicKey,
             hostKey->publicKeyLen, &eddsaPublicKey);
 
          //Check status code
@@ -884,6 +951,16 @@ error_t sshFormatHostKey(SshConnection *connection, uint8_t *p,
       }
       else
 #endif
+#if (SSH_ED25519_SUPPORT == ENABLED && SSH_CERT_SUPPORT == ENABLED)
+      //Ed25519 certificate?
+      if(sshCompareAlgo(hostKey->keyFormatId, "ssh-ed25519-cert-v01@openssh.com"))
+      {
+         //Extract Ed25519 certificate
+         error = sshImportCertificate(hostKey->publicKey, hostKey->publicKeyLen,
+            p, written);
+      }
+      else
+#endif
 #if (SSH_ED448_SUPPORT == ENABLED)
       //Ed448 host key?
       if(sshCompareAlgo(hostKey->keyFormatId, "ssh-ed448"))
@@ -893,8 +970,8 @@ error_t sshFormatHostKey(SshConnection *connection, uint8_t *p,
          //Initialize EdDSA public key
          eddsaInitPublicKey(&eddsaPublicKey);
 
-         //Load RSA public key
-         error = pemImportEddsaPublicKey(hostKey->publicKey,
+         //Load EdDSA public key
+         error = sshImportEd448PublicKey(hostKey->publicKey,
             hostKey->publicKeyLen, &eddsaPublicKey);
 
          //Check status code
@@ -927,169 +1004,78 @@ error_t sshFormatHostKey(SshConnection *connection, uint8_t *p,
 
 
 /**
- * @brief Check whether the specified host key structure is valid
- * @param[in] hostKeyAlgo Host key algorithm name
- * @param[in] hostKeyBlob Pointer to the host key blob
- * @return Error code
+ * @brief Get the elliptic curve that matches the specified key format identifier
+ * @param[in] keyFormatId Key format identifier
+ * @param[in] curveName Curve name
+ * @return Elliptic curve domain parameters
  **/
 
-error_t sshCheckHostKey(const SshString *hostKeyAlgo,
-   const SshBinaryString *hostKeyBlob)
+const EcCurveInfo *sshGetCurveInfo(const SshString *keyFormatId,
+   const SshString *curveName)
 {
-   error_t error;
-   SshString keyFormatId;
+   const EcCurveInfo *curveInfo;
 
-   //Decode key format identifier
-   error = sshParseString(hostKeyBlob->value, hostKeyBlob->length,
-      &keyFormatId);
-
-   //Check status code
-   if(!error)
+#if (SSH_NISTP256_SUPPORT == ENABLED)
+   //NIST P-256 elliptic curve?
+   if(sshCompareString(keyFormatId, "ecdsa-sha2-nistp256") &&
+      sshCompareString(curveName, "nistp256"))
    {
-#if (SSH_RSA_SUPPORT == ENABLED)
-      //RSA host key algorithm?
-      if(sshCompareString(hostKeyAlgo, "ssh-rsa") ||
-         sshCompareString(hostKeyAlgo, "rsa-sha2-256") ||
-         sshCompareString(hostKeyAlgo, "rsa-sha2-512"))
-      {
-         //Check key format identifier
-         if(sshCompareString(&keyFormatId, "ssh-rsa"))
-         {
-            SshRsaHostKey hostKey;
-
-            //Parse RSA host key structure
-            error = sshParseRsaHostKey(hostKeyBlob->value,
-               hostKeyBlob->length, &hostKey);
-         }
-         else
-         {
-            //The supplied key is not consistent with the host key algorithm
-            error = ERROR_INVALID_KEY;
-         }
-      }
-      else
+      curveInfo = SECP256R1_CURVE;
+   }
+   else
 #endif
-#if (SSH_DSA_SUPPORT == ENABLED)
-      //DSA host key algorithm?
-      if(sshCompareString(hostKeyAlgo, "ssh-dss"))
-      {
-         //Check key format identifier
-         if(sshCompareStrings(&keyFormatId, hostKeyAlgo))
-         {
-            SshDsaHostKey hostKey;
-
-            //Parse DSA host key structure
-            error = sshParseDsaHostKey(hostKeyBlob->value,
-               hostKeyBlob->length, &hostKey);
-         }
-         else
-         {
-            //The supplied key is not consistent with the host key algorithm
-            error = ERROR_INVALID_KEY;
-         }
-      }
-      else
+#if (SSH_NISTP256_SUPPORT == ENABLED && SSH_CERT_SUPPORT == ENABLED)
+   //NIST P-256 elliptic curve?
+   if(sshCompareString(keyFormatId, "ecdsa-sha2-nistp256-cert-v01@openssh.com") &&
+      sshCompareString(curveName, "nistp256"))
+   {
+      curveInfo = SECP256R1_CURVE;
+   }
+   else
 #endif
-#if (SSH_ECDSA_SUPPORT == ENABLED)
-      //ECDSA host key algorithm?
-      if(sshCompareString(hostKeyAlgo, "ecdsa-sha2-nistp256") ||
-         sshCompareString(hostKeyAlgo, "ecdsa-sha2-nistp384") ||
-         sshCompareString(hostKeyAlgo, "ecdsa-sha2-nistp521"))
-      {
-         //Check key format identifier
-         if(sshCompareStrings(&keyFormatId, hostKeyAlgo))
-         {
-            SshEcdsaHostKey hostKey;
-
-            //Parse ECDSA host key structure
-            error = sshParseEcdsaHostKey(hostKeyBlob->value,
-               hostKeyBlob->length, &hostKey);
-
-            //Check status code
-            if(!error)
-            {
-               //Check whether the curve name is consistent
-               if(sshCompareString(&keyFormatId, "ecdsa-sha2-nistp256") &&
-                  sshCompareString(&hostKey.curveName, "nistp256"))
-               {
-                  //NIST P-256 elliptic curve
-               }
-               else if(sshCompareString(&keyFormatId, "ecdsa-sha2-nistp384") &&
-                  sshCompareString(&hostKey.curveName, "nistp384"))
-               {
-                  //NIST P-384 elliptic curve
-               }
-               else if(sshCompareString(&keyFormatId, "ecdsa-sha2-nistp521") &&
-                  sshCompareString(&hostKey.curveName, "nistp521"))
-               {
-                  //NIST P-521 elliptic curve
-               }
-               else
-               {
-                  //The curve name is not consistent
-                  error = ERROR_INVALID_KEY;
-               }
-            }
-         }
-         else
-         {
-            //The supplied key is not consistent with the host key algorithm
-            error = ERROR_INVALID_KEY;
-         }
-      }
-      else
+#if (SSH_NISTP384_SUPPORT == ENABLED)
+   //NIST P-384 elliptic curve?
+   if(sshCompareString(keyFormatId, "ecdsa-sha2-nistp384") &&
+      sshCompareString(curveName, "nistp384"))
+   {
+      curveInfo = SECP384R1_CURVE;
+   }
+   else
 #endif
-#if (SSH_ED25519_SUPPORT == ENABLED)
-      //Ed22519 host key algorithm?
-      if(sshCompareString(hostKeyAlgo, "ssh-ed25519"))
-      {
-         //Check key format identifier
-         if(sshCompareStrings(&keyFormatId, hostKeyAlgo))
-         {
-            SshEddsaHostKey hostKey;
-
-            //Parse Ed25519 host key structure
-            error = sshParseEd25519HostKey(hostKeyBlob->value,
-               hostKeyBlob->length, &hostKey);
-         }
-         else
-         {
-            //The supplied key is not consistent with the host key algorithm
-            error = ERROR_INVALID_KEY;
-         }
-      }
-      else
+#if (SSH_NISTP384_SUPPORT == ENABLED && SSH_CERT_SUPPORT == ENABLED)
+   //NIST P-384 elliptic curve?
+   if(sshCompareString(keyFormatId, "ecdsa-sha2-nistp384-cert-v01@openssh.com") &&
+      sshCompareString(curveName, "nistp384"))
+   {
+      curveInfo = SECP384R1_CURVE;
+   }
+   else
 #endif
-#if (SSH_ED448_SUPPORT == ENABLED)
-      //Ed448 host key algorithm?
-      if(sshCompareString(hostKeyAlgo, "ssh-ed448"))
-      {
-         //Check key format identifier
-         if(sshCompareStrings(&keyFormatId, hostKeyAlgo))
-         {
-            SshEddsaHostKey hostKey;
-
-            //Parse Ed448 host key structure
-            error = sshParseEd448HostKey(hostKeyBlob->value,
-               hostKeyBlob->length, &hostKey);
-         }
-         else
-         {
-            //The supplied key is not consistent with the host key algorithm
-            error = ERROR_INVALID_KEY;
-         }
-      }
-      else
+#if (SSH_NISTP521_SUPPORT == ENABLED)
+   //NIST P-521 elliptic curve?
+   if(sshCompareString(keyFormatId, "ecdsa-sha2-nistp521") &&
+      sshCompareString(curveName, "nistp521"))
+   {
+      curveInfo = SECP521R1_CURVE;
+   }
+   else
 #endif
-      //Unknown host key type?
-      {
-         //Report an error
-         error = ERROR_INVALID_KEY;
-      }
+#if (SSH_NISTP521_SUPPORT == ENABLED && SSH_CERT_SUPPORT == ENABLED)
+   //NIST P-521 elliptic curve?
+   if(sshCompareString(keyFormatId, "ecdsa-sha2-nistp521-cert-v01@openssh.com") &&
+      sshCompareString(curveName, "nistp521"))
+   {
+      curveInfo = SECP521R1_CURVE;
+   }
+   else
+#endif
+   //Unknow elliptic curve?
+   {
+      curveInfo = NULL;
    }
 
-   //Return status code
-   return error;
+   //Return the elliptic curve domain parameters, if any
+   return curveInfo;
 }
 
 
@@ -1229,6 +1215,57 @@ error_t sshParseNameList(const uint8_t *p, size_t length,
 
 
 /**
+ * @brief Search a name list for a given name
+ * @param[in] nameList List of names
+ * @param[in] NULL-terminated string containing the name
+ * @return The index of the name, or -1 if the name does not appear in the
+ *   name list
+ **/
+
+int_t sshFindName(const SshNameList *nameList, const char_t *name)
+{
+   size_t i;
+   size_t j;
+   uint_t index;
+   size_t nameLen;
+
+   //Retrieve the length of the name
+   nameLen = osStrlen(name);
+
+   //Initialize variables
+   i = 0;
+   index = 0;
+
+   //Loop through the list of names
+   for(j = 0; j <= nameList->length; j++)
+   {
+      //Names are separated by commas
+      if(j == nameList->length || nameList->value[j] == ',')
+      {
+         //Check the length of the name
+         if(nameLen == (j - i))
+         {
+            //Matching name?
+            if(!osMemcmp(nameList->value + i, name, nameLen))
+            {
+               //Return the index of the name
+               return index;
+            }
+         }
+
+         //Point to the next name of the list
+         i = j + 1;
+         //Increment index
+         index++;
+      }
+   }
+
+   //The name does not appear in the name list
+   return -1;
+}
+
+
+/**
  * @brief Get the element at specified index
  * @param[in] nameList List of names
  * @param[in] index Zero-based index of the element to get
@@ -1340,7 +1377,7 @@ error_t sshFormatBinaryString(const void *value, size_t valueLen, uint8_t *p,
  * @return Error code
  **/
 
-error_t sshFormatNameList(const char_t *nameList[], uint_t nameListLen,
+error_t sshFormatNameList(const char_t *const nameList[], uint_t nameListLen,
    uint8_t *p, size_t *written)
 {
    uint_t i;
@@ -1489,16 +1526,20 @@ bool_t sshCompareString(const SshString *string, const char_t *value)
    //Initialize flag
    res = FALSE;
 
-   //Determine the length of the string
-   n = osStrlen(value);
-
-   //Check the length of the binary string
-   if(string->value != NULL && string->length == n)
+   //Valid NULL-terminated string?
+   if(value != NULL)
    {
-      //Perform string comparison
-      if(!osStrncmp(string->value, value, n))
+      //Determine the length of the string
+      n = osStrlen(value);
+
+      //Check the length of the binary string
+      if(string->value != NULL && string->length == n)
       {
-         res = TRUE;
+         //Perform string comparison
+         if(!osStrncmp(string->value, value, n))
+         {
+            res = TRUE;
+         }
       }
    }
 
@@ -1551,7 +1592,7 @@ bool_t sshCompareAlgo(const char_t *name1, const char_t *name2)
    //Initialize flag
    res = FALSE;
 
-   //Valid strings?
+   //Valid NULL-terminated strings?
    if(name1 != NULL && name2 != NULL)
    {
       //Perform string comparison

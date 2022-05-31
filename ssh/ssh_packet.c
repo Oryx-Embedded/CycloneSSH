@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.1.4
+ * @version 2.1.6
  **/
 
 //Switch to the appropriate trace level
@@ -33,17 +33,13 @@
 
 //Dependencies
 #include "ssh/ssh.h"
+#include "ssh/ssh_extensions.h"
 #include "ssh/ssh_transport.h"
 #include "ssh/ssh_auth.h"
 #include "ssh/ssh_kex.h"
 #include "ssh/ssh_connection.h"
 #include "ssh/ssh_request.h"
 #include "ssh/ssh_packet.h"
-#include "cipher/chacha.h"
-#include "cipher_mode/cbc.h"
-#include "cipher_mode/ctr.h"
-#include "mac/hmac.h"
-#include "mac/poly1305.h"
 #include "debug.h"
 
 //Check SSH stack configuration
@@ -485,8 +481,7 @@ error_t sshEncryptPacket(SshConnection *connection, uint8_t *packet,
    TRACE_VERBOSE("Packet to be encrypted (%" PRIuSIZE " bytes):\r\n", n);
    TRACE_VERBOSE_ARRAY("  ", packet, n);
 
-#if (SSH_STREAM_CIPHER_SUPPORT == ENABLED || SSH_CBC_CIPHER_SUPPORT == ENABLED || \
-   SSH_CTR_CIPHER_SUPPORT == ENABLED)
+#if (SSH_HMAC_SUPPORT == ENABLED)
    //MAC-then-encrypt mode?
    if(encryptionEngine->hashAlgo != NULL && !encryptionEngine->etm)
    {
@@ -550,7 +545,7 @@ error_t sshEncryptPacket(SshConnection *connection, uint8_t *packet,
    }
    else
 #endif
-#if (SSH_GCM_CIPHER_SUPPORT == ENABLED)
+#if (SSH_GCM_CIPHER_SUPPORT == ENABLED || SSH_RFC5647_SUPPORT == ENABLED)
    //GCM AEAD cipher?
    if(encryptionEngine->cipherMode == CIPHER_MODE_GCM)
    {
@@ -607,7 +602,7 @@ error_t sshEncryptPacket(SshConnection *connection, uint8_t *packet,
          //stream output generated using K_2
          chachaCipher(&chachaContext, NULL, key, 32);
 
-         //The other 256 bits of the Chacha20 block are discarded
+         //The other 256 bits of the ChaCha20 block are discarded
          chachaCipher(&chachaContext, NULL, NULL, 32);
 
          //Encrypt the packet payload
@@ -636,8 +631,7 @@ error_t sshEncryptPacket(SshConnection *connection, uint8_t *packet,
       error = ERROR_UNSUPPORTED_CIPHER_MODE;
    }
 
-#if (SSH_STREAM_CIPHER_SUPPORT == ENABLED || SSH_CBC_CIPHER_SUPPORT == ENABLED || \
-   SSH_CTR_CIPHER_SUPPORT == ENABLED)
+#if (SSH_HMAC_SUPPORT == ENABLED)
    //Check status code
    if(!error)
    {
@@ -728,8 +722,7 @@ error_t sshDecryptPacket(SshConnection *connection, uint8_t *packet,
       //encryption as the last part of the packet
       n -= decryptionEngine->macSize;
 
-#if (SSH_STREAM_CIPHER_SUPPORT == ENABLED || SSH_CBC_CIPHER_SUPPORT == ENABLED || \
-   SSH_CTR_CIPHER_SUPPORT == ENABLED)
+#if (SSH_HMAC_SUPPORT == ENABLED)
       //Encrypt-then-MAC mode?
       if(decryptionEngine->hashAlgo != NULL && decryptionEngine->etm)
       {
@@ -783,7 +776,7 @@ error_t sshDecryptPacket(SshConnection *connection, uint8_t *packet,
          }
          else
 #endif
-#if (SSH_GCM_CIPHER_SUPPORT == ENABLED)
+#if (SSH_GCM_CIPHER_SUPPORT == ENABLED || SSH_RFC5647_SUPPORT == ENABLED)
          //GCM AEAD cipher?
          if(decryptionEngine->cipherMode == CIPHER_MODE_GCM)
          {
@@ -832,7 +825,7 @@ error_t sshDecryptPacket(SshConnection *connection, uint8_t *packet,
                //stream output generated using K_2
                chachaCipher(&chachaContext, NULL, key, 32);
 
-               //The other 256 bits of the Chacha20 block are discarded
+               //The other 256 bits of the ChaCha20 block are discarded
                chachaCipher(&chachaContext, NULL, NULL, 32);
 
                //Initialize the Poly1305 function with the key calculated above
@@ -881,8 +874,7 @@ error_t sshDecryptPacket(SshConnection *connection, uint8_t *packet,
       TRACE_VERBOSE("Decrypted packet (%" PRIuSIZE " bytes):\r\n", n);
       TRACE_VERBOSE_ARRAY("  ", packet, n);
 
-#if (SSH_STREAM_CIPHER_SUPPORT == ENABLED || SSH_CBC_CIPHER_SUPPORT == ENABLED || \
-   SSH_CTR_CIPHER_SUPPORT == ENABLED)
+#if (SSH_HMAC_SUPPORT == ENABLED)
       //MAC-then-encrypt mode?
       if(decryptionEngine->hashAlgo != NULL && !decryptionEngine->etm)
       {
@@ -956,7 +948,9 @@ error_t sshParsePacketLength(SshConnection *connection, uint8_t *packet)
 error_t sshDecryptPacketLength(SshConnection *connection, uint8_t *packet)
 {
    error_t error;
+#if (SSH_HMAC_SUPPORT == ENABLED || SSH_CHACHA20_POLY1305_SUPPORT == ENABLED)
    size_t blockSize;
+#endif
    size_t packetLen;
    SshEncryptionEngine *decryptionEngine;
 
@@ -966,6 +960,7 @@ error_t sshDecryptPacketLength(SshConnection *connection, uint8_t *packet)
    //Point to the decryption engine
    decryptionEngine = &connection->decryptionEngine;
 
+#if (SSH_HMAC_SUPPORT == ENABLED || SSH_CHACHA20_POLY1305_SUPPORT == ENABLED)
    //Block cipher algorithm?
    if(decryptionEngine->cipherMode == CIPHER_MODE_CBC ||
       decryptionEngine->cipherMode == CIPHER_MODE_CTR)
@@ -991,6 +986,7 @@ error_t sshDecryptPacketLength(SshConnection *connection, uint8_t *packet)
    //Debug message
    TRACE_VERBOSE("Block to be decrypted (%" PRIuSIZE " bytes):\r\n", blockSize);
    TRACE_VERBOSE_ARRAY("  ", packet, blockSize);
+#endif
 
 #if (SSH_STREAM_CIPHER_SUPPORT == ENABLED)
    //Stream cipher?
@@ -1046,7 +1042,7 @@ error_t sshDecryptPacketLength(SshConnection *connection, uint8_t *packet)
    }
    else
 #endif
-#if (SSH_GCM_CIPHER_SUPPORT == ENABLED)
+#if (SSH_GCM_CIPHER_SUPPORT == ENABLED || SSH_RFC5647_SUPPORT == ENABLED)
    //GCM AEAD cipher?
    if(decryptionEngine->cipherMode == CIPHER_MODE_GCM)
    {
@@ -1304,6 +1300,15 @@ error_t sshParseMessage(SshConnection *connection, const uint8_t *message,
          //were received
          error = sshParseUnimplemented(connection, message, length);
       }
+#if (SSH_EXT_INFO_SUPPORT == ENABLED)
+      else if(type == SSH_MSG_EXT_INFO)
+      {
+         //If a client or server offers "ext-info-c" or "ext-info-s"
+         //respectively, it must be prepared to accept an SSH_MSG_EXT_INFO
+         //message from the peer (refer to RFC 8308, section 2.2)
+         error = sshParseExtInfo(connection, message, length);
+      }
+#endif
       else
       {
          //Unrecognized message received
@@ -1331,9 +1336,7 @@ error_t sshParseMessage(SshConnection *connection, const uint8_t *message,
 void sshAppendMessageAuthCode(SshEncryptionEngine *encryptionEngine,
    uint8_t *packet, size_t length)
 {
-#if (SSH_STREAM_CIPHER_SUPPORT == ENABLED || SSH_CBC_CIPHER_SUPPORT == ENABLED || \
-   SSH_CTR_CIPHER_SUPPORT == ENABLED)
-
+#if (SSH_HMAC_SUPPORT == ENABLED)
    //Initialize HMAC calculation
    hmacInit(encryptionEngine->hmacContext, encryptionEngine->hashAlgo,
       encryptionEngine->macKey, encryptionEngine->hashAlgo->digestSize);
@@ -1363,8 +1366,7 @@ void sshAppendMessageAuthCode(SshEncryptionEngine *encryptionEngine,
 error_t sshVerifyMessageAuthCode(SshEncryptionEngine *decryptionEngine,
    const uint8_t *packet, size_t length)
 {
-#if (SSH_STREAM_CIPHER_SUPPORT == ENABLED || SSH_CBC_CIPHER_SUPPORT == ENABLED || \
-   SSH_CTR_CIPHER_SUPPORT == ENABLED)
+#if (SSH_HMAC_SUPPORT == ENABLED)
    size_t i;
    uint8_t mask;
    uint8_t mac[SSH_MAX_HASH_DIGEST_SIZE];

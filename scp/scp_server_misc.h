@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.1.4
+ * @version 2.1.6
  **/
 
 #ifndef _SCP_SERVER_MISC_H
@@ -48,7 +48,7 @@ error_t scpServerChannelRequestCallback(SshChannel *channel,
    void *param);
 
 void scpServerParseCommandLine(ScpServerSession *session,
-   const SshExecReqParams *requestParams);
+   const SshExecParams *requestParams);
 
 ScpServerSession *scpServerFindSession(ScpServerContext *context,
    SshChannel *channel);

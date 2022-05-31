@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.1.4
+ * @version 2.1.6
  **/
 
 //Switch to the appropriate trace level
@@ -89,10 +89,10 @@ error_t sftpServerChannelRequestCallback(SshChannel *channel,
    //Check request type
    if(sshCompareString(type, "subsystem"))
    {
-      SshSubsystemReqParams requestParams;
+      SshSubsystemParams requestParams;
 
       //This message executes a predefined subsystem
-      error = sshParseSubsystemReqParams(data, length, &requestParams);
+      error = sshParseSubsystemParams(data, length, &requestParams);
       //Any error to report?
       if(error)
          return error;
@@ -761,6 +761,11 @@ error_t sftpServerParsePacket(SftpServerSession *session,
             error = ERROR_INVALID_TYPE;
          }
       }
+   }
+   else
+   {
+      //Malformed SFTP packet
+      error = ERROR_INVALID_LENGTH;
    }
 
    //Any error to report?

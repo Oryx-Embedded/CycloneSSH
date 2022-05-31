@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.1.4
+ * @version 2.1.6
  **/
 
 //Switch to the appropriate trace level
@@ -412,7 +412,7 @@ error_t shellClientExecuteCommand(ShellClientContext *context,
       }
       else if(context->state == SHELL_CLIENT_STATE_CHANNEL_REQUEST)
       {
-         SshExecReqParams requestParams;
+         SshExecParams requestParams;
 
          //Set "exec" request parameters
          requestParams.command.value = command;
@@ -591,7 +591,7 @@ error_t shellClientWriteStream(ShellClientContext *context, const void *data,
       error = shellClientFlushStream(context);
    }
 
-   //the parameter is optional
+   //The parameter is optional
    if(written != NULL)
    {
       //Total number of data that have been written

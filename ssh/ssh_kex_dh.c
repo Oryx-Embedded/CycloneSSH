@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.1.4
+ * @version 2.1.6
  **/
 
 //Switch to the appropriate trace level
@@ -33,12 +33,15 @@
 
 //Dependencies
 #include "ssh/ssh.h"
+#include "ssh/ssh_algorithms.h"
 #include "ssh/ssh_transport.h"
 #include "ssh/ssh_kex.h"
 #include "ssh/ssh_kex_dh.h"
 #include "ssh/ssh_packet.h"
 #include "ssh/ssh_exchange_hash.h"
 #include "ssh/ssh_modp_groups.h"
+#include "ssh/ssh_key_verify.h"
+#include "ssh/ssh_cert_verify.h"
 #include "ssh/ssh_misc.h"
 #include "debug.h"
 
@@ -299,7 +302,8 @@ error_t sshFormatKexDhReply(SshConnection *connection, uint8_t *p,
    //Total length of the message
    *length += sizeof(uint32_t) + n;
 
-   //Release Diffie-Hellman context
+   //The ephemeral private key shall be destroyed as soon as possible (refer
+   //to RFC 9212, section 6)
    dhFree(&connection->dhContext);
    dhInit(&connection->dhContext);
 
@@ -496,23 +500,18 @@ error_t sshParseKexDhReply(SshConnection *connection, const uint8_t *message,
    hostKeyAlgo.value = connection->serverHostKeyAlgo;
    hostKeyAlgo.length = osStrlen(connection->serverHostKeyAlgo);
 
-   //Make sure the server's host key (K_S) is valid
-   error = sshCheckHostKey(&hostKeyAlgo, &hostKey);
-   //Any error to report?
-   if(error)
-      return error;
-
-   //Invoke user-defined callback, if any
-   if(context->hostKeyVerifyCallback != NULL)
+#if (SSH_CERT_SUPPORT == ENABLED)
+   //Certificate-based authentication?
+   if(sshIsCertPublicKeyAlgo(&hostKeyAlgo))
    {
-      //Verify server's host key
-      error = context->hostKeyVerifyCallback(connection, hostKey.value,
-         hostKey.length);
+      //Verify server's certificate
+      error = sshVerifyServerCertificate(connection, &hostKeyAlgo, &hostKey);
    }
    else
+#endif
    {
-      //Do not verify server's host key
-      error = NO_ERROR;
+      //Verify server's host key
+      error = sshVerifyServerHostKey(connection, &hostKeyAlgo, &hostKey);
    }
 
    //If the client fails to verify the server's host key, it should disconnect
@@ -572,7 +571,8 @@ error_t sshParseKexDhReply(SshConnection *connection, const uint8_t *message,
    if(error)
       return error;
 
-   //Release Diffie-Hellman context
+   //The ephemeral private key shall be destroyed as soon as possible (refer
+   //to RFC 9212, section 6)
    dhFree(&connection->dhContext);
    dhInit(&connection->dhContext);
 

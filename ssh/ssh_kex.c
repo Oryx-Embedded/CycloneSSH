@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.1.4
+ * @version 2.1.6
  **/
 
 //Switch to the appropriate trace level
@@ -109,18 +109,25 @@ error_t sshSendKexInit(SshConnection *connection)
          //Check whether a key re-exchange has been initiated by the peer
          if(connection->kexInitReceived)
          {
-            //Diffie-Hellman or ECDH key exchange algorithm?
+#if (SSH_DH_SUPPORT == ENABLED)
+            //Diffie-Hellman key exchange algorithm?
             if(sshIsDhKexAlgo(connection->kexAlgo))
             {
                //The client sends an SSH_MSG_KEX_DH_INIT message
                connection->state = SSH_CONN_STATE_KEX_DH_INIT;
             }
-            else if(sshIsEcdhKexAlgo(connection->kexAlgo))
+            else
+#endif
+#if (SSH_ECDH_SUPPORT == ENABLED)
+            //ECDH key exchange algorithm?
+            if(sshIsEcdhKexAlgo(connection->kexAlgo))
             {
                //The client sends an SSH_MSG_KEX_ECDH_INIT message
                connection->state = SSH_CONN_STATE_KEX_ECDH_INIT;
             }
             else
+#endif
+            //Unknown key exchange algorithm?
             {
                //Report an error
                error = ERROR_UNSUPPORTED_KEY_EXCH_ALGO;
@@ -196,16 +203,40 @@ error_t sshSendNewKeys(SshConnection *connection)
       //An SSH_MSG_NEWKEYS message has been successfully sent
       connection->newKeysSent = TRUE;
 
-      //Check whether SSH operates as a client or a server
-      if(connection->context->mode == SSH_OPERATION_MODE_CLIENT)
+#if (SSH_EXT_INFO_SUPPORT == ENABLED)
+      //If a server receives an "ext-info-c", or a client receives an
+      //"ext-info-s", it may send an SSH_MSG_EXT_INFO message (refer to
+      //RFC 8308, section 2.1)
+      if(!connection->newKeysReceived && connection->extInfoReceived)
       {
-         //Wait for the server's SSH_MSG_NEWKEYS message
-         connection->state = SSH_CONN_STATE_SERVER_NEW_KEYS;
+         //Check whether SSH operates as a client or a server
+         if(connection->context->mode == SSH_OPERATION_MODE_CLIENT)
+         {
+            //If a client sends SSH_MSG_EXT_INFO, it must send it as the next
+            //packet following the client's first SSH_MSG_NEWKEYS message
+            connection->state = SSH_CONN_STATE_CLIENT_EXT_INFO;
+         }
+         else
+         {
+            //The server may send the SSH_MSG_EXT_INFO message as the next packet
+            //following the server's first SSH_MSG_NEWKEYS message
+            connection->state = SSH_CONN_STATE_SERVER_EXT_INFO_1;
+         }
       }
       else
+#endif
       {
-         //Wait for the client's SSH_MSG_NEWKEYS message
-         connection->state = SSH_CONN_STATE_CLIENT_NEW_KEYS;
+         //Check whether SSH operates as a client or a server
+         if(connection->context->mode == SSH_OPERATION_MODE_CLIENT)
+         {
+            //Wait for the server's SSH_MSG_NEWKEYS message
+            connection->state = SSH_CONN_STATE_SERVER_NEW_KEYS;
+         }
+         else
+         {
+            //Wait for the client's SSH_MSG_NEWKEYS message
+            connection->state = SSH_CONN_STATE_CLIENT_NEW_KEYS;
+         }
       }
    }
 
@@ -250,7 +281,7 @@ error_t sshFormatKexInit(SshConnection *connection, uint8_t *p,
    *length += SSH_COOKIE_SIZE;
 
    //Format the list of key exchange algorithms
-   error = sshFormatKexAlgoList(context, p, &n);
+   error = sshFormatKexAlgoList(connection, p, &n);
    //Any error to report?
    if(error)
       return error;
@@ -466,7 +497,7 @@ error_t sshParseKexInit(SshConnection *connection, const uint8_t *message,
    TRACE_DEBUG("%s\r\n\r\n", kexAlgoList.value);
 
    //Select key exchange algorithm
-   connection->kexAlgo = sshSelectKexAlgo(context, &kexAlgoList);
+   connection->kexAlgo = sshSelectKexAlgo(connection, &kexAlgoList);
    //No matching algorithm found?
    if(connection->kexAlgo == NULL)
       return ERROR_UNSUPPORTED_ALGO;
@@ -500,7 +531,7 @@ error_t sshParseKexInit(SshConnection *connection, const uint8_t *message,
          connection->serverHostKeyAlgo);
 
       //No matching host key found?
-      if(connection->hostKeyIndex == 0)
+      if(connection->hostKeyIndex < 0)
          return ERROR_UNSUPPORTED_ALGO;
    }
 
@@ -559,10 +590,24 @@ error_t sshParseKexInit(SshConnection *connection, const uint8_t *message,
    TRACE_DEBUG("%s\r\n\r\n", nameList.value);
 
    //Select MAC algorithm (client to server)
-   connection->clientMacAlgo = sshSelectMacAlgo(context, &nameList);
+   connection->clientMacAlgo = sshSelectMacAlgo(context,
+      connection->clientEncAlgo, &nameList);
    //No matching algorithm found?
    if(connection->clientMacAlgo == NULL)
       return ERROR_UNSUPPORTED_ALGO;
+
+#if (SSH_RFC5647_SUPPORT == ENABLED)
+   //If AES-GCM is selected as the MAC algorithm, it must also be selected as
+   //the encryption algorithm (refer to RFC 5647, section 5.1)
+   if(sshCompareAlgo(connection->clientMacAlgo, "AEAD_AES_128_GCM") ||
+      sshCompareAlgo(connection->clientMacAlgo, "AEAD_AES_256_GCM") ||
+      sshCompareAlgo(connection->clientMacAlgo, "AEAD_CAMELLIA_128_GCM") ||
+      sshCompareAlgo(connection->clientMacAlgo, "AEAD_CAMELLIA_256_GCM"))
+   {
+      //AEAD algorithms offer both encryption and authentication
+      connection->clientEncAlgo = connection->clientMacAlgo;
+   }
+#endif
 
    //Point to the next field
    p += sizeof(uint32_t) + nameList.length;
@@ -579,10 +624,24 @@ error_t sshParseKexInit(SshConnection *connection, const uint8_t *message,
    TRACE_VERBOSE("%s\r\n\r\n", nameList.value);
 
    //Select MAC algorithm (server to client)
-   connection->serverMacAlgo = sshSelectMacAlgo(context, &nameList);
+   connection->serverMacAlgo = sshSelectMacAlgo(context,
+      connection->serverEncAlgo, &nameList);
    //No matching algorithm found?
    if(connection->serverMacAlgo == NULL)
       return ERROR_UNSUPPORTED_ALGO;
+
+#if (SSH_RFC5647_SUPPORT == ENABLED)
+   //If AES-GCM is selected as the MAC algorithm, it must also be selected as
+   //the encryption algorithm (refer to RFC 5647, section 5.1)
+   if(sshCompareAlgo(connection->serverMacAlgo, "AEAD_AES_128_GCM") ||
+      sshCompareAlgo(connection->serverMacAlgo, "AEAD_AES_256_GCM") ||
+      sshCompareAlgo(connection->serverMacAlgo, "AEAD_CAMELLIA_128_GCM") ||
+      sshCompareAlgo(connection->serverMacAlgo, "AEAD_CAMELLIA_256_GCM"))
+   {
+      //AEAD algorithms offer both encryption and authentication
+      connection->serverEncAlgo = connection->serverMacAlgo;
+   }
+#endif
 
    //Point to the next field
    p += sizeof(uint32_t) + nameList.length;
@@ -826,18 +885,25 @@ error_t sshParseKexInit(SshConnection *connection, const uint8_t *message,
    }
    else
    {
-      //Diffie-Hellman or ECDH key exchange algorithm?
+#if (SSH_DH_SUPPORT == ENABLED)
+      //Diffie-Hellman key exchange algorithm?
       if(sshIsDhKexAlgo(connection->kexAlgo))
       {
          //The client sends an SSH_MSG_KEX_DH_INIT message
          connection->state = SSH_CONN_STATE_KEX_DH_INIT;
       }
-      else if(sshIsEcdhKexAlgo(connection->kexAlgo))
+      else
+#endif
+#if (SSH_ECDH_SUPPORT == ENABLED)
+      //ECDH key exchange algorithm?
+      if(sshIsEcdhKexAlgo(connection->kexAlgo))
       {
          //The client sends an SSH_MSG_KEX_ECDH_INIT message
          connection->state = SSH_CONN_STATE_KEX_ECDH_INIT;
       }
       else
+#endif
+      //Unknown key exchange algorithm?
       {
          //Report an error
          error = ERROR_UNSUPPORTED_KEY_EXCH_ALGO;
@@ -914,8 +980,20 @@ error_t sshParseNewKeys(SshConnection *connection, const uint8_t *message,
          //An SSH_MSG_NEWKEYS message has been successfully received
          connection->newKeysReceived = TRUE;
 
-         //After the key exchange, the client requests a service
-         connection->state = SSH_CONN_STATE_SERVICE_REQUEST;
+#if (SSH_EXT_INFO_SUPPORT == ENABLED)
+         //Server operation mode?
+         if(connection->context->mode == SSH_OPERATION_MODE_SERVER)
+         {
+            //If a client sends SSH_MSG_EXT_INFO, it must send it as the next
+            //packet following the client's first SSH_MSG_NEWKEYS message
+            connection->state = SSH_CONN_STATE_CLIENT_EXT_INFO;
+         }
+         else
+#endif
+         {
+            //After the key exchange, the client requests a service
+            connection->state = SSH_CONN_STATE_SERVICE_REQUEST;
+         }
       }
    }
 

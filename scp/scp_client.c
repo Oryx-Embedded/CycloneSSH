@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.1.4
+ * @version 2.1.6
  **/
 
 //Switch to the appropriate trace level
@@ -331,7 +331,7 @@ error_t scpClientOpenFileForWriting(ScpClientContext *context,
       }
       else if(context->state == SCP_CLIENT_STATE_CHANNEL_REQUEST)
       {
-         SshExecReqParams requestParams;
+         SshExecParams requestParams;
 
          //Format SCP command line
          sprintf(context->buffer, "scp -t %s", path);
@@ -594,7 +594,7 @@ error_t scpClientOpenFileForReading(ScpClientContext *context,
       }
       else if(context->state == SCP_CLIENT_STATE_CHANNEL_REQUEST)
       {
-         SshExecReqParams requestParams;
+         SshExecParams requestParams;
 
          //Format SCP command line
          osSprintf(context->buffer, "scp -f %s", path);
@@ -866,7 +866,7 @@ error_t scpClientWriteFile(ScpClientContext *context, const void *data,
       }
    }
 
-   //the parameter is optional
+   //The parameter is optional
    if(written != NULL)
    {
       //Total number of data that have been written

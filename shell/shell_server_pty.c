@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.1.4
+ * @version 2.1.6
  **/
 
 //Switch to the appropriate trace level
@@ -68,8 +68,9 @@ error_t shellServerProcessWindowResize(ShellServerSession *session)
    newTermHeight = session->newTermHeight;
 
    //Check client's identification string
-   if(osStrstr(session->channel->connection->clientId, "PuTTY") != NULL ||
-      osStrstr(session->channel->connection->clientId, "Bitvise") != NULL ||
+   if(osStrstr(session->channel->connection->clientId, "Bitvise") != NULL ||
+      osStrstr(session->channel->connection->clientId, "PuTTY") != NULL ||
+      osStrstr(session->channel->connection->clientId, "SmartFTP") != NULL ||
       osStrstr(session->channel->connection->clientId, "libssh2") != NULL)
    {
       //Determine the current position of the cursor

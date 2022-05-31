@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.1.4
+ * @version 2.1.6
  **/
 
 #ifndef _SSH_SERVER_H
@@ -46,7 +46,7 @@
    #define SSH_SERVER_PRIORITY OS_TASK_PRIORITY_NORMAL
 #endif
 
-//Maximum time the server will wait before closing the connection
+//Idle connection timeout
 #ifndef SSH_SERVER_TIMEOUT
    #define SSH_SERVER_TIMEOUT 60000
 #elif (SSH_SERVER_TIMEOUT < 1000)
@@ -82,6 +82,10 @@ typedef struct
    void *prngContext;                                            ///<Pseudo-random number generator context
 #if (SSH_PUBLIC_KEY_AUTH_SUPPORT == ENABLED)
    SshPublicKeyAuthCallback publicKeyAuthCallback;               ///<Public key authentication callback
+#endif
+#if (SSH_PUBLIC_KEY_AUTH_SUPPORT == ENABLED && SSH_CERT_SUPPORT == ENABLED)
+   SshCertAuthCallback certAuthCallback;                         ///<Certificate authentication callback
+   SshCaPublicKeyVerifyCallback caPublicKeyVerifyCallback;       ///<CA public key verification callback
 #endif
 #if (SSH_PASSWORD_AUTH_SUPPORT == ENABLED)
    SshPasswordAuthCallback passwordAuthCallback;                 ///<Password authentication callback
@@ -136,10 +140,35 @@ error_t sshServerRegisterChannelRequestCallback(SshServerContext *context,
 error_t sshServerUnregisterChannelRequestCallback(SshServerContext *context,
    SshChannelReqCallback callback);
 
-error_t sshServerLoadHostKey(SshServerContext *context, const char_t *publicKey,
-   size_t publicKeyLen, const char_t *privateKey, size_t privateKeyLen);
+error_t sshServerRegisterChannelOpenCallback(SshServerContext *context,
+   SshChannelOpenCallback callback, void *param);
 
-error_t sshServerUnloadAllHostKeys(SshServerContext *context);
+error_t sshServerUnregisterChannelOpenCallback(SshServerContext *context,
+   SshChannelOpenCallback callback);
+
+error_t sshServerRegisterConnectionOpenCallback(SshServerContext *context,
+   SshConnectionOpenCallback callback, void *param);
+
+error_t sshServerUnregisterConnectionOpenCallback(SshServerContext *context,
+   SshConnectionOpenCallback callback);
+
+error_t sshServerRegisterConnectionCloseCallback(SshServerContext *context,
+   SshConnectionCloseCallback callback, void *param);
+
+error_t sshServerUnregisterConnectionCloseCallback(SshServerContext *context,
+   SshConnectionCloseCallback callback);
+
+error_t sshServerLoadHostKey(SshServerContext *context, uint_t index,
+   const char_t *publicKey, size_t publicKeyLen,
+   const char_t *privateKey, size_t privateKeyLen);
+
+error_t sshServerUnloadHostKey(SshServerContext *context, uint_t index);
+
+error_t sshServerLoadCertificate(SshServerContext *context, uint_t index,
+   const char_t *cert, size_t certLen, const char_t *privateKey,
+   size_t privateKeyLen);
+
+error_t sshServerUnloadCertificate(SshServerContext *context, uint_t index);
 
 error_t sshServerStart(SshServerContext *context);
 error_t sshServerStop(SshServerContext *context);

@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.1.4
+ * @version 2.1.6
  **/
 
 #ifndef _SSH_CONNECTION_H
@@ -38,6 +38,44 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+
+/**
+ * @brief "x11" channel specific parameters
+ **/
+
+typedef struct
+{
+   SshString originatorAddr;
+   uint32_t originatorPort;
+} SshX11ChannelParams;
+
+
+/**
+ * @brief "forwarded-tcpip" channel specific parameters
+ **/
+
+typedef struct
+{
+   SshString addrConnected;
+   uint32_t portConnected;
+   SshString originIpAddr;
+   uint32_t originPort;
+} SshForwardedTcpIpParams;
+
+
+/**
+ * @brief "direct-tcpip" channel specific parameters
+ **/
+
+typedef struct
+{
+   SshString hostToConnect;
+   uint32_t portToConnect;
+   SshString originIpAddr;
+   uint32_t originPort;
+} SshDirectTcpIpParams;
+
 
 //SSH related functions
 error_t sshSendChannelOpen(SshChannel *channel, const char_t *channelType,
@@ -55,6 +93,12 @@ error_t sshSendChannelClose(SshChannel *channel);
 
 error_t sshFormatChannelOpen(SshChannel *channel, const char_t *channelType,
    const void *channelParams, uint8_t *p, size_t *length);
+
+error_t sshFormatForwardedTcpIpParams(const SshForwardedTcpIpParams *params,
+   uint8_t *p, size_t *written);
+
+error_t sshFormatDirectTcpIpParams(const SshDirectTcpIpParams *params,
+   uint8_t *p, size_t *written);
 
 error_t sshFormatChannelOpenConfirmation(SshChannel *channel, uint8_t *p,
    size_t *length);
@@ -74,6 +118,12 @@ error_t sshFormatChannelClose(SshChannel *channel, uint8_t *p, size_t *length);
 
 error_t sshParseChannelOpen(SshConnection *connection,
    const uint8_t *message, size_t length);
+
+error_t sshParseForwardedTcpIpParams(const uint8_t *p, size_t length,
+   SshForwardedTcpIpParams *params);
+
+error_t sshParseDirectTcpIpParams(const uint8_t *p, size_t length,
+   SshDirectTcpIpParams *params);
 
 error_t sshParseChannelOpenConfirmation(SshConnection *connection,
    const uint8_t *message, size_t length);

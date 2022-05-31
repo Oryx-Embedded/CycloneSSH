@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.1.4
+ * @version 2.1.6
  **/
 
 #ifndef _SSH_MISC_H
@@ -59,14 +59,14 @@ uint_t sshGetUserEvents(SshChannel *channel);
 void sshNotifyEvent(SshContext *context);
 
 SshHostKey *sshGetHostKey(SshConnection *connection);
-
-uint_t sshSelectHostKey(SshContext *context, const char_t *hostKeyAlgo);
+int_t sshSelectHostKey(SshContext *context, const char_t *hostKeyAlgo);
+int_t sshSelectNextHostKey(SshConnection *connection);
 
 error_t sshFormatHostKey(SshConnection *connection, uint8_t *p,
    size_t *written);
 
-error_t sshCheckHostKey(const SshString *hostKeyAlgo,
-   const SshBinaryString *hostKeyBlob);
+const EcCurveInfo *sshGetCurveInfo(const SshString *keyFormatId,
+   const SshString *curveName);
 
 error_t sshParseString(const uint8_t *p, size_t length, SshString *string);
 
@@ -76,6 +76,7 @@ error_t sshParseBinaryString(const uint8_t *p, size_t length,
 error_t sshParseNameList(const uint8_t *p, size_t length,
    SshNameList *nameList);
 
+int_t sshFindName(const SshNameList *nameList, const char_t *name);
 bool_t sshGetName(const SshNameList *nameList, uint_t index, SshString *name);
 
 error_t sshFormatString(const char_t *value, uint8_t *p, size_t *written);
@@ -83,7 +84,7 @@ error_t sshFormatString(const char_t *value, uint8_t *p, size_t *written);
 error_t sshFormatBinaryString(const void *value, size_t valueLen, uint8_t *p,
    size_t *written);
 
-error_t sshFormatNameList(const char_t *nameList[], uint_t nameListLen,
+error_t sshFormatNameList(const char_t *const nameList[], uint_t nameListLen,
    uint8_t *p, size_t *written);
 
 error_t sshFormatMpint(const Mpi *value, uint8_t *p, size_t *written);

@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.1.4
+ * @version 2.1.6
  **/
 
 #ifndef _SSH_REQUEST_H
@@ -41,66 +41,39 @@ extern "C" {
 
 
 /**
- * @brief "tcpip-forward" request specific parameters
+ * @brief "tcpip-forward" global request parameters
  **/
 
 typedef struct
 {
    SshString addrToBind;
    uint32_t portNumToBind;
-} SshFwdReqParams;
+} SshTcpIpFwdParams;
 
 
 /**
- * @brief "cancel-tcpip-forward" request specific parameters
+ * @brief "cancel-tcpip-forward" global request parameters
  **/
 
 typedef struct
 {
    SshString addrToBind;
    uint32_t portNumToBind;
-} SshCancelFwdReqParams;
+} SshCancelTcpIpFwdParams;
 
 
 /**
- * @brief "x11" channel specific parameters
+ * @brief "elevation" global request parameters
  **/
 
 typedef struct
 {
-   SshString originatorAddr;
-   uint32_t originatorPort;
-} SshX11ChannelParams;
+   bool_t elevationPerformed;
+} SshElevationParams;
 
 
 /**
- * @brief "forwarded-tcpip" channel specific parameters
- **/
-
-typedef struct
-{
-   SshString addr;
-   uint32_t port;
-   SshString originatorAddr;
-   uint32_t originatorPort;
-} SshForwardedTcpIpChannelParams;
-
-
-/**
- * @brief "direct-tcpip" channel specific parameters
- **/
-
-typedef struct
-{
-   SshString host;
-   uint32_t port;
-   SshString originatorAddr;
-   uint32_t originatorPort;
-} SshDirectTcpipChannelParams;
-
-
-/**
- * @brief "pty-req" request specific parameters
+ * @brief "pty-req" channel request parameters
  **/
 
 typedef struct
@@ -115,7 +88,7 @@ typedef struct
 
 
 /**
- * @brief "x11-req" request specific parameters
+ * @brief "x11-req" channel request parameters
  **/
 
 typedef struct
@@ -128,38 +101,38 @@ typedef struct
 
 
 /**
- * @brief "env" request specific parameters
+ * @brief "env" channel request parameters
  **/
 
 typedef struct
 {
    SshString varName;
    SshString varValue;
-} SshEnvReqParams;
+} SshEnvParams;
 
 
 /**
- * @brief "exec" request specific parameters
+ * @brief "exec" channel request parameters
  **/
 
 typedef struct
 {
    SshString command;
-} SshExecReqParams;
+} SshExecParams;
 
 
 /**
- * @brief "subsystem" request specific parameters
+ * @brief "subsystem" channel request parameters
  **/
 
 typedef struct
 {
    SshString subsystemName;
-} SshSubsystemReqParams;
+} SshSubsystemParams;
 
 
 /**
- * @brief "window-change" request specific parameters
+ * @brief "window-change" channel request parameters
  **/
 
 typedef struct
@@ -168,41 +141,41 @@ typedef struct
    uint32_t termHeightRows;
    uint32_t termWidthPixels;
    uint32_t termHeightPixels;
-} SshWindowChangeReqParams;
+} SshWindowChangeParams;
 
 
 /**
- * @brief "xon-xoff" request specific parameters
+ * @brief "xon-xoff" channel request parameters
  **/
 
 typedef struct
 {
    bool_t clientCanDo;
-} SshXonXoffReqParams;
+} SshXonXoffParams;
 
 
 /**
- * @brief "signal" request specific parameters
+ * @brief "signal" channel request parameters
  **/
 
 typedef struct
 {
    SshString signalName;
-} SshSignalReqParams;
+} SshSignalParams;
 
 
 /**
- * @brief "exit-status" request specific parameters
+ * @brief "exit-status" channel request parameters
  **/
 
 typedef struct
 {
    uint32_t exitStatus;
-} SshExitStatusReqParams;
+} SshExitStatusParams;
 
 
 /**
- * @brief "exit-signal" request specific parameters
+ * @brief "exit-signal" channel request parameters
  **/
 
 typedef struct
@@ -211,17 +184,17 @@ typedef struct
    bool_t coreDumped;
    SshString errorMessage;
    SshString languageTag;
-} SshExitSignalReqParams;
+} SshExitSignalParams;
 
 
 /**
- * @brief "break" request specific parameters
+ * @brief "break" channel request parameters
  **/
 
 typedef struct
 {
    uint32_t breakLen;
-} SshBreakReqParams;
+} SshBreakParams;
 
 
 //SSH related functions
@@ -241,10 +214,13 @@ error_t sshFormatGlobalRequest(SshConnection *connection,
    const char_t *requestName, const void *requestParams, bool_t wantReply,
    uint8_t *p, size_t *length);
 
-error_t sshFormatFwdReqParams(const SshFwdReqParams *requestParams,
+error_t sshFormatTcpIpFwdParams(const SshTcpIpFwdParams *params,
    uint8_t *p, size_t *written);
 
-error_t sshFormatCancelFwdReqParams(const SshCancelFwdReqParams *requestParams,
+error_t sshFormatCancelTcpIpFwdParams(const SshCancelTcpIpFwdParams *params,
+   uint8_t *p, size_t *written);
+
+error_t sshFormatElevationParams(const SshElevationParams *params,
    uint8_t *p, size_t *written);
 
 error_t sshFormatRequestSuccess(SshConnection *connection, uint8_t *p,
@@ -256,25 +232,25 @@ error_t sshFormatRequestFailure(SshConnection *connection, uint8_t *p,
 error_t sshFormatChannelRequest(SshChannel *channel, const char_t *requestType,
    const void *requestParams, bool_t wantReply, uint8_t *p, size_t *length);
 
-error_t sshFormatPtyReqParams(const SshPtyReqParams *requestParams,
+error_t sshFormatPtyReqParams(const SshPtyReqParams *params,
    uint8_t *p, size_t *written);
 
-error_t sshFormatExecReqParams(const SshExecReqParams *requestParams,
+error_t sshFormatExecParams(const SshExecParams *params,
    uint8_t *p, size_t *written);
 
-error_t sshFormatSubsystemReqParams(const SshSubsystemReqParams *requestParams,
+error_t sshFormatSubsystemParams(const SshSubsystemParams *params,
    uint8_t *p, size_t *written);
 
-error_t sshFormatWindowChangeReqParams(const SshWindowChangeReqParams *requestParams,
+error_t sshFormatWindowChangeParams(const SshWindowChangeParams *params,
    uint8_t *p, size_t *written);
 
-error_t sshFormatSignalReqParams(const SshSignalReqParams *requestParams,
+error_t sshFormatSignalParams(const SshSignalParams *params,
    uint8_t *p, size_t *written);
 
-error_t sshFormatExitStatusReqParams(const SshExitStatusReqParams *requestParams,
+error_t sshFormatExitStatusParams(const SshExitStatusParams *params,
    uint8_t *p, size_t *written);
 
-error_t sshFormatBreakReqParams(const SshBreakReqParams *requestParams,
+error_t sshFormatBreakParams(const SshBreakParams *params,
    uint8_t *p, size_t *written);
 
 error_t sshFormatChannelSuccess(SshChannel *channel, uint8_t *p,
@@ -286,6 +262,15 @@ error_t sshFormatChannelFailure(SshChannel *channel, uint8_t *p,
 error_t sshParseGlobalRequest(SshConnection *connection,
    const uint8_t *message, size_t length);
 
+error_t sshParseTcpIpFwdParams(const uint8_t *p, size_t length,
+   SshTcpIpFwdParams *params);
+
+error_t sshParseCancelTcpIpFwdParams(const uint8_t *p, size_t length,
+   SshCancelTcpIpFwdParams *params);
+
+error_t sshParseElevationParams(const uint8_t *p, size_t length,
+   SshElevationParams *params);
+
 error_t sshParseRequestSuccess(SshConnection *connection,
    const uint8_t *message, size_t length);
 
@@ -296,28 +281,27 @@ error_t sshParseChannelRequest(SshConnection *connection,
    const uint8_t *message, size_t length);
 
 error_t sshParsePtyReqParams(const uint8_t *p, size_t length,
-   SshPtyReqParams *requestParams);
+   SshPtyReqParams *params);
 
-error_t sshParseExecReqParams(const uint8_t *p, size_t length,
-   SshExecReqParams *requestParams);
+error_t sshParseExecParams(const uint8_t *p, size_t length,
+   SshExecParams *params);
 
-bool_t sshGetExecReqArg(const SshExecReqParams *requestParams, uint_t index,
-   SshString *arg);
+bool_t sshGetExecArg(const SshExecParams *params, uint_t index, SshString *arg);
 
-error_t sshParseSubsystemReqParams(const uint8_t *p, size_t length,
-   SshSubsystemReqParams *requestParams);
+error_t sshParseSubsystemParams(const uint8_t *p, size_t length,
+   SshSubsystemParams *params);
 
-error_t sshParseWindowChangeReqParams(const uint8_t *p, size_t length,
-   SshWindowChangeReqParams *requestParams);
+error_t sshParseWindowChangeParams(const uint8_t *p, size_t length,
+   SshWindowChangeParams *params);
 
-error_t sshParseSignalReqParams(const uint8_t *p, size_t length,
-   SshSignalReqParams *requestParams);
+error_t sshParseSignalParams(const uint8_t *p, size_t length,
+   SshSignalParams *params);
 
-error_t sshParseExitStatusReqParams(const uint8_t *p, size_t length,
-   SshExitStatusReqParams *requestParams);
+error_t sshParseExitStatusParams(const uint8_t *p, size_t length,
+   SshExitStatusParams *params);
 
-error_t sshParseBreakReqParams(const uint8_t *p, size_t length,
-   SshBreakReqParams *requestParams);
+error_t sshParseBreakParams(const uint8_t *p, size_t length,
+   SshBreakParams *params);
 
 error_t sshParseChannelSuccess(SshConnection *connection,
    const uint8_t *message, size_t length);

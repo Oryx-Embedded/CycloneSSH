@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.1.4
+ * @version 2.1.6
  **/
 
 //Switch to the appropriate trace level
@@ -307,7 +307,7 @@ error_t sshParsePasswordAuthParams(SshConnection *connection,
    {
       //When the server accepts authentication, it must respond with an
       //SSH_MSG_USERAUTH_SUCCESS message
-      error = sshSendUserAuthSuccess(connection);
+      error = sshAcceptAuthRequest(connection);
    }
    else if(status == SSH_AUTH_STATUS_PASSWORD_EXPIRED)
    {
@@ -344,7 +344,7 @@ error_t sshParsePasswordAuthParams(SshConnection *connection,
 
 
 /**
- * @brief Parse SSH_USERAUTH_PASSWD_CHANGEREQ message
+ * @brief Parse SSH_MSG_USERAUTH_PASSWD_CHANGEREQ message
  * @param[in] connection Pointer to the SSH connection
  * @param[in] message Pointer to message
  * @param[in] length Length of the message, in bytes
@@ -361,7 +361,7 @@ error_t sshParseUserAuthPasswdChangeReq(SshConnection *connection,
    SshString languageTag;
 
    //Debug message
-   TRACE_INFO("SSH_USERAUTH_PASSWD_CHANGEREQ message received (%" PRIuSIZE " bytes)...\r\n", length);
+   TRACE_INFO("SSH_MSG_USERAUTH_PASSWD_CHANGEREQ message received (%" PRIuSIZE " bytes)...\r\n", length);
    TRACE_VERBOSE_ARRAY("  ", message, length);
 
    //Check operation mode
@@ -369,8 +369,11 @@ error_t sshParseUserAuthPasswdChangeReq(SshConnection *connection,
       return ERROR_UNEXPECTED_MESSAGE;
 
    //Check connection state
-   if(connection->state != SSH_CONN_STATE_USER_AUTH_REPLY)
+   if(connection->state != SSH_CONN_STATE_SERVER_EXT_INFO_2 &&
+      connection->state != SSH_CONN_STATE_USER_AUTH_REPLY)
+   {
       return ERROR_UNEXPECTED_MESSAGE;
+   }
 
    //Sanity check
    if(length < sizeof(uint8_t))

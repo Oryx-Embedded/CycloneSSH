@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.1.4
+ * @version 2.1.6
  **/
 
 //Switch to the appropriate trace level
@@ -144,7 +144,7 @@ error_t sshInitEncryptionEngine(SshConnection *connection,
    }
    else
 #endif
-#if (SSH_GCM_CIPHER_SUPPORT == ENABLED)
+#if (SSH_GCM_CIPHER_SUPPORT == ENABLED || SSH_RFC5647_SUPPORT == ENABLED)
    //GCM AEAD cipher?
    if(encryptionEngine->cipherMode == CIPHER_MODE_GCM)
    {
@@ -495,6 +495,50 @@ error_t sshSelectCipherAlgo(SshEncryptionEngine *encryptionEngine,
    }
    else
 #endif
+#if (SSH_AES_128_SUPPORT == ENABLED && SSH_RFC5647_SUPPORT == ENABLED)
+   //AES-GCM with 128-bit key encryption algorithm?
+   if(sshCompareAlgo(encAlgo, "AEAD_AES_128_GCM"))
+   {
+      //AEAD algorithms offer both encryption and authentication
+      encryptionEngine->cipherMode = CIPHER_MODE_GCM;
+      encryptionEngine->cipherAlgo = AES_CIPHER_ALGO;
+      encryptionEngine->encKeyLen = 16;
+   }
+   else
+#endif
+#if (SSH_AES_256_SUPPORT == ENABLED && SSH_RFC5647_SUPPORT == ENABLED)
+   //AES-GCM with 256-bit key encryption algorithm?
+   if(sshCompareAlgo(encAlgo, "AEAD_AES_256_GCM"))
+   {
+      //AEAD algorithms offer both encryption and authentication
+      encryptionEngine->cipherMode = CIPHER_MODE_GCM;
+      encryptionEngine->cipherAlgo = AES_CIPHER_ALGO;
+      encryptionEngine->encKeyLen = 32;
+   }
+   else
+#endif
+#if (SSH_CAMELLIA_128_SUPPORT == ENABLED && SSH_RFC5647_SUPPORT == ENABLED)
+   //Camellia-GCM with 128-bit key encryption algorithm?
+   if(sshCompareAlgo(encAlgo, "AEAD_CAMELLIA_128_GCM"))
+   {
+      //AEAD algorithms offer both encryption and authentication
+      encryptionEngine->cipherMode = CIPHER_MODE_GCM;
+      encryptionEngine->cipherAlgo = CAMELLIA_CIPHER_ALGO;
+      encryptionEngine->encKeyLen = 16;
+   }
+   else
+#endif
+#if (SSH_CAMELLIA_256_SUPPORT == ENABLED && SSH_RFC5647_SUPPORT == ENABLED)
+   //Camellia-GCM with 256-bit key encryption algorithm?
+   if(sshCompareAlgo(encAlgo, "AEAD_CAMELLIA_256_GCM"))
+   {
+      //AEAD algorithms offer both encryption and authentication
+      encryptionEngine->cipherMode = CIPHER_MODE_GCM;
+      encryptionEngine->cipherAlgo = CAMELLIA_CIPHER_ALGO;
+      encryptionEngine->encKeyLen = 32;
+   }
+   else
+#endif
 #if (SSH_CHACHA20_POLY1305_SUPPORT == ENABLED)
    //ChaCha20Poly1305 encryption algorithm?
    if(sshCompareAlgo(encAlgo, "chacha20-poly1305@openssh.com"))
@@ -548,6 +592,50 @@ error_t sshSelectHashAlgo(SshEncryptionEngine *encryptionEngine,
 #if (SSH_AES_256_SUPPORT == ENABLED && SSH_GCM_CIPHER_SUPPORT == ENABLED)
    //AES-GCM with 256-bit key authenticated encryption algorithm?
    if(sshCompareAlgo(encAlgo, "aes256-gcm@openssh.com"))
+   {
+      //AEAD algorithms offer both encryption and authentication
+      encryptionEngine->hashAlgo = NULL;
+      encryptionEngine->macSize = 16;
+      encryptionEngine->etm = FALSE;
+   }
+   else
+#endif
+#if (SSH_AES_128_SUPPORT == ENABLED && SSH_RFC5647_SUPPORT == ENABLED)
+   //AES-GCM with 128-bit key authenticated encryption algorithm?
+   if(sshCompareAlgo(encAlgo, "AEAD_AES_128_GCM"))
+   {
+      //AEAD algorithms offer both encryption and authentication
+      encryptionEngine->hashAlgo = NULL;
+      encryptionEngine->macSize = 16;
+      encryptionEngine->etm = FALSE;
+   }
+   else
+#endif
+#if (SSH_AES_256_SUPPORT == ENABLED && SSH_RFC5647_SUPPORT == ENABLED)
+   //AES-GCM with 256-bit key authenticated encryption algorithm?
+   if(sshCompareAlgo(encAlgo, "AEAD_AES_256_GCM"))
+   {
+      //AEAD algorithms offer both encryption and authentication
+      encryptionEngine->hashAlgo = NULL;
+      encryptionEngine->macSize = 16;
+      encryptionEngine->etm = FALSE;
+   }
+   else
+#endif
+#if (SSH_CAMELLIA_128_SUPPORT == ENABLED && SSH_RFC5647_SUPPORT == ENABLED)
+   //Camellia-GCM with 128-bit key authenticated encryption algorithm?
+   if(sshCompareAlgo(encAlgo, "AEAD_CAMELLIA_128_GCM"))
+   {
+      //AEAD algorithms offer both encryption and authentication
+      encryptionEngine->hashAlgo = NULL;
+      encryptionEngine->macSize = 16;
+      encryptionEngine->etm = FALSE;
+   }
+   else
+#endif
+#if (SSH_CAMELLIA_256_SUPPORT == ENABLED && SSH_RFC5647_SUPPORT == ENABLED)
+   //Camellia-GCM with 256-bit key authenticated encryption algorithm?
+   if(sshCompareAlgo(encAlgo, "AEAD_CAMELLIA_256_GCM"))
    {
       //AEAD algorithms offer both encryption and authentication
       encryptionEngine->hashAlgo = NULL;

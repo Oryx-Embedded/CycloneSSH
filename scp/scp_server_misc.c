@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.1.4
+ * @version 2.1.6
  **/
 
 //Switch to the appropriate trace level
@@ -88,17 +88,17 @@ error_t scpServerChannelRequestCallback(SshChannel *channel,
    if(sshCompareString(type, "exec"))
    {
       SshString arg;
-      SshExecReqParams requestParams;
+      SshExecParams requestParams;
 
       //This message will request that the server start the execution of the
       //given command
-      error = sshParseExecReqParams(data, length, &requestParams);
+      error = sshParseExecParams(data, length, &requestParams);
       //Any error to report?
       if(error)
          return error;
 
-      //Get the first argument of the command line
-      if(sshGetExecReqArg(&requestParams, 0, &arg) &&
+      //Check the first argument of the command line
+      if(sshGetExecArg(&requestParams, 0, &arg) &&
          sshCompareString(&arg, "scp"))
       {
          //Retrieve the SCP session that matches the channel number
@@ -168,7 +168,7 @@ error_t scpServerChannelRequestCallback(SshChannel *channel,
  **/
 
 void scpServerParseCommandLine(ScpServerSession *session,
-   const SshExecReqParams *requestParams)
+   const SshExecParams *requestParams)
 {
    error_t error;
    uint_t i;
@@ -193,7 +193,7 @@ void scpServerParseCommandLine(ScpServerSession *session,
    for(i = 1; ; i++)
    {
       //Get the value of the argument
-      if(sshGetExecReqArg(requestParams, i, &arg))
+      if(sshGetExecArg(requestParams, i, &arg))
       {
          //Valid option?
          if(arg.length > 0 && arg.value[0] == '-')

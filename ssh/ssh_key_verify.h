@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.1.4
+ * @version 2.1.6
  **/
 
 #ifndef _SSH_KEY_VERIFY_H
@@ -42,6 +42,12 @@ extern "C" {
 //SSH host key verification related functions
 error_t sshVerifyHostKey(const uint8_t *hostKey, size_t hostKeyLen,
    const char_t *trustedKey, size_t trustedKeyLen);
+
+error_t sshVerifyClientHostKey(SshConnection *connection,
+   const SshString *publicKeyAlgo, const SshBinaryString *hostKey);
+
+error_t sshVerifyServerHostKey(SshConnection *connection,
+   const SshString *publicKeyAlgo, const SshBinaryString *hostKey);
 
 //C++ guard
 #ifdef __cplusplus

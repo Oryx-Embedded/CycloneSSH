@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.1.4
+ * @version 2.1.6
  **/
 
 #ifndef _SSH_AUTH_H
@@ -60,6 +60,8 @@ error_t sshSendUserAuthBanner(SshConnection *connection,
 error_t sshSendUserAuthRequest(SshConnection *connection);
 error_t sshSendUserAuthSuccess(SshConnection *connection);
 error_t sshSendUserAuthFailure(SshConnection *connection);
+
+error_t sshAcceptAuthRequest(SshConnection *connection);
 error_t sshRejectAuthRequest(SshConnection *connection);
 
 error_t sshFormatUserAuthBanner(SshConnection *connection,

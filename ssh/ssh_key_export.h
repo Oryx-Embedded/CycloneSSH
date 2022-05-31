@@ -1,6 +1,6 @@
 /**
  * @file ssh_key_export.h
- * @brief SSH public key file export functions
+ * @brief SSH key file export functions
  *
  * @section License
  *
@@ -25,14 +25,14 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.1.4
+ * @version 2.1.6
  **/
 
 #ifndef _SSH_KEY_EXPORT_H
 #define _SSH_KEY_EXPORT_H
 
 //Dependencies
-#include "ssh.h"
+#include "ssh_types.h"
 #include "pkc/rsa.h"
 #include "pkc/dsa.h"
 #include "ecc/ec.h"
@@ -43,38 +43,42 @@
 extern "C" {
 #endif
 
-//SSH public key file related functions
+
+/**
+ * @brief SSH public key formats
+ **/
+
+typedef enum
+{
+   SSH_PUBLIC_KEY_FORMAT_SSH2    = 1, ///<SSH2 public key format
+   SSH_PUBLIC_KEY_FORMAT_OPENSSH = 2  ///<OpenSSH public key format
+} SshPublicKeyFormat;
+
+
+//SSH key file export functions
 error_t sshExportRsaPublicKey(const RsaPublicKey *publicKey,
-   char_t *output, size_t *written);
+   char_t *output, size_t *written, SshPublicKeyFormat format);
 
 error_t sshExportDsaPublicKey(const DsaPublicKey *publicKey,
-   char_t *output, size_t *written);
+   char_t *output, size_t *written, SshPublicKeyFormat format);
 
 error_t sshExportEcdsaPublicKey(const EcDomainParameters *params,
-   const EcPublicKey *publicKey, char_t *output, size_t *written);
+   const EcPublicKey *publicKey, char_t *output, size_t *written,
+   SshPublicKeyFormat format);
 
 error_t sshExportEd25519PublicKey(const EddsaPublicKey *publicKey,
-   char_t *output, size_t *written);
+   char_t *output, size_t *written, SshPublicKeyFormat format);
 
 error_t sshExportEd448PublicKey(const EddsaPublicKey *publicKey,
-   char_t *output, size_t *written);
-
-error_t sshFormatRsaPublicKey(const RsaPublicKey *publicKey,
-   uint8_t *p, size_t *written);
-
-error_t sshFormatDsaPublicKey(const DsaPublicKey *publicKey,
-   uint8_t *p, size_t *written);
-
-error_t sshFormatEcdsaPublicKey(const EcDomainParameters *params,
-   const EcPublicKey *publicKey, uint8_t *p, size_t *written);
-
-error_t sshFormatEd25519PublicKey(const EddsaPublicKey *publicKey,
-   uint8_t *p, size_t *written);
-
-error_t sshFormatEd448PublicKey(const EddsaPublicKey *publicKey,
-   uint8_t *p, size_t *written);
+   char_t *output, size_t *written, SshPublicKeyFormat format);
 
 error_t sshEncodePublicKeyFile(const void *input, size_t inputLen,
+   char_t *output, size_t *outputLen, SshPublicKeyFormat format);
+
+error_t sshEncodeSsh2PublicKeyFile(const void *input, size_t inputLen,
+   char_t *output, size_t *outputLen);
+
+error_t sshEncodeOpenSshPublicKeyFile(const void *input, size_t inputLen,
    char_t *output, size_t *outputLen);
 
 //C++ guard

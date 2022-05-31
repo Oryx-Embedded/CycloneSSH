@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.1.4
+ * @version 2.1.6
  **/
 
 //Switch to the appropriate trace level
@@ -138,9 +138,15 @@ error_t sshSendServiceRequest(SshConnection *connection)
    //Check status code
    if(!error)
    {
-      //If the server supports the service (and permits the client to use it),
-      //it must respond with an SSH_MSG_SERVICE_ACCEPT message
+#if (SSH_EXT_INFO_SUPPORT == ENABLED)
+      //If the client offers "ext-info-c", it must be prepared to accept an
+      //SSH_MSG_EXT_INFO message from the server
+      connection->state = SSH_CONN_STATE_SERVER_EXT_INFO_1;
+#else
+      //If the server supports the service (and permits the client to use
+      //it), it must respond with an SSH_MSG_SERVICE_ACCEPT message
       connection->state = SSH_CONN_STATE_SERVICE_ACCEPT;
+#endif
    }
 
    //Return status code
@@ -554,8 +560,11 @@ error_t sshParseServiceRequest(SshConnection *connection, const uint8_t *message
       return ERROR_UNEXPECTED_MESSAGE;
 
    //Check connection state
-   if(connection->state != SSH_CONN_STATE_SERVICE_REQUEST)
+   if(connection->state != SSH_CONN_STATE_CLIENT_EXT_INFO &&
+      connection->state != SSH_CONN_STATE_SERVICE_REQUEST)
+   {
       return ERROR_UNEXPECTED_MESSAGE;
+   }
 
    //Sanity check
    if(length < sizeof(uint8_t))
@@ -629,8 +638,11 @@ error_t sshParseServiceAccept(SshConnection *connection, const uint8_t *message,
       return ERROR_UNEXPECTED_MESSAGE;
 
    //Check connection state
-   if(connection->state != SSH_CONN_STATE_SERVICE_ACCEPT)
+   if(connection->state != SSH_CONN_STATE_SERVER_EXT_INFO_1 &&
+      connection->state != SSH_CONN_STATE_SERVICE_ACCEPT)
+   {
       return ERROR_UNEXPECTED_MESSAGE;
+   }
 
    //Sanity check
    if(length < sizeof(uint8_t))

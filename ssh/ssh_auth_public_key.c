@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.1.4
+ * @version 2.1.6
  **/
 
 //Switch to the appropriate trace level
@@ -39,6 +39,10 @@
 #include "ssh/ssh_auth_public_key.h"
 #include "ssh/ssh_packet.h"
 #include "ssh/ssh_signature.h"
+#include "ssh/ssh_key_parse.h"
+#include "ssh/ssh_key_verify.h"
+#include "ssh/ssh_cert_parse.h"
+#include "ssh/ssh_cert_verify.h"
 #include "ssh/ssh_misc.h"
 #include "debug.h"
 
@@ -106,7 +110,8 @@ error_t sshFormatPublicKeyAuthParams(SshConnection *connection,
    error_t error;
    size_t n;
    SshHostKey *hostKey;
-   const char_t *publicKeyAlgo;
+   SshBinaryString sessionId;
+   SshBinaryString tbsData;
 
    //Total number of bytes that have been written
    *written = 0;
@@ -134,14 +139,12 @@ error_t sshFormatPublicKeyAuthParams(SshConnection *connection,
    if(hostKey == NULL)
       return ERROR_INVALID_KEY;
 
-   //Retrieve the public key algorithm to use
-   publicKeyAlgo = sshSelectPublicKeyAlgo(hostKey->keyFormatId);
-   //Invalid host key?
-   if(publicKeyAlgo == NULL)
+   //Make sure the public key algorithm is valid
+   if(hostKey->publicKeyAlgo == NULL)
       return ERROR_INVALID_KEY;
 
    //Format public key algorithm name
-   error = sshFormatString(publicKeyAlgo, p, &n);
+   error = sshFormatString(hostKey->publicKeyAlgo, p, &n);
    //Any error to report?
    if(error)
       return error;
@@ -167,12 +170,17 @@ error_t sshFormatPublicKeyAuthParams(SshConnection *connection,
    //generated using the private key
    if(connection->publicKeyOk)
    {
-      //Calculate the length of the message to be signed
-      messageLen += *written;
+      //Point to the session identifier
+      sessionId.value = connection->sessionId;
+      sessionId.length = connection->sessionIdLen;
+
+      //Point to the message to be signed
+      tbsData.value = message;
+      tbsData.length = messageLen + *written;
 
       //Compute the signature using the private key
-      error = sshGenerateSignature(connection, publicKeyAlgo, hostKey,
-         message, messageLen, p + sizeof(uint32_t), &n);
+      error = sshGenerateSignature(connection, hostKey->publicKeyAlgo,
+         hostKey, &sessionId, &tbsData, p + sizeof(uint32_t), &n);
       //Any error to report?
       if(error)
          return error;
@@ -266,15 +274,12 @@ error_t sshParsePublicKeyAuthParams(SshConnection *connection,
 {
 #if (SSH_SERVER_SUPPORT == ENABLED)
    error_t error;
-   size_t messageLen;
    SshBoolean flag;
    SshString publicKeyAlgo;
    SshBinaryString publicKey;
+   SshBinaryString sessionId;
+   SshBinaryString tbsData;
    SshBinaryString signature;
-   SshContext *context;
-
-   //Point to the SSH context
-   context = connection->context;
 
    //Malformed message?
    if(length < sizeof(uint8_t))
@@ -307,8 +312,9 @@ error_t sshParsePublicKeyAuthParams(SshConnection *connection,
    p += sizeof(uint32_t) + publicKey.length;
    length -= sizeof(uint32_t) + publicKey.length;
 
-   //Calculate the length of the message whose signature is to be verified
-   messageLen = p - message;
+   //Point to the message whose signature is to be verified
+   tbsData.value = message;
+   tbsData.length = p - message;
 
    //Check the value of the flag
    if(flag)
@@ -336,29 +342,33 @@ error_t sshParsePublicKeyAuthParams(SshConnection *connection,
 
    //When the server receives this message, it must check whether the supplied
    //key is acceptable for authentication (refer to RFC 4252, section 7)
-   error = sshCheckHostKey(&publicKeyAlgo, &publicKey);
-
-   //Valid host key?
-   if(!error)
+   if(userName->length <= SSH_MAX_USERNAME_LEN)
    {
-      //Invoke user-defined callback, if any
-      if(userName->length <= SSH_MAX_USERNAME_LEN &&
-         context->publicKeyAuthCallback != NULL)
-      {
-         //Save user name
-         osMemcpy(connection->user, userName->value, userName->length);
-         //Properly terminate the command line with a NULL character
-         connection->user[userName->length] = '\0';
+      //Save user name
+      osMemcpy(connection->user, userName->value, userName->length);
+      //Properly terminate the command line with a NULL character
+      connection->user[userName->length] = '\0';
 
-         //Check the host key against the server's database
-         error = context->publicKeyAuthCallback(connection, connection->user,
-            publicKey.value, publicKey.length);
+#if (SSH_CERT_SUPPORT == ENABLED)
+      //Certificate-based authentication?
+      if(sshIsCertPublicKeyAlgo(&publicKeyAlgo))
+      {
+         //Verify client's certificate
+         error = sshVerifyClientCertificate(connection, &publicKeyAlgo,
+            &publicKey, flag);
       }
       else
+#endif
       {
-         //Public key authentication is not supported
-         error = ERROR_INVALID_KEY;
+         //Verify client's host key
+         error = sshVerifyClientHostKey(connection, &publicKeyAlgo,
+            &publicKey);
       }
+   }
+   else
+   {
+      //Report an error
+      error = ERROR_INVALID_KEY;
    }
 
    //Valid host key?
@@ -367,10 +377,14 @@ error_t sshParsePublicKeyAuthParams(SshConnection *connection,
       //Check whether the signature is present
       if(flag)
       {
+         //Point to the session identifier
+         sessionId.value = connection->sessionId;
+         sessionId.length = connection->sessionIdLen;
+
          //If the supplied key is acceptable for authentication, the server
          //must check whether the signature is correct
          error = sshVerifySignature(connection, &publicKeyAlgo, &publicKey,
-            message, messageLen, &signature);
+            &sessionId, &tbsData, &signature);
       }
    }
 
@@ -382,7 +396,7 @@ error_t sshParsePublicKeyAuthParams(SshConnection *connection,
       {
          //When the server accepts authentication, it must respond with a
          //SSH_MSG_USERAUTH_SUCCESS message
-         error = sshSendUserAuthSuccess(connection);
+         error = sshAcceptAuthRequest(connection);
       }
       else
       {
@@ -443,8 +457,11 @@ error_t sshParseUserAuthPkOk(SshConnection *connection,
       return ERROR_UNEXPECTED_MESSAGE;
 
    //Check connection state
-   if(connection->state != SSH_CONN_STATE_USER_AUTH_REPLY)
+   if(connection->state != SSH_CONN_STATE_SERVER_EXT_INFO_2 &&
+      connection->state != SSH_CONN_STATE_USER_AUTH_REPLY)
+   {
       return ERROR_UNEXPECTED_MESSAGE;
+   }
 
    //Sanity check
    if(length < sizeof(uint8_t))
@@ -483,8 +500,24 @@ error_t sshParseUserAuthPkOk(SshConnection *connection,
    if(connection->publicKeyOk)
       return ERROR_UNEXPECTED_MESSAGE;
 
-   //Make sure the host key structure is valid
-   error = sshCheckHostKey(&publicKeyAlgo, &publicKey);
+#if (SSH_CERT_SUPPORT == ENABLED)
+   //Certificate-based authentication?
+   if(sshIsCertPublicKeyAlgo(&publicKeyAlgo))
+   {
+      SshCertificate cert;
+
+      //Check the syntax of the certificate structure
+      error = sshParseCertificate(publicKey.value, publicKey.length, &cert);
+   }
+   else
+#endif
+   {
+      SshString keyFormatId;
+
+      //Check the syntax of the host key structure
+      error = sshParseHostKey(publicKey.value, publicKey.length, &keyFormatId);
+   }
+
    //Any error to report?
    if(error)
       return error;

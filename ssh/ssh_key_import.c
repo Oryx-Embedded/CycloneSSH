@@ -1,6 +1,6 @@
 /**
  * @file ssh_key_import.c
- * @brief SSH public key file import functions
+ * @brief SSH key file import functions
  *
  * @section License
  *
@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.1.4
+ * @version 2.1.6
  **/
 
 //Switch to the appropriate trace level
@@ -34,12 +34,44 @@
 //Dependencies
 #include "ssh/ssh.h"
 #include "ssh/ssh_key_import.h"
+#include "ssh/ssh_key_parse.h"
 #include "ssh/ssh_misc.h"
 #include "encoding/base64.h"
+#include "pkix/pem_import.h"
 #include "debug.h"
 
 //Check SSH stack configuration
 #if (SSH_SUPPORT == ENABLED)
+
+
+/**
+ * @brief List of supported key types
+ **/
+
+static const SshKeyType sshKeyTypes[] =
+{
+#if (SSH_RSA_SUPPORT == ENABLED)
+   {"ssh-rsa", X509_KEY_TYPE_RSA, NULL},
+#endif
+#if (SSH_DSA_SUPPORT == ENABLED)
+   {"ssh-dss", X509_KEY_TYPE_DSA, NULL},
+#endif
+#if (SSH_ECDSA_SUPPORT == ENABLED && SSH_NISTP256_SUPPORT == ENABLED)
+   {"ecdsa-sha2-nistp256", X509_KEY_TYPE_EC, "secp256r1"},
+#endif
+#if (SSH_ECDSA_SUPPORT == ENABLED && SSH_NISTP384_SUPPORT == ENABLED)
+   {"ecdsa-sha2-nistp384", X509_KEY_TYPE_EC, "secp384r1"},
+#endif
+#if (SSH_ECDSA_SUPPORT == ENABLED && SSH_NISTP521_SUPPORT == ENABLED)
+   {"ecdsa-sha2-nistp521", X509_KEY_TYPE_EC, "secp521r1"},
+#endif
+#if (SSH_ED25519_SUPPORT == ENABLED)
+   {"ssh-ed25519", X509_KEY_TYPE_ED25519, NULL},
+#endif
+#if (SSH_ED448_SUPPORT == ENABLED)
+   {"ssh-ed448", X509_KEY_TYPE_ED448, NULL},
+#endif
+};
 
 
 /**
@@ -77,7 +109,7 @@ error_t sshImportRsaPublicKey(const char_t *input, size_t length,
       //Successful memory allocation?
       if(buffer != NULL)
       {
-         //Decode the content of the SSH public key file
+         //Decode the content of the public key file (SSH2 or OpenSSH format)
          error = sshDecodePublicKeyFile(input, length, buffer, &n);
 
          //Check status code
@@ -102,6 +134,11 @@ error_t sshImportRsaPublicKey(const char_t *input, size_t length,
          //Failed to allocate memory
          error = ERROR_OUT_OF_MEMORY;
       }
+   }
+   else
+   {
+      //Decode the content of the public key file (PEM format)
+      error = pemImportRsaPublicKey(input, length, publicKey);
    }
 
    //Any error to report?
@@ -155,7 +192,7 @@ error_t sshImportDsaPublicKey(const char_t *input, size_t length,
       //Successful memory allocation?
       if(buffer != NULL)
       {
-         //Decode the content of the SSH public key file
+         //Decode the content of the public key file (SSH2 or OpenSSH format)
          error = sshDecodePublicKeyFile(input, length, buffer, &n);
 
          //Check status code
@@ -180,6 +217,11 @@ error_t sshImportDsaPublicKey(const char_t *input, size_t length,
          //Failed to allocate memory
          error = ERROR_OUT_OF_MEMORY;
       }
+   }
+   else
+   {
+      //Decode the content of the public key file (PEM format)
+      error = pemImportDsaPublicKey(input, length, publicKey);
    }
 
    //Any error to report?
@@ -234,7 +276,7 @@ error_t sshImportEcdsaPublicKey(const char_t *input, size_t length,
       //Successful memory allocation?
       if(buffer != NULL)
       {
-         //Decode the content of the SSH public key file
+         //Decode the content of the public key file (SSH2 or OpenSSH format)
          error = sshDecodePublicKeyFile(input, length, buffer, &n);
 
          //Check status code
@@ -258,6 +300,18 @@ error_t sshImportEcdsaPublicKey(const char_t *input, size_t length,
       {
          //Failed to allocate memory
          error = ERROR_OUT_OF_MEMORY;
+      }
+   }
+   else
+   {
+      //Import EC domain parameters
+      error = pemImportEcParameters(input, length, params);
+
+      //Check status code
+      if(!error)
+      {
+         //Decode the content of the public key file (PEM format)
+         error = pemImportEcPublicKey(input, length, publicKey);
       }
    }
 
@@ -313,7 +367,7 @@ error_t sshImportEd25519PublicKey(const char_t *input, size_t length,
       //Successful memory allocation?
       if(buffer != NULL)
       {
-         //Decode the content of the SSH public key file
+         //Decode the content of the public key file (SSH2 or OpenSSH format)
          error = sshDecodePublicKeyFile(input, length, buffer, &n);
 
          //Check status code
@@ -338,6 +392,11 @@ error_t sshImportEd25519PublicKey(const char_t *input, size_t length,
          //Failed to allocate memory
          error = ERROR_OUT_OF_MEMORY;
       }
+   }
+   else
+   {
+      //Decode the content of the public key file (PEM format)
+      error = pemImportEddsaPublicKey(input, length, publicKey);
    }
 
    //Any error to report?
@@ -390,7 +449,7 @@ error_t sshImportEd448PublicKey(const char_t *input, size_t length,
       //Successful memory allocation?
       if(buffer != NULL)
       {
-         //Decode the content of the SSH public key file
+         //Decode the content of the public key file (SSH2 or OpenSSH format)
          error = sshDecodePublicKeyFile(input, length, buffer, &n);
 
          //Check status code
@@ -416,6 +475,11 @@ error_t sshImportEd448PublicKey(const char_t *input, size_t length,
          error = ERROR_OUT_OF_MEMORY;
       }
    }
+   else
+   {
+      //Decode the content of the public key file (PEM format)
+      error = pemImportEddsaPublicKey(input, length, publicKey);
+   }
 
    //Any error to report?
    if(error)
@@ -426,6 +490,497 @@ error_t sshImportEd448PublicKey(const char_t *input, size_t length,
 
    //Return status code
    return error;
+#else
+   //Not implemented
+   return ERROR_NOT_IMPLEMENTED;
+#endif
+}
+
+
+/**
+ * @brief Decode an SSH private key file containing an RSA private key
+ * @param[in] input Pointer to the SSH private key file
+ * @param[in] length Length of the SSH private key file
+ * @param[out] privateKey RSA private key resulting from the parsing process
+ * @return Error code
+ **/
+
+error_t sshImportRsaPrivateKey(const char_t *input, size_t length,
+   RsaPrivateKey *privateKey)
+{
+#if (SSH_RSA_SUPPORT == ENABLED)
+   error_t error;
+   size_t n;
+   uint8_t *buffer;
+   Mpi t;
+   SshPrivateKeyHeader privateKeyHeader;
+   SshRsaPrivateKey privateKeyInfo;
+
+   //Check parameters
+   if(input == NULL && length != 0)
+      return ERROR_INVALID_PARAMETER;
+   if(privateKey == NULL)
+      return ERROR_INVALID_PARAMETER;
+
+   //Retrieve the length of the private key structure
+   error = sshDecodeOpenSshPrivateKeyFile(input, length, NULL, &n);
+
+   //Check status code
+   if(!error)
+   {
+      //Allocate a memory buffer to hold the private key structure
+      buffer = sshAllocMem(n);
+
+      //Successful memory allocation?
+      if(buffer != NULL)
+      {
+         //Initialize multiple precision integer
+         mpiInit(&t);
+
+         //Decode the content of the private key file (OpenSSH format)
+         error = sshDecodeOpenSshPrivateKeyFile(input, length, buffer, &n);
+
+         //Check status code
+         if(!error)
+         {
+            //Parse private key header
+            error = sshParsePrivateKeyHeader(buffer, n, &privateKeyHeader);
+         }
+
+         //Check status code
+         if(!error)
+         {
+            //Parse RSA private key
+            error = sshParseRsaPrivateKey(privateKeyHeader.encrypted.value,
+               privateKeyHeader.encrypted.length, &privateKeyInfo);
+         }
+
+         //Check status code
+         if(!error)
+         {
+            //Import RSA modulus
+            error = mpiImport(&privateKey->n, privateKeyInfo.n.value,
+               privateKeyInfo.n.length, MPI_FORMAT_BIG_ENDIAN);
+         }
+
+         //Check status code
+         if(!error)
+         {
+            //Import RSA public exponent
+            error = mpiImport(&privateKey->e, privateKeyInfo.e.value,
+               privateKeyInfo.e.length, MPI_FORMAT_BIG_ENDIAN);
+         }
+
+         //Check status code
+         if(!error)
+         {
+            //Import RSA private exponent
+            error = mpiImport(&privateKey->d, privateKeyInfo.d.value,
+               privateKeyInfo.d.length, MPI_FORMAT_BIG_ENDIAN);
+         }
+
+         //Check status code
+         if(!error)
+         {
+            //Import RSA first factor
+            error = mpiImport(&privateKey->p, privateKeyInfo.p.value,
+               privateKeyInfo.p.length, MPI_FORMAT_BIG_ENDIAN);
+         }
+
+         //Check status code
+         if(!error)
+         {
+            //Import RSA second factor
+            error = mpiImport(&privateKey->q, privateKeyInfo.q.value,
+               privateKeyInfo.q.length, MPI_FORMAT_BIG_ENDIAN);
+         }
+
+         //Check status code
+         if(!error)
+         {
+            //Import RSA CRT coefficient
+            error = mpiImport(&privateKey->qinv, privateKeyInfo.qinv.value,
+               privateKeyInfo.qinv.length, MPI_FORMAT_BIG_ENDIAN);
+         }
+
+         //Check status code
+         if(!error)
+         {
+            //Compute t = p - 1
+            error = mpiSubInt(&t, &privateKey->p, 1);
+         }
+
+         //Check status code
+         if(!error)
+         {
+            //Compute first factor's CRT exponent
+            error = mpiMod(&privateKey->dp, &privateKey->d, &t);
+         }
+
+         //Check status code
+         if(!error)
+         {
+            //Compute t = q - 1
+            error = mpiSubInt(&t, &privateKey->q, 1);
+         }
+
+         //Check status code
+         if(!error)
+         {
+            //Compute second factor's CRT exponent
+            error = mpiMod(&privateKey->dq, &privateKey->d, &t);
+         }
+
+         //Release multiple precision integers
+         mpiFree(&t);
+         //Release previously allocated memory
+         sshFreeMem(buffer);
+      }
+      else
+      {
+         //Failed to allocate memory
+         error = ERROR_OUT_OF_MEMORY;
+      }
+   }
+   else
+   {
+      //Decode the content of the private key file (PEM format)
+      error = pemImportRsaPrivateKey(input, length, privateKey);
+   }
+
+   //Any error to report?
+   if(error)
+   {
+      //Clean up side effects
+      rsaFreePrivateKey(privateKey);
+   }
+
+   //Return status code
+   return error;
+#else
+   //Not implemented
+   return ERROR_NOT_IMPLEMENTED;
+#endif
+}
+
+
+/**
+ * @brief Decode an SSH private key file containing a DSA private key
+ * @param[in] input Pointer to the SSH private key file
+ * @param[in] length Length of the SSH private key file
+ * @param[out] privateKey DSA private key resulting from the parsing process
+ * @return Error code
+ **/
+
+error_t sshImportDsaPrivateKey(const char_t *input, size_t length,
+   DsaPrivateKey *privateKey)
+{
+#if (SSH_DSA_SUPPORT == ENABLED)
+   error_t error;
+   size_t n;
+   uint8_t *buffer;
+   SshPrivateKeyHeader privateKeyHeader;
+   SshDsaPrivateKey privateKeyInfo;
+
+   //Check parameters
+   if(input == NULL && length != 0)
+      return ERROR_INVALID_PARAMETER;
+   if(privateKey == NULL)
+      return ERROR_INVALID_PARAMETER;
+
+   //Retrieve the length of the private key structure
+   error = sshDecodeOpenSshPrivateKeyFile(input, length, NULL, &n);
+
+   //Check status code
+   if(!error)
+   {
+      //Allocate a memory buffer to hold the private key structure
+      buffer = sshAllocMem(n);
+
+      //Successful memory allocation?
+      if(buffer != NULL)
+      {
+         //Decode the content of the private key file (OpenSSH format)
+         error = sshDecodeOpenSshPrivateKeyFile(input, length, buffer, &n);
+
+         //Check status code
+         if(!error)
+         {
+            //Parse private key header
+            error = sshParsePrivateKeyHeader(buffer, n, &privateKeyHeader);
+         }
+
+         //Check status code
+         if(!error)
+         {
+            //Parse DSA private key
+            error = sshParseDsaPrivateKey(privateKeyHeader.encrypted.value,
+               privateKeyHeader.encrypted.length, &privateKeyInfo);
+         }
+
+         //Check status code
+         if(!error)
+         {
+            //Import DSA prime modulus
+            error = mpiImport(&privateKey->params.p, privateKeyInfo.p.value,
+               privateKeyInfo.p.length, MPI_FORMAT_BIG_ENDIAN);
+         }
+
+         //Check status code
+         if(!error)
+         {
+            //Import DSA group order
+            error = mpiImport(&privateKey->params.q, privateKeyInfo.q.value,
+               privateKeyInfo.q.length, MPI_FORMAT_BIG_ENDIAN);
+         }
+
+         //Check status code
+         if(!error)
+         {
+            //Import DSA group generator
+            error = mpiImport(&privateKey->params.g, privateKeyInfo.g.value,
+               privateKeyInfo.g.length, MPI_FORMAT_BIG_ENDIAN);
+         }
+
+         //Check status code
+         if(!error)
+         {
+            //Import DSA private key value
+            error = mpiImport(&privateKey->x, privateKeyInfo.x.value,
+               privateKeyInfo.x.length, MPI_FORMAT_BIG_ENDIAN);
+         }
+
+         //Release previously allocated memory
+         sshFreeMem(buffer);
+      }
+      else
+      {
+         //Failed to allocate memory
+         error = ERROR_OUT_OF_MEMORY;
+      }
+   }
+   else
+   {
+      //Decode the content of the private key file (PEM format)
+      error = pemImportDsaPrivateKey(input, length, privateKey);
+   }
+
+   //Any error to report?
+   if(error)
+   {
+      //Clean up side effects
+      dsaFreePrivateKey(privateKey);
+   }
+
+   //Return status code
+   return error;
+#else
+   //Not implemented
+   return ERROR_NOT_IMPLEMENTED;
+#endif
+}
+
+
+/**
+ * @brief Decode an SSH private key file containing an ECDSA private key
+ * @param[in] input Pointer to the SSH private key file
+ * @param[in] length Length of the SSH private key file
+ * @param[out] privateKey ECDSA private key resulting from the parsing process
+ * @return Error code
+ **/
+
+error_t sshImportEcdsaPrivateKey(const char_t *input, size_t length,
+   EcPrivateKey *privateKey)
+{
+#if (SSH_ECDSA_SUPPORT == ENABLED)
+   error_t error;
+   size_t n;
+   uint8_t *buffer;
+   SshPrivateKeyHeader privateKeyHeader;
+   SshEcdsaPrivateKey privateKeyInfo;
+
+   //Check parameters
+   if(input == NULL && length != 0)
+      return ERROR_INVALID_PARAMETER;
+   if(privateKey == NULL)
+      return ERROR_INVALID_PARAMETER;
+
+   //Retrieve the length of the private key structure
+   error = sshDecodeOpenSshPrivateKeyFile(input, length, NULL, &n);
+
+   //Check status code
+   if(!error)
+   {
+      //Allocate a memory buffer to hold the private key structure
+      buffer = sshAllocMem(n);
+
+      //Successful memory allocation?
+      if(buffer != NULL)
+      {
+         //Decode the content of the private key file (OpenSSH format)
+         error = sshDecodeOpenSshPrivateKeyFile(input, length, buffer, &n);
+
+         //Check status code
+         if(!error)
+         {
+            //Parse private key header
+            error = sshParsePrivateKeyHeader(buffer, n, &privateKeyHeader);
+         }
+
+         //Check status code
+         if(!error)
+         {
+            //Parse ECDSA private key
+            error = sshParseEcdsaPrivateKey(privateKeyHeader.encrypted.value,
+               privateKeyHeader.encrypted.length, &privateKeyInfo);
+         }
+
+         //Check status code
+         if(!error)
+         {
+            //Import EC private key
+            error = mpiImport(&privateKey->d, privateKeyInfo.d.value,
+               privateKeyInfo.d.length, MPI_FORMAT_BIG_ENDIAN);
+         }
+
+         //Release previously allocated memory
+         sshFreeMem(buffer);
+      }
+      else
+      {
+         //Failed to allocate memory
+         error = ERROR_OUT_OF_MEMORY;
+      }
+   }
+   else
+   {
+      //Decode the content of the private key file (PEM format)
+      error = pemImportEcPrivateKey(input, length, privateKey);
+   }
+
+   //Any error to report?
+   if(error)
+   {
+      //Clean up side effects
+      ecFreePrivateKey(privateKey);
+   }
+
+   //Return status code
+   return error;
+#else
+   //Not implemented
+   return ERROR_NOT_IMPLEMENTED;
+#endif
+}
+
+
+/**
+ * @brief Decode an SSH private key file containing an Ed25519 private key
+ * @param[in] input Pointer to the SSH private key file
+ * @param[in] length Length of the SSH private key file
+ * @param[out] privateKey Ed25519 private key resulting from the parsing process
+ * @return Error code
+ **/
+
+error_t sshImportEd25519PrivateKey(const char_t *input, size_t length,
+   EddsaPrivateKey *privateKey)
+{
+#if (SSH_ED25519_SUPPORT == ENABLED)
+   error_t error;
+   size_t n;
+   uint8_t *buffer;
+   SshPrivateKeyHeader privateKeyHeader;
+   SshEd25519PrivateKey privateKeyInfo;
+
+   //Check parameters
+   if(input == NULL && length != 0)
+      return ERROR_INVALID_PARAMETER;
+   if(privateKey == NULL)
+      return ERROR_INVALID_PARAMETER;
+
+   //Retrieve the length of the private key structure
+   error = sshDecodeOpenSshPrivateKeyFile(input, length, NULL, &n);
+
+   //Check status code
+   if(!error)
+   {
+      //Allocate a memory buffer to hold the private key structure
+      buffer = sshAllocMem(n);
+
+      //Successful memory allocation?
+      if(buffer != NULL)
+      {
+         //Decode the content of the private key file (OpenSSH format)
+         error = sshDecodeOpenSshPrivateKeyFile(input, length, buffer, &n);
+
+         //Check status code
+         if(!error)
+         {
+            //Parse private key header
+            error = sshParsePrivateKeyHeader(buffer, n, &privateKeyHeader);
+         }
+
+         //Check status code
+         if(!error)
+         {
+            //Parse Ed25519 private key
+            error = sshParseEd25519PrivateKey(privateKeyHeader.encrypted.value,
+               privateKeyHeader.encrypted.length, &privateKeyInfo);
+         }
+
+         //Check status code
+         if(!error)
+         {
+            //Import Ed25519 private key
+            error = mpiImport(&privateKey->d, privateKeyInfo.d.value,
+               ED25519_PRIVATE_KEY_LEN, MPI_FORMAT_LITTLE_ENDIAN);
+         }
+
+         //Release previously allocated memory
+         sshFreeMem(buffer);
+      }
+      else
+      {
+         //Failed to allocate memory
+         error = ERROR_OUT_OF_MEMORY;
+      }
+   }
+   else
+   {
+      //Decode the content of the private key file (PEM format)
+      error = pemImportEddsaPrivateKey(input, length, privateKey);
+   }
+
+   //Any error to report?
+   if(error)
+   {
+      //Clean up side effects
+      eddsaFreePrivateKey(privateKey);
+   }
+
+   //Return status code
+   return error;
+#else
+   //Not implemented
+   return ERROR_NOT_IMPLEMENTED;
+#endif
+}
+
+
+/**
+ * @brief Decode an SSH private key file containing an Ed448 private key
+ * @param[in] input Pointer to the SSH private key file
+ * @param[in] length Length of the SSH private key file
+ * @param[out] privateKey Ed448 private key resulting from the parsing process
+ * @return Error code
+ **/
+
+error_t sshImportEd448PrivateKey(const char_t *input, size_t length,
+   EddsaPrivateKey *privateKey)
+{
+#if (SSH_ED448_SUPPORT == ENABLED)
+   //Decode the content of the private key file (PEM format)
+   return pemImportEddsaPrivateKey(input, length, privateKey);
 #else
    //Not implemented
    return ERROR_NOT_IMPLEMENTED;
@@ -491,7 +1046,7 @@ error_t sshImportDsaHostKey(const SshDsaHostKey *hostKey,
    error_t error;
    size_t k;
 
-   //Import DSA prime
+   //Import DSA prime modulus
    error = mpiImport(&publicKey->params.p, hostKey->p.value, hostKey->p.length,
       MPI_FORMAT_BIG_ENDIAN);
    //Any error to report?
@@ -548,55 +1103,34 @@ error_t sshImportEcdsaHostKey(const SshEcdsaHostKey *hostKey,
 {
 #if (SSH_ECDSA_SUPPORT == ENABLED)
    error_t error;
+   const EcCurveInfo *curveInfo;
 
-#if (SSH_NISTP256_SUPPORT == ENABLED)
-   //NIST P-256 elliptic curve?
-   if(sshCompareString(&hostKey->keyFormatId, "ecdsa-sha2-nistp256") &&
-      sshCompareString(&hostKey->curveName, "nistp256"))
+   //Retrieve the elliptic curve that matches the specified key format
+   //identifier
+   curveInfo = sshGetCurveInfo(&hostKey->keyFormatId, &hostKey->curveName);
+
+   //Make sure the key format identifier is acceptable
+   if(curveInfo != NULL)
    {
       //Load EC domain parameters
-      error = ecLoadDomainParameters(params, SECP256R1_CURVE);
+      error = ecLoadDomainParameters(params, curveInfo);
    }
    else
-#endif
-#if (SSH_NISTP384_SUPPORT == ENABLED)
-   //NIST P-384 elliptic curve?
-   if(sshCompareString(&hostKey->keyFormatId, "ecdsa-sha2-nistp384") &&
-      sshCompareString(&hostKey->curveName, "nistp384"))
-   {
-      //Load EC domain parameters
-      error = ecLoadDomainParameters(params, SECP384R1_CURVE);
-   }
-   else
-#endif
-#if (SSH_NISTP384_SUPPORT == ENABLED)
-   //NIST P-521 elliptic curve?
-   if(sshCompareString(&hostKey->keyFormatId, "ecdsa-sha2-nistp521") &&
-      sshCompareString(&hostKey->curveName, "nistp521"))
-   {
-      //Load EC domain parameters
-      error = ecLoadDomainParameters(params, SECP521R1_CURVE);
-   }
-   else
-#endif
-   //Unknown elliptic curve?
    {
       //Report an error
       error = ERROR_WRONG_IDENTIFIER;
    }
 
-   //Any error to report?
-   if(error)
-      return error;
+   //Check status code
+   if(!error)
+   {
+      //Import EC public key
+      error = ecImport(params, &publicKey->q, hostKey->q.value,
+         hostKey->q.length);
+   }
 
-   //Import EC public key
-   error = ecImport(params, &publicKey->q, hostKey->q.value, hostKey->q.length);
-   //Any error to report?
-   if(error)
-      return error;
-
-   //Successful processing
-   return NO_ERROR;
+   //Return status code
+   return error;
 #else
    //Not implemented
    return ERROR_NOT_IMPLEMENTED;
@@ -657,319 +1191,122 @@ error_t sshImportEd448HostKey(const SshEddsaHostKey *hostKey,
 
 
 /**
- * @brief Parse an RSA host key structure
- * @param[in] data Pointer to the host key structure
- * @param[in] length Length of the host key structure, in bytes
- * @param[out] hostKey Information resulting from the parsing process
- * @return Error code
+ * @brief Get SSH public key type
+ * @param[in] input SSH public key file
+ * @param[in] length Length of the SSH public key file
+ * @return SSH public key type
  **/
 
-error_t sshParseRsaHostKey(const uint8_t *data, size_t length,
-   SshRsaHostKey *hostKey)
+const char_t *sshGetPublicKeyType(const char_t *input, size_t length)
 {
-#if (SSH_RSA_SUPPORT == ENABLED)
    error_t error;
+   uint_t i;
+   size_t n;
+   const char_t *keyType;
 
-   //Decode key format identifier
-   error = sshParseString(data, length, &hostKey->keyFormatId);
-   //Any error to report?
-   if(error)
-      return error;
+   //Initialize key type
+   keyType = NULL;
 
-   //Unexpected key format identifier?
-   if(!sshCompareString(&hostKey->keyFormatId, "ssh-rsa"))
-      return ERROR_WRONG_IDENTIFIER;
+   //Retrieve the length of the public key structure
+   error = sshDecodePublicKeyFile(input, length, NULL, &n);
 
-   //Point to the next field
-   data += sizeof(uint32_t) + hostKey->keyFormatId.length;
-   length -= sizeof(uint32_t) + hostKey->keyFormatId.length;
-
-   //Parse RSA public exponent
-   error = sshParseBinaryString(data, length, &hostKey->e);
-   //Any error to report?
-   if(error)
-      return error;
-
-   //Point to the next field
-   data += sizeof(uint32_t) + hostKey->e.length;
-   length -= sizeof(uint32_t) + hostKey->e.length;
-
-   //Parse RSA modulus
-   error = sshParseBinaryString(data, length, &hostKey->n);
-   //Any error to report?
-   if(error)
-      return error;
-
-   //Point to the next field
-   data += sizeof(uint32_t) + hostKey->n.length;
-   length -= sizeof(uint32_t) + hostKey->n.length;
-
-   //Malformed host key?
-   if(length != 0)
-      return ERROR_INVALID_SYNTAX;
-
-   //Successful processing
-   return NO_ERROR;
-#else
-   //Not implemented
-   return ERROR_NOT_IMPLEMENTED;
-#endif
-}
-
-
-/**
- * @brief Parse a DSA host key structure
- * @param[in] data Pointer to the host key structure
- * @param[in] length Length of the host key structure, in bytes
- * @param[out] hostKey Information resulting from the parsing process
- * @return Error code
- **/
-
-error_t sshParseDsaHostKey(const uint8_t *data, size_t length,
-   SshDsaHostKey *hostKey)
-{
-#if (SSH_DSA_SUPPORT == ENABLED)
-   error_t error;
-
-   //Decode key format identifier
-   error = sshParseString(data, length, &hostKey->keyFormatId);
-   //Any error to report?
-   if(error)
-      return error;
-
-   //Unexpected key format identifier?
-   if(!sshCompareString(&hostKey->keyFormatId, "ssh-dss"))
-      return ERROR_WRONG_IDENTIFIER;
-
-   //Point to the next field
-   data += sizeof(uint32_t) + hostKey->keyFormatId.length;
-   length -= sizeof(uint32_t) + hostKey->keyFormatId.length;
-
-   //Parse DSA prime
-   error = sshParseBinaryString(data, length, &hostKey->p);
-   //Any error to report?
-   if(error)
-      return error;
-
-   //Point to the next field
-   data += sizeof(uint32_t) + hostKey->p.length;
-   length -= sizeof(uint32_t) + hostKey->p.length;
-
-   //Parse DSA group order
-   error = sshParseBinaryString(data, length, &hostKey->q);
-   //Any error to report?
-   if(error)
-      return error;
-
-   //Point to the next field
-   data += sizeof(uint32_t) + hostKey->q.length;
-   length -= sizeof(uint32_t) + hostKey->q.length;
-
-   //Parse DSA group generator
-   error = sshParseBinaryString(data, length, &hostKey->g);
-   //Any error to report?
-   if(error)
-      return error;
-
-   //Point to the next field
-   data += sizeof(uint32_t) + hostKey->g.length;
-   length -= sizeof(uint32_t) + hostKey->g.length;
-
-   //Parse DSA public key value
-   error = sshParseBinaryString(data, length, &hostKey->y);
-   //Any error to report?
-   if(error)
-      return error;
-
-   //Point to the next field
-   data += sizeof(uint32_t) + hostKey->y.length;
-   length -= sizeof(uint32_t) + hostKey->y.length;
-
-   //Malformed host key?
-   if(length != 0)
-      return ERROR_INVALID_SYNTAX;
-
-   //Successful processing
-   return NO_ERROR;
-#else
-   //Not implemented
-   return ERROR_NOT_IMPLEMENTED;
-#endif
-}
-
-
-/**
- * @brief Parse an ECDSA host key structure
- * @param[in] data Pointer to the host key structure
- * @param[in] length Length of the host key structure, in bytes
- * @param[out] hostKey Information resulting from the parsing process
- * @return Error code
- **/
-
-error_t sshParseEcdsaHostKey(const uint8_t *data, size_t length,
-   SshEcdsaHostKey *hostKey)
-{
-#if (SSH_ECDSA_SUPPORT == ENABLED)
-   error_t error;
-
-   //Decode key format identifier
-   error = sshParseString(data, length, &hostKey->keyFormatId);
-   //Any error to report?
-   if(error)
-      return error;
-
-   //Unexpected key format identifier?
-   if(!sshCompareString(&hostKey->keyFormatId, "ecdsa-sha2-nistp256") &&
-      !sshCompareString(&hostKey->keyFormatId, "ecdsa-sha2-nistp384") &&
-      !sshCompareString(&hostKey->keyFormatId, "ecdsa-sha2-nistp521"))
+   //Check status code
+   if(!error)
    {
-      return ERROR_WRONG_IDENTIFIER;
+      uint8_t *buffer;
+      SshString keyFormatId;
+
+      //Allocate a memory buffer to hold the public key structure
+      buffer = sshAllocMem(n);
+
+      //Successful memory allocation?
+      if(buffer != NULL)
+      {
+         //Decode the content of the public key file (SSH2 or OpenSSH format)
+         error = sshDecodePublicKeyFile(input, length, buffer, &n);
+
+         //Check status
+         if(!error)
+         {
+            //Decode key format identifier
+            error = sshParseString(buffer, n, &keyFormatId);
+         }
+
+         //Check status
+         if(!error)
+         {
+            //Loop through the list of supported key types
+            for(i = 0; i < arraysize(sshKeyTypes); i++)
+            {
+               //Matching identifier?
+               if(sshCompareString(&keyFormatId, sshKeyTypes[i].identifier))
+               {
+                  keyType = sshKeyTypes[i].identifier;
+                  break;
+               }
+            }
+         }
+
+         //Release previously allocated memory
+         sshFreeMem(buffer);
+      }
+   }
+   else
+   {
+      X509KeyType type;
+      EcDomainParameters params;
+
+      //Initialize EC domain parameters
+      ecInitDomainParameters(&params);
+
+      //Retrieve the type of the public key (PEM format)
+      error = pemGetPublicKeyType(input, length, &type);
+
+      //Check status
+      if(!error)
+      {
+         //EC public key?
+         if(type == X509_KEY_TYPE_EC)
+         {
+            //Import EC domain parameters
+            error = pemImportEcParameters(input, length, &params);
+         }
+      }
+
+      //Check status
+      if(!error)
+      {
+         //Loop through the list of supported key types
+         for(i = 0; i < arraysize(sshKeyTypes); i++)
+         {
+            //Matching key type?
+            if(sshKeyTypes[i].type == type)
+            {
+               //EC public key?
+               if(type == X509_KEY_TYPE_EC)
+               {
+                  //Check curve name
+                  if(!osStrcmp(sshKeyTypes[i].curveName, params.name))
+                  {
+                     keyType = sshKeyTypes[i].identifier;
+                     break;
+                  }
+               }
+               else
+               {
+                  keyType = sshKeyTypes[i].identifier;
+                  break;
+               }
+            }
+         }
+      }
+
+      //Release EC domain parameters
+      ecFreeDomainParameters(&params);
    }
 
-   //Point to the next field
-   data += sizeof(uint32_t) + hostKey->keyFormatId.length;
-   length -= sizeof(uint32_t) + hostKey->keyFormatId.length;
-
-   //Parse elliptic curve domain parameter identifier
-   error = sshParseString(data, length, &hostKey->curveName);
-   //Any error to report?
-   if(error)
-      return error;
-
-   //Point to the next field
-   data += sizeof(uint32_t) + hostKey->curveName.length;
-   length -= sizeof(uint32_t) + hostKey->curveName.length;
-
-   //Parse public key
-   error = sshParseBinaryString(data, length, &hostKey->q);
-   //Any error to report?
-   if(error)
-      return error;
-
-   //Point to the next field
-   data += sizeof(uint32_t) + hostKey->q.length;
-   length -= sizeof(uint32_t) + hostKey->q.length;
-
-   //Malformed message?
-   if(length != 0)
-      return ERROR_INVALID_MESSAGE;
-
-   //Successful processing
-   return NO_ERROR;
-#else
-   //Not implemented
-   return ERROR_NOT_IMPLEMENTED;
-#endif
-}
-
-
-/**
- * @brief Parse an Ed25519 host key structure
- * @param[in] data Pointer to the host key structure
- * @param[in] length Length of the host key structure, in bytes
- * @param[out] hostKey Information resulting from the parsing process
- * @return Error code
- **/
-
-error_t sshParseEd25519HostKey(const uint8_t *data, size_t length,
-   SshEddsaHostKey *hostKey)
-{
-#if (SSH_ED25519_SUPPORT == ENABLED)
-   error_t error;
-
-   //Decode key format identifier
-   error = sshParseString(data, length, &hostKey->keyFormatId);
-   //Any error to report?
-   if(error)
-      return error;
-
-   //Unexpected key format identifier?
-   if(!sshCompareString(&hostKey->keyFormatId, "ssh-ed25519"))
-      return ERROR_WRONG_IDENTIFIER;
-
-   //Point to the next field
-   data += sizeof(uint32_t) + hostKey->keyFormatId.length;
-   length -= sizeof(uint32_t) + hostKey->keyFormatId.length;
-
-   //Parse Ed25519 public key
-   error = sshParseBinaryString(data, length, &hostKey->q);
-   //Any error to report?
-   if(error)
-      return error;
-
-   //Point to the next field
-   data += sizeof(uint32_t) + hostKey->q.length;
-   length -= sizeof(uint32_t) + hostKey->q.length;
-
-   //Malformed host key?
-   if(length != 0)
-      return ERROR_INVALID_SYNTAX;
-
-   //The public key consists of 32 octets
-   if(hostKey->q.length != ED25519_PUBLIC_KEY_LEN)
-      return ERROR_INVALID_SYNTAX;
-
-   //Successful processing
-   return NO_ERROR;
-#else
-   //Not implemented
-   return ERROR_NOT_IMPLEMENTED;
-#endif
-}
-
-
-/**
- * @brief Parse an Ed448 host key structure
- * @param[in] data Pointer to the host key structure
- * @param[in] length Length of the host key structure, in bytes
- * @param[out] hostKey Information resulting from the parsing process
- * @return Error code
- **/
-
-error_t sshParseEd448HostKey(const uint8_t *data, size_t length,
-   SshEddsaHostKey *hostKey)
-{
-#if (SSH_ED448_SUPPORT == ENABLED)
-   error_t error;
-
-   //Decode key format identifier
-   error = sshParseString(data, length, &hostKey->keyFormatId);
-   //Any error to report?
-   if(error)
-      return error;
-
-   //Unexpected key format identifier?
-   if(!sshCompareString(&hostKey->keyFormatId, "ssh-ed448"))
-      return ERROR_WRONG_IDENTIFIER;
-
-   //Point to the next field
-   data += sizeof(uint32_t) + hostKey->keyFormatId.length;
-   length -= sizeof(uint32_t) + hostKey->keyFormatId.length;
-
-   //Parse Ed448 public key
-   error = sshParseBinaryString(data, length, &hostKey->q);
-   //Any error to report?
-   if(error)
-      return error;
-
-   //Point to the next field
-   data += sizeof(uint32_t) + hostKey->q.length;
-   length -= sizeof(uint32_t) + hostKey->q.length;
-
-   //Malformed host key?
-   if(length != 0)
-      return ERROR_INVALID_SYNTAX;
-
-   //The public key consists of 57 octets
-   if(hostKey->q.length != ED448_PUBLIC_KEY_LEN)
-      return ERROR_INVALID_SYNTAX;
-
-   //Successful processing
-   return NO_ERROR;
-#else
-   //Not implemented
-   return ERROR_NOT_IMPLEMENTED;
-#endif
+   //Return key type
+   return keyType;
 }
 
 
@@ -1128,53 +1465,36 @@ error_t sshDecodeOpenSshPublicKeyFile(const char_t *input, size_t inputLen,
    uint8_t *output, size_t *outputLen)
 {
    error_t error;
-   uint_t i;
-   uint_t n;
-   const char_t *p;
+   size_t i;
+   size_t j;
+   size_t n;
+   const char_t *keyType;
 
-   //OpenSSH public key files use a proprietary format
-   if(inputLen > 7 && !osStrncmp(input, "ssh-rsa", 7))
+   //Initialize key type
+   keyType = NULL;
+
+   //Loop through the list of identifiers
+   for(i = 0; i < arraysize(sshKeyTypes); i++)
    {
-      //RSA host key
-      i = 7;
+      //Get the length of the identifier
+      n = osStrlen(sshKeyTypes[i].identifier);
+
+      //Matching identifier?
+      if(inputLen > n && !osMemcmp(input, sshKeyTypes[i].identifier, n))
+      {
+         keyType = sshKeyTypes[i].identifier;
+         break;
+      }
    }
-   else if(inputLen > 7 && !osStrncmp(input, "ssh-dss", 7))
-   {
-      //DSA host key
-      i = 7;
-   }
-   else if(inputLen > 19 && !osStrncmp(input, "ecdsa-sha2-nistp256", 19))
-   {
-      //ECDSA with NIST P-256 host key
-      i = 19;
-   }
-   else if(inputLen > 19 && !osStrncmp(input, "ecdsa-sha2-nistp384", 19))
-   {
-      //ECDSA with NIST P-384 host key
-      i = 19;
-   }
-   else if(inputLen > 19 && !osStrncmp(input, "ecdsa-sha2-nistp521", 19))
-   {
-      //ECDSA with NIST P-521 host key
-      i = 19;
-   }
-   else if(inputLen > 11 && !osStrncmp(input, "ssh-ed25519", 11))
-   {
-      //Ed25519 host key
-      i = 11;
-   }
-   else if(inputLen > 9 && !osStrncmp(input, "ssh-ed448", 9))
-   {
-      //Ed448 host key
-      i = 9;
-   }
-   else
-   {
-      //Invalid host key
+
+   //Unrecognized key type?
+   if(keyType == NULL)
       return ERROR_INVALID_SYNTAX;
-   }
 
-   //The public key identifier must be followed by a whitespace character
+   //Get the length of the identifier string
+   i = osStrlen(keyType);
+
+   //The identifier must be followed by a whitespace character
    if(input[i] != ' ' && input[i] != '\t')
       return ERROR_INVALID_SYNTAX;
 
@@ -1185,18 +1505,61 @@ error_t sshDecodeOpenSshPublicKeyFile(const char_t *input, size_t inputLen,
    }
 
    //Point to the public key
-   p = input + i;
-   n = inputLen - i;
-   i = 0;
+   j = i;
 
    //The public key may be followed by a whitespace character and a comment
-   while(i < n && (p[i] != ' ' && p[i] != '\t'))
+   while(j < inputLen && (input[j] != ' ' && input[j] != '\t'))
    {
-      i++;
+      j++;
    }
 
    //The public key is Base64-encoded
-   error = base64Decode(p, i, output, outputLen);
+   error = base64Decode(input + i, j - i, output, outputLen);
+   //Failed to decode the file?
+   if(error)
+      return error;
+
+   //Sanity check
+   if(*outputLen == 0)
+      return ERROR_INVALID_SYNTAX;
+
+   //Successful processing
+   return NO_ERROR;
+}
+
+
+/**
+ * @brief Decode SSH private key file (OpenSSH format)
+ * @param[in] input SSH public key file to decode
+ * @param[in] inputLen Length of the SSH private key file to decode
+ * @param[out] output Pointer to the decoded data (optional parameter)
+ * @param[out] outputLen Length of the decoded data
+ **/
+
+error_t sshDecodeOpenSshPrivateKeyFile(const char_t *input, size_t inputLen,
+   uint8_t *output, size_t *outputLen)
+{
+   error_t error;
+   int_t i;
+   int_t n;
+
+   //The first line of the private key file must be a begin marker
+   i = sshSearchMarker(input, inputLen, "-----BEGIN OPENSSH PRIVATE KEY-----", 35);
+   //Begin marker not found?
+   if(i < 0)
+      return ERROR_INVALID_SYNTAX;
+
+   //Advance the pointer over the marker
+   i += 35;
+
+   //The last line of the private key file must be an end marker
+   n = sshSearchMarker(input + i, inputLen - i, "-----END OPENSSH PRIVATE KEY-----", 33);
+   //End marker not found?
+   if(n < 0)
+      return ERROR_INVALID_SYNTAX;
+
+   //The body of the SSH private key file is Base64-encoded
+   error = base64Decode(input + i, n, output, outputLen);
    //Failed to decode the file?
    if(error)
       return error;

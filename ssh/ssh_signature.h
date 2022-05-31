@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.1.4
+ * @version 2.1.6
  **/
 
 #ifndef _SSH_SIGNATURE_H
@@ -54,57 +54,58 @@ typedef struct
 //SSH related functions
 error_t sshGenerateSignature(SshConnection *connection,
    const char_t *publicKeyAlgo, const SshHostKey *hostKey,
-   const void *message, size_t messageLen, uint8_t *p, size_t *written);
+   const SshBinaryString *sessionId, const SshBinaryString *message,
+   uint8_t *p, size_t *written);
 
 error_t sshGenerateRsaSignature(SshConnection *connection,
    const char_t *publicKeyAlgo, const SshHostKey *hostKey,
-   const void *message, size_t messageLen, uint8_t *p, size_t *written);
+   const SshBinaryString *sessionId, const SshBinaryString *message,
+   uint8_t *p, size_t *written);
 
 error_t sshGenerateDsaSignature(SshConnection *connection,
    const char_t *publicKeyAlgo, const SshHostKey *hostKey,
-   const void *message, size_t messageLen, uint8_t *p, size_t *written);
+   const SshBinaryString *sessionId, const SshBinaryString *message,
+   uint8_t *p, size_t *written);
 
 error_t sshGenerateEcdsaSignature(SshConnection *connection,
    const char_t *publicKeyAlgo, const SshHostKey *hostKey,
-   const void *message, size_t messageLen, uint8_t *p, size_t *written);
+   const SshBinaryString *sessionId, const SshBinaryString *message,
+   uint8_t *p, size_t *written);
 
 error_t sshGenerateEd25519Signature(SshConnection *connection,
    const char_t *publicKeyAlgo, const SshHostKey *hostKey,
-   const void *message, size_t messageLen, uint8_t *p, size_t *written);
+   const SshBinaryString *sessionId, const SshBinaryString *message,
+   uint8_t *p, size_t *written);
 
 error_t sshGenerateEd448Signature(SshConnection *connection,
    const char_t *publicKeyAlgo, const SshHostKey *hostKey,
-   const void *message, size_t messageLen, uint8_t *p, size_t *written);
+   const SshBinaryString *sessionId, const SshBinaryString *message,
+   uint8_t *p, size_t *written);
 
 error_t sshVerifySignature(SshConnection *connection,
    const SshString *publicKeyAlgo, const SshBinaryString *publicKey,
-   const uint8_t *message, size_t messageLen,
+   const SshBinaryString *sessionId, const SshBinaryString *message,
    const SshBinaryString *signature);
 
-error_t sshVerifyRsaSignature(SshConnection *connection,
-   const SshString *publicKeyAlgo, const SshBinaryString *publicKey,
-   const uint8_t *message, size_t messageLen,
-   const SshBinaryString *signatureBlob);
+error_t sshVerifyRsaSignature(const SshString *publicKeyAlgo,
+   const SshBinaryString *publicKeyBlob, const SshBinaryString *sessionId,
+   const SshBinaryString *message, const SshBinaryString *signatureBlob);
 
-error_t sshVerifyDsaSignature(SshConnection *connection,
-   const SshString *publicKeyAlgo, const SshBinaryString *publicKey,
-   const uint8_t *message, size_t messageLen,
-   const SshBinaryString *signatureBlob);
+error_t sshVerifyDsaSignature(const SshString *publicKeyAlgo,
+   const SshBinaryString *publicKeyBlob, const SshBinaryString *sessionId,
+   const SshBinaryString *message, const SshBinaryString *signatureBlob);
 
-error_t sshVerifyEcdsaSignature(SshConnection *connection,
-   const SshString *publicKeyAlgo, const SshBinaryString *publicKeyBlob,
-   const uint8_t *message, size_t messageLen,
-   const SshBinaryString *signatureBlob);
+error_t sshVerifyEcdsaSignature(const SshString *publicKeyAlgo,
+   const SshBinaryString *publicKeyBlob, const SshBinaryString *sessionId,
+   const SshBinaryString *message, const SshBinaryString *signatureBlob);
 
-error_t sshVerifyEd25519Signature(SshConnection *connection,
-   const SshString *publicKeyAlgo, const SshBinaryString *publicKey,
-   const uint8_t *message, size_t messageLen,
-   const SshBinaryString *signatureBlob);
+error_t sshVerifyEd25519Signature(const SshString *publicKeyAlgo,
+   const SshBinaryString *publicKeyBlob, const SshBinaryString *sessionId,
+   const SshBinaryString *message, const SshBinaryString *signatureBlob);
 
-error_t sshVerifyEd448Signature(SshConnection *connection,
-   const SshString *publicKeyAlgo, const SshBinaryString *publicKey,
-   const uint8_t *message, size_t messageLen,
-   const SshBinaryString *signatureBlob);
+error_t sshVerifyEd448Signature(const SshString *publicKeyAlgo,
+   const SshBinaryString *publicKeyBlob, const SshBinaryString *sessionId,
+   const SshBinaryString *message, const SshBinaryString *signatureBlob);
 
 error_t sshFormatEcdsaSignature(const SshEcdsaSignature *signature,
    uint8_t *p, size_t *written);

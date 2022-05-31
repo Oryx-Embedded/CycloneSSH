@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.1.4
+ * @version 2.1.6
  **/
 
 //Switch to the appropriate trace level
@@ -80,6 +80,7 @@ void sftpServerGetDefaultSettings(SftpServerSettings *settings)
 error_t sftpServerInit(SftpServerContext *context,
    const SftpServerSettings *settings)
 {
+   error_t error;
    uint_t i;
 
    //Debug message
@@ -108,6 +109,9 @@ error_t sftpServerInit(SftpServerContext *context,
    {
       return ERROR_INVALID_PARAMETER;
    }
+
+   //Initialize status code
+   error = NO_ERROR;
 
    //Clear SFTP server context
    osMemset(context, 0, sizeof(SftpServerContext));
@@ -145,12 +149,19 @@ error_t sftpServerInit(SftpServerContext *context,
    //Create an event object to poll the state of channels
    if(!osCreateEvent(&context->event))
    {
+      //Report an error
+      error = ERROR_OUT_OF_RESOURCES;
+   }
+
+   //Check status code
+   if(error)
+   {
       //Clean up side effects
       sftpServerDeinit(context);
    }
 
-   //Successful initialization
-   return NO_ERROR;
+   //Return status code
+   return error;
 }
 
 
@@ -340,7 +351,7 @@ error_t sftpServerSetHomeDir(SftpServerSession *session, const char_t *homeDir)
 
 /**
  * @brief SFTP server task
- * @param[in] param Pointer to the SFTP session
+ * @param[in] param Pointer to the SFTP server context
  **/
 
 void sftpServerTask(void *param)

@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.1.4
+ * @version 2.1.6
  **/
 
 //Switch to the appropriate trace level
@@ -70,6 +70,13 @@ void sshServerGetDefaultSettings(SshServerSettings *settings)
 #if (SSH_PUBLIC_KEY_AUTH_SUPPORT == ENABLED)
    //Public key authentication callback function
    settings->publicKeyAuthCallback = NULL;
+#endif
+
+#if (SSH_PUBLIC_KEY_AUTH_SUPPORT == ENABLED && SSH_CERT_SUPPORT == ENABLED)
+   //Certificate authentication callback function
+   settings->certAuthCallback = NULL;
+   //CA public key verification callback function
+   settings->caPublicKeyVerifyCallback = NULL;
 #endif
 
 #if (SSH_PASSWORD_AUTH_SUPPORT == ENABLED)
@@ -160,6 +167,30 @@ error_t sshServerInit(SshServerContext *context,
          //Register callback function
          error = sshRegisterPublicKeyAuthCallback(&context->sshContext,
             settings->publicKeyAuthCallback);
+         //Any error to report?
+         if(error)
+            break;
+      }
+#endif
+
+#if (SSH_PUBLIC_KEY_AUTH_SUPPORT == ENABLED && SSH_CERT_SUPPORT == ENABLED)
+      //Valid certificate authentication callback function?
+      if(settings->certAuthCallback != NULL)
+      {
+         //Register callback function
+         error = sshRegisterCertAuthCallback(&context->sshContext,
+            settings->certAuthCallback);
+         //Any error to report?
+         if(error)
+            break;
+      }
+
+      //Valid CA public key verification callback function?
+      if(settings->caPublicKeyVerifyCallback != NULL)
+      {
+         //Register callback function
+         error = sshRegisterCaPublicKeyVerifyCallback(&context->sshContext,
+            settings->caPublicKeyVerifyCallback);
          //Any error to report?
          if(error)
             break;
@@ -318,62 +349,182 @@ error_t sshServerUnregisterChannelRequestCallback(SshServerContext *context,
 
 
 /**
- * @brief Load server's host key
+ * @brief Register channel open callback function
  * @param[in] context Pointer to the SSH server context
- * @param[in] publicKey Public key (PEM, SSH2 or OpenSSH format)
- * @param[in] publicKeyLen Length of the public key
- * @param[in] privateKey Private key (PEM format)
- * @param[in] privateKeyLen Length of the private key
+ * @param[in] callback Channel open callback function
+ * @param[in] param An opaque pointer passed to the callback function
  * @return Error code
  **/
 
-error_t sshServerLoadHostKey(SshServerContext *context, const char_t *publicKey,
-   size_t publicKeyLen, const char_t *privateKey, size_t privateKeyLen)
+error_t sshServerRegisterChannelOpenCallback(SshServerContext *context,
+   SshChannelOpenCallback callback, void *param)
 {
-   error_t error;
-
-   //Ensure the SSH server is stopped
-   if(!context->running)
-   {
-      //Add a new key pair
-      error = sshLoadHostKey(&context->sshContext, publicKey, publicKeyLen,
-         privateKey, privateKeyLen);
-   }
-   else
-   {
-      //Host keys cannot be changed while the SSH server is running
-      error = ERROR_WRONG_STATE;
-   }
-
-   //Return status code
-   return error;
+   //Register channel open callback function
+   return sshRegisterChannelOpenCallback(&context->sshContext, callback,
+      param);
 }
 
 
 /**
- * @brief Unload all server's host keys
+ * @brief Unregister channel open callback function
+ * @param[in] context Pointer to the SSH server context
+ * @param[in] callback Previously registered callback function
+ * @return Error code
+ **/
+
+error_t sshServerUnregisterChannelOpenCallback(SshServerContext *context,
+   SshChannelOpenCallback callback)
+{
+   //Unregister channel open callback function
+   return sshUnregisterChannelOpenCallback(&context->sshContext, callback);
+}
+
+
+/**
+ * @brief Register connection open callback function
+ * @param[in] context Pointer to the SSH server context
+ * @param[in] callback Connection open callback function
+ * @param[in] param An opaque pointer passed to the callback function
+ * @return Error code
+ **/
+
+error_t sshServerRegisterConnectionOpenCallback(SshServerContext *context,
+   SshConnectionOpenCallback callback, void *param)
+{
+   //Register connection open callback function
+   return sshRegisterConnectionOpenCallback(&context->sshContext, callback,
+      param);
+}
+
+
+/**
+ * @brief Unregister connection open callback function
+ * @param[in] context Pointer to the SSH server context
+ * @param[in] callback Previously registered callback function
+ * @return Error code
+ **/
+
+error_t sshServerUnregisterConnectionOpenCallback(SshServerContext *context,
+   SshConnectionOpenCallback callback)
+{
+   //Unregister connection open callback function
+   return sshUnregisterConnectionOpenCallback(&context->sshContext, callback);
+}
+
+
+/**
+ * @brief Register connection close callback function
+ * @param[in] context Pointer to the SSH server context
+ * @param[in] callback Connection close callback function
+ * @param[in] param An opaque pointer passed to the callback function
+ * @return Error code
+ **/
+
+error_t sshServerRegisterConnectionCloseCallback(SshServerContext *context,
+   SshConnectionCloseCallback callback, void *param)
+{
+   //Register connection close callback function
+   return sshRegisterConnectionCloseCallback(&context->sshContext, callback,
+      param);
+}
+
+
+/**
+ * @brief Unregister connection close callback function
+ * @param[in] context Pointer to the SSH server context
+ * @param[in] callback Previously registered callback function
+ * @return Error code
+ **/
+
+error_t sshServerUnregisterConnectionCloseCallback(SshServerContext *context,
+   SshConnectionCloseCallback callback)
+{
+   //Unregister connection close callback function
+   return sshUnregisterConnectionCloseCallback(&context->sshContext, callback);
+}
+
+
+/**
+ * @brief Load server's host key
+ * @param[in] context Pointer to the SSH server context
+ * @param[in] index Zero-based index identifying a slot
+ * @param[in] publicKey Public key (PEM, SSH2 or OpenSSH format). This parameter
+ *   is taken as reference
+ * @param[in] publicKeyLen Length of the public key
+ * @param[in] privateKey Private key (PEM or OpenSSH format). This parameter is
+ *   taken as reference
+ * @param[in] privateKeyLen Length of the private key
+ * @return Error code
+ **/
+
+error_t sshServerLoadHostKey(SshServerContext *context, uint_t index,
+   const char_t *publicKey, size_t publicKeyLen,
+   const char_t *privateKey, size_t privateKeyLen)
+{
+   //Load the specified key pair
+   return sshLoadHostKey(&context->sshContext, index, publicKey, publicKeyLen,
+      privateKey, privateKeyLen);
+}
+
+
+/**
+ * @brief Unload server's host key
+ * @param[in] index Zero-based index identifying a slot
  * @param[in] context Pointer to the SSH server context
  * @return Error code
  **/
 
-error_t sshServerUnloadAllHostKeys(SshServerContext *context)
+error_t sshServerUnloadHostKey(SshServerContext *context, uint_t index)
 {
-   error_t error;
+   //Unload the specified key pair
+   return sshUnloadHostKey(&context->sshContext, index);
+}
 
-   //Ensure the SSH server is stopped
-   if(!context->running)
-   {
-      //Remove all the key pairs that have been previously loaded
-      error = sshUnloadAllHostKeys(&context->sshContext);
-   }
-   else
-   {
-      //Host keys cannot be changed while the SSH server is running
-      error = ERROR_WRONG_STATE;
-   }
 
-   //Return status code
-   return error;
+/**
+ * @brief Load server's certificate
+ * @param[in] context Pointer to the SSH server context
+ * @param[in] index Zero-based index identifying a slot
+ * @param[in] cert Certificate (OpenSSH format). This parameter is taken
+ *   as reference
+ * @param[in] certLen Length of the certificate
+ * @param[in] privateKey Private key (PEM or OpenSSH format). This parameter
+ *   is taken as reference
+ * @param[in] privateKeyLen Length of the private key
+ * @return Error code
+ **/
+
+error_t sshServerLoadCertificate(SshServerContext *context, uint_t index,
+   const char_t *cert, size_t certLen, const char_t *privateKey,
+   size_t privateKeyLen)
+{
+#if (SSH_CERT_SUPPORT == ENABLED)
+   //Load the specified certificate
+   return sshLoadCertificate(&context->sshContext, index, cert, certLen,
+      privateKey, privateKeyLen);
+#else
+   //Not implemented
+   return ERROR_NOT_IMPLEMENTED;
+#endif
+}
+
+
+/**
+ * @brief Unload server's certificate
+ * @param[in] index Zero-based index identifying a slot
+ * @param[in] context Pointer to the SSH server context
+ * @return Error code
+ **/
+
+error_t sshServerUnloadCertificate(SshServerContext *context, uint_t index)
+{
+#if (SSH_CERT_SUPPORT == ENABLED)
+   //Unload the specified certificate
+   return sshUnloadCertificate(&context->sshContext, index);
+#else
+   //Not implemented
+   return ERROR_NOT_IMPLEMENTED;
+#endif
 }
 
 

@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.1.4
+ * @version 2.1.6
  **/
 
 //Switch to the appropriate trace level
@@ -33,9 +33,11 @@
 
 //Dependencies
 #include "ssh/ssh.h"
+#include "ssh/ssh_algorithms.h"
 #include "ssh/ssh_channel.h"
+#include "ssh/ssh_key_import.h"
+#include "ssh/ssh_cert_import.h"
 #include "ssh/ssh_misc.h"
-#include "pkix/pem_import.h"
 #include "debug.h"
 
 //Check SSH stack configuration
@@ -67,6 +69,9 @@ error_t sshInit(SshContext *context, SshConnection *connections,
       return ERROR_INVALID_PARAMETER;
    }
 
+   //Initialize status code
+   error = NO_ERROR;
+
    //Clear SSH context
    osMemset(context, 0, sizeof(SshContext));
 
@@ -77,9 +82,6 @@ error_t sshInit(SshContext *context, SshConnection *connections,
    //Attach SSH channels
    context->numChannels = numChannels;
    context->channels = channels;
-
-   //Initialize status code
-   error = NO_ERROR;
 
    //Start of exception handling block
    do
@@ -111,7 +113,7 @@ error_t sshInit(SshContext *context, SshConnection *connections,
          //Attach SSH context
          connection->context = context;
          //Index of the selected host key
-         connection->hostKeyIndex = 0;
+         connection->hostKeyIndex = -1;
          //Set default state
          connection->state = SSH_CONN_STATE_CLOSED;
       }
@@ -148,8 +150,8 @@ error_t sshInit(SshContext *context, SshConnection *connections,
       sshDeinit(context);
    }
 
-   //Successful initialization
-   return NO_ERROR;
+   //Return status code
+   return error;
 }
 
 
@@ -295,6 +297,68 @@ error_t sshRegisterHostKeyVerifyCallback(SshContext *context,
 
 
 /**
+ * @brief Register certificate verification callback function
+ * @param[in] context Pointer to the SSH context
+ * @param[in] callback Certificate verification callback function
+ * @return Error code
+ **/
+
+error_t sshRegisterCertVerifyCallback(SshContext *context,
+   SshCertVerifyCallback callback)
+{
+#if (SSH_CERT_SUPPORT == ENABLED)
+   //Check parameters
+   if(context == NULL || callback == NULL)
+      return ERROR_INVALID_PARAMETER;
+
+   //Acquire exclusive access to the SSH context
+   osAcquireMutex(&context->mutex);
+   //Save callback function
+   context->certVerifyCallback = callback;
+   //Release exclusive access to the SSH context
+   osReleaseMutex(&context->mutex);
+
+   //Successful processing
+   return NO_ERROR;
+#else
+   //Not implemented
+   return ERROR_NOT_IMPLEMENTED;
+#endif
+}
+
+
+/**
+ * @brief Register CA public key verification callback function
+ * @param[in] context Pointer to the SSH context
+ * @param[in] callback CA public key verification callback function
+ * @return Error code
+ **/
+
+error_t sshRegisterCaPublicKeyVerifyCallback(SshContext *context,
+   SshCaPublicKeyVerifyCallback callback)
+{
+#if (SSH_CERT_SUPPORT == ENABLED)
+   //Check parameters
+   if(context == NULL || callback == NULL)
+      return ERROR_INVALID_PARAMETER;
+
+   //Acquire exclusive access to the SSH context
+   osAcquireMutex(&context->mutex);
+   //Save callback function
+   context->caPublicKeyVerifyCallback = callback;
+   //Release exclusive access to the SSH context
+   osReleaseMutex(&context->mutex);
+
+   //Successful processing
+   return NO_ERROR;
+#else
+   //Not implemented
+   return ERROR_NOT_IMPLEMENTED;
+#endif
+}
+
+
+/**
  * @brief Register public key authentication callback function
  * @param[in] context Pointer to the SSH context
  * @param[in] callback Public key authentication callback function
@@ -313,6 +377,37 @@ error_t sshRegisterPublicKeyAuthCallback(SshContext *context,
    osAcquireMutex(&context->mutex);
    //Save callback function
    context->publicKeyAuthCallback = callback;
+   //Release exclusive access to the SSH context
+   osReleaseMutex(&context->mutex);
+
+   //Successful processing
+   return NO_ERROR;
+#else
+   //Not implemented
+   return ERROR_NOT_IMPLEMENTED;
+#endif
+}
+
+
+/**
+ * @brief Register certificate authentication callback function
+ * @param[in] context Pointer to the SSH context
+ * @param[in] callback Certificate authentication callback function
+ * @return Error code
+ **/
+
+error_t sshRegisterCertAuthCallback(SshContext *context,
+   SshCertAuthCallback callback)
+{
+#if (SSH_PUBLIC_KEY_AUTH_SUPPORT == ENABLED && SSH_CERT_SUPPORT == ENABLED)
+   //Check parameters
+   if(context == NULL || callback == NULL)
+      return ERROR_INVALID_PARAMETER;
+
+   //Acquire exclusive access to the SSH context
+   osAcquireMutex(&context->mutex);
+   //Save callback function
+   context->certAuthCallback = callback;
    //Release exclusive access to the SSH context
    osReleaseMutex(&context->mutex);
 
@@ -536,7 +631,7 @@ error_t sshRegisterGlobalRequestCallback(SshContext *context,
    error = ERROR_OUT_OF_RESOURCES;
 
    //Multiple callbacks may be registered
-   for(i = 0; i < SSH_MAX_REQ_CALLBACKS && error; i++)
+   for(i = 0; i < SSH_MAX_GLOBAL_REQ_CALLBACKS && error; i++)
    {
       //Unused entry?
       if(context->globalReqCallback[i] == NULL)
@@ -579,7 +674,7 @@ error_t sshUnregisterGlobalRequestCallback(SshContext *context,
    osAcquireMutex(&context->mutex);
 
    //Loop through registered callback functions
-   for(i = 0; i < SSH_MAX_REQ_CALLBACKS; i++)
+   for(i = 0; i < SSH_MAX_GLOBAL_REQ_CALLBACKS; i++)
    {
       //Matching entry?
       if(context->globalReqCallback[i] == callback)
@@ -623,7 +718,7 @@ error_t sshRegisterChannelRequestCallback(SshContext *context,
    error = ERROR_OUT_OF_RESOURCES;
 
    //Multiple callbacks may be registered
-   for(i = 0; i < SSH_MAX_REQ_CALLBACKS && error; i++)
+   for(i = 0; i < SSH_MAX_CHANNEL_REQ_CALLBACKS && error; i++)
    {
       //Unused entry?
       if(context->channelReqCallback[i] == NULL)
@@ -666,7 +761,7 @@ error_t sshUnregisterChannelRequestCallback(SshContext *context,
    osAcquireMutex(&context->mutex);
 
    //Loop through registered callback functions
-   for(i = 0; i < SSH_MAX_REQ_CALLBACKS; i++)
+   for(i = 0; i < SSH_MAX_CHANNEL_REQ_CALLBACKS; i++)
    {
       //Matching entry?
       if(context->channelReqCallback[i] == callback)
@@ -686,316 +781,43 @@ error_t sshUnregisterChannelRequestCallback(SshContext *context,
 
 
 /**
- * @brief Load entity's host key
+ * @brief Register channel open callback function
  * @param[in] context Pointer to the SSH context
- * @param[in] publicKey Public key (PEM, SSH2 or OpenSSH format)
- * @param[in] publicKeyLen Length of the public key
- * @param[in] privateKey Private key (PEM format)
- * @param[in] privateKeyLen Length of the private key
+ * @param[in] callback Channel open callback function
+ * @param[in] param An opaque pointer passed to the callback function
  * @return Error code
  **/
 
-error_t sshLoadHostKey(SshContext *context, const char_t *publicKey,
-   size_t publicKeyLen, const char_t *privateKey, size_t privateKeyLen)
+error_t sshRegisterChannelOpenCallback(SshContext *context,
+   SshChannelOpenCallback callback, void *param)
 {
    error_t error;
-   X509KeyType type;
-   SshHostKey *hostKey;
+   uint_t i;
 
-   //Make sure the SSH context is valid
-   if(context == NULL)
+   //Check parameters
+   if(context == NULL || callback == NULL)
       return ERROR_INVALID_PARAMETER;
-
-   //Check public key
-   if(publicKey == NULL || publicKeyLen == 0)
-      return ERROR_INVALID_PARAMETER;
-
-   //The private key is optional
-   if(privateKey == NULL && privateKeyLen != 0)
-      return ERROR_INVALID_PARAMETER;
-
-   //Retrieve the type of the host key
-   error = pemGetPublicKeyType(publicKey, publicKeyLen, &type);
-   //Any error to report?
-   if(error)
-      return error;
 
    //Acquire exclusive access to the SSH context
    osAcquireMutex(&context->mutex);
 
-   //The implementation limits the number of host keys that can be loaded
-   if(context->numHostKeys < SSH_MAX_HOST_KEYS)
+   //Initialize status code
+   error = ERROR_OUT_OF_RESOURCES;
+
+   //Multiple callbacks may be registered
+   for(i = 0; i < SSH_MAX_CHANNEL_OPEN_CALLBACKS && error; i++)
    {
-      //Point to the host key
-      hostKey = &context->hostKeys[context->numHostKeys];
-
-#if (SSH_RSA_SUPPORT == ENABLED)
-      //RSA host key?
-      if(type == X509_KEY_TYPE_RSA)
+      //Unused entry?
+      if(context->channelOpenCallback[i] == NULL)
       {
-         RsaPublicKey rsaPublicKey;
-         RsaPrivateKey rsaPrivateKey;
+         //Save callback function
+         context->channelOpenCallback[i] = callback;
+         //This opaque pointer will be directly passed to the callback function
+         context->channelOpenParam[i] = param;
 
-         //Initialize RSA public and private keys
-         rsaInitPublicKey(&rsaPublicKey);
-         rsaInitPrivateKey(&rsaPrivateKey);
-
-         //Check whether the RSA public key is valid
-         error = pemImportRsaPublicKey(publicKey, publicKeyLen, &rsaPublicKey);
-
-         //Check status code
-         if(!error)
-         {
-            //The private key can be omitted if a public-key hardware
-            //accelerator is used to generate signatures
-            if(privateKey != NULL)
-            {
-               //Check whether the RSA private key is valid
-               error = pemImportRsaPrivateKey(privateKey, privateKeyLen,
-                  &rsaPrivateKey);
-            }
-         }
-
-         //Check status code
-         if(!error)
-         {
-            //Set key format identifier
-            osStrcpy(hostKey->keyFormatId, "ssh-rsa");
-         }
-
-         //Release previously allocated memory
-         rsaFreePublicKey(&rsaPublicKey);
-         rsaFreePrivateKey(&rsaPrivateKey);
+         //We are done
+         error = NO_ERROR;
       }
-      else
-#endif
-#if (SSH_DSA_SUPPORT == ENABLED)
-      //DSA host key?
-      if(type == X509_KEY_TYPE_DSA)
-      {
-         DsaPublicKey dsaPublicKey;
-         DsaPrivateKey dsaPrivateKey;
-
-         //Initialize DSA public and private keys
-         dsaInitPublicKey(&dsaPublicKey);
-         dsaInitPrivateKey(&dsaPrivateKey);
-
-         //Check whether the DSA public key is valid
-         error = pemImportDsaPublicKey(publicKey, publicKeyLen, &dsaPublicKey);
-
-         //Check status code
-         if(!error)
-         {
-            //The private key can be omitted if a public-key hardware
-            //accelerator is used to generate signatures
-            if(privateKey != NULL)
-            {
-               //Check whether the DSA private key is valid
-               error = pemImportDsaPrivateKey(privateKey, privateKeyLen,
-                  &dsaPrivateKey);
-            }
-         }
-
-         //Check status code
-         if(!error)
-         {
-            //Set key format identifier
-            osStrcpy(hostKey->keyFormatId, "ssh-dss");
-         }
-
-         //Release previously allocated memory
-         dsaFreePublicKey(&dsaPublicKey);
-         dsaFreePrivateKey(&dsaPrivateKey);
-      }
-      else
-#endif
-#if (SSH_ECDSA_SUPPORT == ENABLED)
-      //ECDSA host key?
-      if(type == X509_KEY_TYPE_EC)
-      {
-         EcDomainParameters ecParams;
-         EcPublicKey ecPublicKey;
-         EcPrivateKey ecPrivateKey;
-
-         //Initialize ECDSA public and private keys
-         ecInitDomainParameters(&ecParams);
-         ecInitPublicKey(&ecPublicKey);
-         ecInitPrivateKey(&ecPrivateKey);
-
-         //Import EC domain parameters
-         error = pemImportEcParameters(publicKey, publicKeyLen, &ecParams);
-
-         //Check status code
-         if(!error)
-         {
-            //Check whether the ECDSA public key is valid
-            error = pemImportEcPublicKey(publicKey, publicKeyLen, &ecPublicKey);
-         }
-
-         //Check status code
-         if(!error)
-         {
-            //The private key can be omitted if a public-key hardware
-            //accelerator is used to generate signatures
-            if(privateKey != NULL)
-            {
-               //Check whether the ECDSA private key is valid
-               error = pemImportEcPrivateKey(privateKey, privateKeyLen,
-                  &ecPrivateKey);
-            }
-         }
-
-         //Check status code
-         if(!error)
-         {
-#if (SSH_NISTP256_SUPPORT == ENABLED)
-            //NIST P-256 elliptic curve?
-            if(!osStrcmp(ecParams.name, "secp256r1"))
-            {
-               //Set key format identifier
-               osStrcpy(hostKey->keyFormatId, "ecdsa-sha2-nistp256");
-            }
-            else
-#endif
-#if (SSH_NISTP384_SUPPORT == ENABLED)
-            //NIST P-384 elliptic curve?
-            if(!osStrcmp(ecParams.name, "secp384r1"))
-            {
-               //Set key format identifier
-               osStrcpy(hostKey->keyFormatId, "ecdsa-sha2-nistp384");
-            }
-            else
-#endif
-#if (SSH_NISTP521_SUPPORT == ENABLED)
-            //NIST P-521 elliptic curve?
-            if(!osStrcmp(ecParams.name, "secp521r1"))
-            {
-               //Set key format identifier
-               osStrcpy(hostKey->keyFormatId, "ecdsa-sha2-nistp521");
-            }
-            else
-#endif
-            //Unknown elliptic curve?
-            {
-               //Report an error
-               error = ERROR_INVALID_KEY;
-            }
-         }
-
-         //Release previously allocated memory
-         ecFreeDomainParameters(&ecParams);
-         ecFreePublicKey(&ecPublicKey);
-         ecFreePrivateKey(&ecPrivateKey);
-      }
-      else
-#endif
-#if (SSH_ED25519_SUPPORT == ENABLED)
-      //Ed25519 host key?
-      if(type == X509_KEY_TYPE_ED25519)
-      {
-         EddsaPublicKey eddsaPublicKey;
-         EddsaPrivateKey eddsaPrivateKey;
-
-         //Initialize EdDSA public and private keys
-         eddsaInitPublicKey(&eddsaPublicKey);
-         eddsaInitPrivateKey(&eddsaPrivateKey);
-
-         //Check whether the EdDSA public key is valid
-         error = pemImportEddsaPublicKey(publicKey, publicKeyLen,
-            &eddsaPublicKey);
-
-         //Check status code
-         if(!error)
-         {
-            //The private key can be omitted if a public-key hardware
-            //accelerator is used to generate signatures
-            if(privateKey != NULL)
-            {
-               //Check whether the EdDSA private key is valid
-               error = pemImportEddsaPrivateKey(privateKey, privateKeyLen,
-                  &eddsaPrivateKey);
-            }
-         }
-
-         //Check status code
-         if(!error)
-         {
-            //Set key format identifier
-            osStrcpy(hostKey->keyFormatId, "ssh-ed25519");
-         }
-
-         //Release previously allocated memory
-         eddsaFreePublicKey(&eddsaPublicKey);
-         eddsaFreePrivateKey(&eddsaPrivateKey);
-      }
-      else
-#endif
-#if (SSH_ED448_SUPPORT == ENABLED)
-      //Ed448 host key?
-      if(type == X509_KEY_TYPE_ED448)
-      {
-         EddsaPublicKey eddsaPublicKey;
-         EddsaPrivateKey eddsaPrivateKey;
-
-         //Initialize EdDSA public and private keys
-         eddsaInitPublicKey(&eddsaPublicKey);
-         eddsaInitPrivateKey(&eddsaPrivateKey);
-
-         //Check whether the EdDSA public key is valid
-         error = pemImportEddsaPublicKey(publicKey, publicKeyLen,
-            &eddsaPublicKey);
-
-         //Check status code
-         if(!error)
-         {
-            //The private key can be omitted if a public-key hardware
-            //accelerator is used to generate signatures
-            if(privateKey != NULL)
-            {
-               //Check whether the EdDSA private key is valid
-               error = pemImportEddsaPrivateKey(privateKey, privateKeyLen,
-                  &eddsaPrivateKey);
-            }
-         }
-
-         //Check status code
-         if(!error)
-         {
-            //Set key format identifier
-            osStrcpy(hostKey->keyFormatId, "ssh-ed448");
-         }
-
-         //Release previously allocated memory
-         eddsaFreePublicKey(&eddsaPublicKey);
-         eddsaFreePrivateKey(&eddsaPrivateKey);
-      }
-      else
-#endif
-      //Invalid host key?
-      {
-         //Report an error
-         error = ERROR_INVALID_KEY;
-      }
-
-      //Check status code
-      if(!error)
-      {
-         //Save public key
-         hostKey->publicKey = publicKey;
-         hostKey->publicKeyLen = publicKeyLen;
-
-         //Save private key
-         hostKey->privateKey = privateKey;
-         hostKey->privateKeyLen = privateKeyLen;
-
-         //Update the number of host keys
-         context->numHostKeys++;
-      }
-   }
-   else
-   {
-      //Report an error
-      error = ERROR_OUT_OF_RESOURCES;
    }
 
    //Release exclusive access to the SSH context
@@ -1007,39 +829,772 @@ error_t sshLoadHostKey(SshContext *context, const char_t *publicKey,
 
 
 /**
- * @brief Unload all entity's host keys
+ * @brief Unregister channel open callback function
  * @param[in] context Pointer to the SSH context
+ * @param[in] callback Previously registered callback function
  * @return Error code
  **/
 
-error_t sshUnloadAllHostKeys(SshContext *context)
+error_t sshUnregisterChannelOpenCallback(SshContext *context,
+   SshChannelOpenCallback callback)
 {
    uint_t i;
 
-   //Make sure the SSH context is valid
-   if(context == NULL)
+   //Check parameters
+   if(context == NULL || callback == NULL)
       return ERROR_INVALID_PARAMETER;
 
    //Acquire exclusive access to the SSH context
    osAcquireMutex(&context->mutex);
 
-   //Remove all the key pairs that have been previously loaded
-   for(i = 0; i < SSH_MAX_HOST_KEYS; i++)
+   //Loop through registered callback functions
+   for(i = 0; i < SSH_MAX_CHANNEL_OPEN_CALLBACKS; i++)
    {
-      context->hostKeys[i].publicKey = NULL;
-      context->hostKeys[i].publicKeyLen = 0;
-      context->hostKeys[i].privateKey = NULL;
-      context->hostKeys[i].privateKeyLen = 0;
+      //Matching entry?
+      if(context->channelOpenCallback[i] == callback)
+      {
+         //Unregister callback function
+         context->channelOpenCallback[i] = NULL;
+         context->channelOpenParam[i] = NULL;
+      }
    }
-
-   //Update the number of host keys
-   context->numHostKeys = 0;
 
    //Release exclusive access to the SSH context
    osReleaseMutex(&context->mutex);
 
    //Successful processing
    return NO_ERROR;
+}
+
+
+/**
+ * @brief Register connection open callback function
+ * @param[in] context Pointer to the SSH context
+ * @param[in] callback Connection open callback function
+ * @param[in] param An opaque pointer passed to the callback function
+ * @return Error code
+ **/
+
+error_t sshRegisterConnectionOpenCallback(SshContext *context,
+   SshConnectionOpenCallback callback, void *param)
+{
+   error_t error;
+   uint_t i;
+
+   //Check parameters
+   if(context == NULL || callback == NULL)
+      return ERROR_INVALID_PARAMETER;
+
+   //Acquire exclusive access to the SSH context
+   osAcquireMutex(&context->mutex);
+
+   //Initialize status code
+   error = ERROR_OUT_OF_RESOURCES;
+
+   //Multiple callbacks may be registered
+   for(i = 0; i < SSH_MAX_CONN_OPEN_CALLBACKS && error; i++)
+   {
+      //Unused entry?
+      if(context->connectionOpenCallback[i] == NULL)
+      {
+         //Save callback function
+         context->connectionOpenCallback[i] = callback;
+         //This opaque pointer will be directly passed to the callback function
+         context->connectionOpenParam[i] = param;
+
+         //We are done
+         error = NO_ERROR;
+      }
+   }
+
+   //Release exclusive access to the SSH context
+   osReleaseMutex(&context->mutex);
+
+   //Return status code
+   return error;
+}
+
+
+/**
+ * @brief Unregister connection open callback function
+ * @param[in] context Pointer to the SSH context
+ * @param[in] callback Previously registered callback function
+ * @return Error code
+ **/
+
+error_t sshUnregisterConnectionOpenCallback(SshContext *context,
+   SshConnectionOpenCallback callback)
+{
+   uint_t i;
+
+   //Check parameters
+   if(context == NULL || callback == NULL)
+      return ERROR_INVALID_PARAMETER;
+
+   //Acquire exclusive access to the SSH context
+   osAcquireMutex(&context->mutex);
+
+   //Loop through registered callback functions
+   for(i = 0; i < SSH_MAX_CONN_OPEN_CALLBACKS; i++)
+   {
+      //Matching entry?
+      if(context->connectionOpenCallback[i] == callback)
+      {
+         //Unregister callback function
+         context->connectionOpenCallback[i] = NULL;
+         context->connectionOpenParam[i] = NULL;
+      }
+   }
+
+   //Release exclusive access to the SSH context
+   osReleaseMutex(&context->mutex);
+
+   //Successful processing
+   return NO_ERROR;
+}
+
+
+/**
+ * @brief Register connection close callback function
+ * @param[in] context Pointer to the SSH context
+ * @param[in] callback Connection close callback function
+ * @param[in] param An opaque pointer passed to the callback function
+ * @return Error code
+ **/
+
+error_t sshRegisterConnectionCloseCallback(SshContext *context,
+   SshConnectionCloseCallback callback, void *param)
+{
+   error_t error;
+   uint_t i;
+
+   //Check parameters
+   if(context == NULL || callback == NULL)
+      return ERROR_INVALID_PARAMETER;
+
+   //Acquire exclusive access to the SSH context
+   osAcquireMutex(&context->mutex);
+
+   //Initialize status code
+   error = ERROR_OUT_OF_RESOURCES;
+
+   //Multiple callbacks may be registered
+   for(i = 0; i < SSH_MAX_CONN_CLOSE_CALLBACKS && error; i++)
+   {
+      //Unused entry?
+      if(context->connectionCloseCallback[i] == NULL)
+      {
+         //Save callback function
+         context->connectionCloseCallback[i] = callback;
+         //This opaque pointer will be directly passed to the callback function
+         context->connectionCloseParam[i] = param;
+
+         //We are done
+         error = NO_ERROR;
+      }
+   }
+
+   //Release exclusive access to the SSH context
+   osReleaseMutex(&context->mutex);
+
+   //Return status code
+   return error;
+}
+
+
+/**
+ * @brief Unregister connection close callback function
+ * @param[in] context Pointer to the SSH context
+ * @param[in] callback Previously registered callback function
+ * @return Error code
+ **/
+
+error_t sshUnregisterConnectionCloseCallback(SshContext *context,
+   SshConnectionCloseCallback callback)
+{
+   uint_t i;
+
+   //Check parameters
+   if(context == NULL || callback == NULL)
+      return ERROR_INVALID_PARAMETER;
+
+   //Acquire exclusive access to the SSH context
+   osAcquireMutex(&context->mutex);
+
+   //Loop through registered callback functions
+   for(i = 0; i < SSH_MAX_CONN_CLOSE_CALLBACKS; i++)
+   {
+      //Matching entry?
+      if(context->connectionCloseCallback[i] == callback)
+      {
+         //Unregister callback function
+         context->connectionCloseCallback[i] = NULL;
+         context->connectionCloseParam[i] = NULL;
+      }
+   }
+
+   //Release exclusive access to the SSH context
+   osReleaseMutex(&context->mutex);
+
+   //Successful processing
+   return NO_ERROR;
+}
+
+
+/**
+ * @brief Load entity's host key
+ * @param[in] context Pointer to the SSH context
+ * @param[in] index Zero-based index identifying a slot
+ * @param[in] publicKey Public key (PEM, SSH2 or OpenSSH format). This parameter
+ *   is taken as reference
+ * @param[in] publicKeyLen Length of the public key
+ * @param[in] privateKey Private key (PEM or OpenSSH format). This parameter is
+ *   taken as reference
+ * @param[in] privateKeyLen Length of the private key
+ * @return Error code
+ **/
+
+error_t sshLoadHostKey(SshContext *context, uint_t index,
+   const char_t *publicKey, size_t publicKeyLen,
+   const char_t *privateKey, size_t privateKeyLen)
+{
+   error_t error;
+   SshHostKey *hostKey;
+   const char_t *keyType;
+
+   //Make sure the SSH context is valid
+   if(context == NULL)
+      return ERROR_INVALID_PARAMETER;
+
+   //The implementation limits the number of host keys that can be loaded
+   if(index >= SSH_MAX_HOST_KEYS)
+      return ERROR_INVALID_PARAMETER;
+
+   //Check public key
+   if(publicKey == NULL || publicKeyLen == 0)
+      return ERROR_INVALID_PARAMETER;
+
+   //The private key is optional
+   if(privateKey == NULL && privateKeyLen != 0)
+      return ERROR_INVALID_PARAMETER;
+
+   //Initialize status code
+   error = NO_ERROR;
+
+   //Retrieve public key type
+   keyType = sshGetPublicKeyType(publicKey, publicKeyLen);
+
+#if (SSH_RSA_SUPPORT == ENABLED)
+   //RSA host key?
+   if(sshCompareAlgo(keyType, "ssh-rsa"))
+   {
+      RsaPublicKey rsaPublicKey;
+      RsaPrivateKey rsaPrivateKey;
+
+      //Initialize RSA public and private keys
+      rsaInitPublicKey(&rsaPublicKey);
+      rsaInitPrivateKey(&rsaPrivateKey);
+
+      //Check whether the RSA public key is valid
+      error = sshImportRsaPublicKey(publicKey, publicKeyLen, &rsaPublicKey);
+
+      //Check status code
+      if(!error)
+      {
+         //The private key can be omitted if a public-key hardware accelerator
+         //is used to generate signatures
+         if(privateKey != NULL)
+         {
+            //Check whether the RSA private key is valid
+            error = sshImportRsaPrivateKey(privateKey, privateKeyLen,
+               &rsaPrivateKey);
+         }
+      }
+
+      //Release previously allocated memory
+      rsaFreePublicKey(&rsaPublicKey);
+      rsaFreePrivateKey(&rsaPrivateKey);
+   }
+   else
+#endif
+#if (SSH_DSA_SUPPORT == ENABLED)
+   //DSA host key?
+   if(sshCompareAlgo(keyType, "ssh-dss"))
+   {
+      DsaPublicKey dsaPublicKey;
+      DsaPrivateKey dsaPrivateKey;
+
+      //Initialize DSA public and private keys
+      dsaInitPublicKey(&dsaPublicKey);
+      dsaInitPrivateKey(&dsaPrivateKey);
+
+      //Check whether the DSA public key is valid
+      error = sshImportDsaPublicKey(publicKey, publicKeyLen, &dsaPublicKey);
+
+      //Check status code
+      if(!error)
+      {
+         //The private key can be omitted if a public-key hardware accelerator
+         //is used to generate signatures
+         if(privateKey != NULL)
+         {
+            //Check whether the DSA private key is valid
+            error = sshImportDsaPrivateKey(privateKey, privateKeyLen,
+               &dsaPrivateKey);
+         }
+      }
+
+      //Release previously allocated memory
+      dsaFreePublicKey(&dsaPublicKey);
+      dsaFreePrivateKey(&dsaPrivateKey);
+   }
+   else
+#endif
+#if (SSH_ECDSA_SUPPORT == ENABLED)
+   //ECDSA host key?
+   if(sshCompareAlgo(keyType, "ecdsa-sha2-nistp256") ||
+      sshCompareAlgo(keyType, "ecdsa-sha2-nistp384") ||
+      sshCompareAlgo(keyType, "ecdsa-sha2-nistp521"))
+   {
+      EcDomainParameters ecParams;
+      EcPublicKey ecPublicKey;
+      EcPrivateKey ecPrivateKey;
+
+      //Initialize ECDSA public and private keys
+      ecInitDomainParameters(&ecParams);
+      ecInitPublicKey(&ecPublicKey);
+      ecInitPrivateKey(&ecPrivateKey);
+
+      //Check whether the ECDSA public key is valid
+      error = sshImportEcdsaPublicKey(publicKey, publicKeyLen, &ecParams,
+         &ecPublicKey);
+
+      //Check status code
+      if(!error)
+      {
+         //The private key can be omitted if a public-key hardware accelerator
+         //is used to generate signatures
+         if(privateKey != NULL)
+         {
+            //Check whether the ECDSA private key is valid
+            error = sshImportEcdsaPrivateKey(privateKey, privateKeyLen,
+               &ecPrivateKey);
+         }
+      }
+
+      //Release previously allocated memory
+      ecFreeDomainParameters(&ecParams);
+      ecFreePublicKey(&ecPublicKey);
+      ecFreePrivateKey(&ecPrivateKey);
+   }
+   else
+#endif
+#if (SSH_ED25519_SUPPORT == ENABLED)
+   //Ed25519 host key?
+   if(sshCompareAlgo(keyType, "ssh-ed25519"))
+   {
+      EddsaPublicKey eddsaPublicKey;
+      EddsaPrivateKey eddsaPrivateKey;
+
+      //Initialize EdDSA public and private keys
+      eddsaInitPublicKey(&eddsaPublicKey);
+      eddsaInitPrivateKey(&eddsaPrivateKey);
+
+      //Check whether the EdDSA public key is valid
+      error = sshImportEd25519PublicKey(publicKey, publicKeyLen,
+         &eddsaPublicKey);
+
+      //Check status code
+      if(!error)
+      {
+         //The private key can be omitted if a public-key hardware accelerator
+         //is used to generate signatures
+         if(privateKey != NULL)
+         {
+            //Check whether the EdDSA private key is valid
+            error = sshImportEd25519PrivateKey(privateKey, privateKeyLen,
+               &eddsaPrivateKey);
+         }
+      }
+
+      //Release previously allocated memory
+      eddsaFreePublicKey(&eddsaPublicKey);
+      eddsaFreePrivateKey(&eddsaPrivateKey);
+   }
+   else
+#endif
+#if (SSH_ED448_SUPPORT == ENABLED)
+   //Ed448 host key?
+   if(sshCompareAlgo(keyType, "ssh-ed448"))
+   {
+      EddsaPublicKey eddsaPublicKey;
+      EddsaPrivateKey eddsaPrivateKey;
+
+      //Initialize EdDSA public and private keys
+      eddsaInitPublicKey(&eddsaPublicKey);
+      eddsaInitPrivateKey(&eddsaPrivateKey);
+
+      //Check whether the EdDSA public key is valid
+      error = sshImportEd448PublicKey(publicKey, publicKeyLen,
+         &eddsaPublicKey);
+
+      //Check status code
+      if(!error)
+      {
+         //The private key can be omitted if a public-key hardware accelerator
+         //is used to generate signatures
+         if(privateKey != NULL)
+         {
+            //Check whether the EdDSA private key is valid
+            error = sshImportEd448PrivateKey(privateKey, privateKeyLen,
+               &eddsaPrivateKey);
+         }
+      }
+
+      //Release previously allocated memory
+      eddsaFreePublicKey(&eddsaPublicKey);
+      eddsaFreePrivateKey(&eddsaPrivateKey);
+   }
+   else
+#endif
+   //Invalid host key?
+   {
+      //Report an error
+      error = ERROR_INVALID_KEY;
+   }
+
+   //Check status code
+   if(!error)
+   {
+      //Acquire exclusive access to the SSH context
+      osAcquireMutex(&context->mutex);
+
+      //Point to the specified slot
+      hostKey = &context->hostKeys[index];
+
+      //Set key format identifier
+      hostKey->keyFormatId = keyType;
+
+      //Save public key
+      hostKey->publicKey = publicKey;
+      hostKey->publicKeyLen = publicKeyLen;
+
+      //Save private key
+      hostKey->privateKey = privateKey;
+      hostKey->privateKeyLen = privateKeyLen;
+
+#if (SSH_CLIENT_SUPPORT == ENABLED)
+      //Select the default public key algorithm to use during user
+      //authentication
+      hostKey->publicKeyAlgo = sshSelectPublicKeyAlgo(context,
+         hostKey->keyFormatId, NULL);
+#endif
+
+      //Release exclusive access to the SSH context
+      osReleaseMutex(&context->mutex);
+   }
+
+   //Return status code
+   return error;
+}
+
+
+/**
+ * @brief Unload entity's host key
+ * @param[in] context Pointer to the SSH context
+ * @param[in] index Zero-based index identifying a slot
+ * @return Error code
+ **/
+
+error_t sshUnloadHostKey(SshContext *context, uint_t index)
+{
+   uint_t i;
+   SshConnection *connection;
+
+   //Make sure the SSH context is valid
+   if(context == NULL)
+      return ERROR_INVALID_PARAMETER;
+
+   //Check index
+   if(index >= SSH_MAX_HOST_KEYS)
+      return ERROR_INVALID_PARAMETER;
+
+   //Acquire exclusive access to the SSH context
+   osAcquireMutex(&context->mutex);
+
+   //Loop through SSH connections
+   for(i = 0; i < context->numConnections; i++)
+   {
+      //Point to the structure describing the current connection
+      connection = &context->connections[i];
+
+      //Key exchange in progress?
+      if(connection->state > SSH_CONN_STATE_CLOSED &&
+         connection->state < SSH_CONN_STATE_OPEN)
+      {
+         //Check whether the key pair is currently in use
+         if(connection->hostKeyIndex == index)
+         {
+            //Terminate the connection immediately
+            connection->disconnectRequest = TRUE;
+            //Notify the SSH core of the event
+            sshNotifyEvent(context);
+         }
+      }
+   }
+
+   //Unload the specified key pair
+   osMemset(&context->hostKeys[index], 0, sizeof(SshHostKey));
+
+   //Release exclusive access to the SSH context
+   osReleaseMutex(&context->mutex);
+
+   //Successful processing
+   return NO_ERROR;
+}
+
+
+/**
+ * @brief Load entity's certificate
+ * @param[in] context Pointer to the SSH context
+ * @param[in] index Zero-based index identifying a slot
+ * @param[in] cert Certificate (OpenSSH format). This parameter is taken
+ *   as reference
+ * @param[in] certLen Length of the certificate
+ * @param[in] privateKey Private key (PEM or OpenSSH format). This parameter
+ *   is taken as reference
+ * @param[in] privateKeyLen Length of the private key
+ * @return Error code
+ **/
+
+error_t sshLoadCertificate(SshContext *context, uint_t index,
+   const char_t *cert, size_t certLen, const char_t *privateKey,
+   size_t privateKeyLen)
+{
+#if (SSH_CERT_SUPPORT == ENABLED)
+   error_t error;
+   SshHostKey *hostKey;
+   const char_t *certType;
+
+   //Make sure the SSH context is valid
+   if(context == NULL)
+      return ERROR_INVALID_PARAMETER;
+
+   //The implementation limits the number of certificates that can be loaded
+   if(index >= SSH_MAX_HOST_KEYS)
+      return ERROR_INVALID_PARAMETER;
+
+   //Check certificate
+   if(cert == NULL || certLen == 0)
+      return ERROR_INVALID_PARAMETER;
+
+   //The private key is optional
+   if(privateKey == NULL && privateKeyLen != 0)
+      return ERROR_INVALID_PARAMETER;
+
+   //Initialize status code
+   error = NO_ERROR;
+
+   //Retrieve certificate type
+   certType = sshGetCertType(cert, certLen);
+
+#if (SSH_RSA_SUPPORT == ENABLED)
+   //RSA certificate?
+   if(sshCompareAlgo(certType, "ssh-rsa-cert-v01@openssh.com"))
+   {
+      RsaPrivateKey rsaPrivateKey;
+
+      //Initialize RSA private key
+      rsaInitPrivateKey(&rsaPrivateKey);
+
+      //The private key can be omitted if a public-key hardware accelerator
+      //is used to generate signatures
+      if(privateKey != NULL)
+      {
+         //Check whether the RSA private key is valid
+         error = sshImportRsaPrivateKey(privateKey, privateKeyLen,
+            &rsaPrivateKey);
+      }
+
+      //Release previously allocated memory
+      rsaFreePrivateKey(&rsaPrivateKey);
+   }
+   else
+#endif
+#if (SSH_DSA_SUPPORT == ENABLED)
+   //DSA certificate?
+   if(sshCompareAlgo(certType, "ssh-dss-cert-v01@openssh.com"))
+   {
+      DsaPrivateKey dsaPrivateKey;
+
+      //Initialize DSA private key
+      dsaInitPrivateKey(&dsaPrivateKey);
+
+      //The private key can be omitted if a public-key hardware accelerator
+      //is used to generate signatures
+      if(privateKey != NULL)
+      {
+         //Check whether the DSA private key is valid
+         error = sshImportDsaPrivateKey(privateKey, privateKeyLen,
+            &dsaPrivateKey);
+      }
+
+      //Release previously allocated memory
+      dsaFreePrivateKey(&dsaPrivateKey);
+   }
+   else
+#endif
+#if (SSH_ECDSA_SUPPORT == ENABLED)
+   //ECDSA certificate?
+   if(sshCompareAlgo(certType, "ecdsa-sha2-nistp256-cert-v01@openssh.com") ||
+      sshCompareAlgo(certType, "ecdsa-sha2-nistp384-cert-v01@openssh.com") ||
+      sshCompareAlgo(certType, "ecdsa-sha2-nistp521-cert-v01@openssh.com"))
+   {
+      EcPrivateKey ecPrivateKey;
+
+      //Initialize EC private key
+      ecInitPrivateKey(&ecPrivateKey);
+
+      //The private key can be omitted if a public-key hardware accelerator
+      //is used to generate signatures
+      if(privateKey != NULL)
+      {
+         //Check whether the EC private key is valid
+         error = sshImportEcdsaPrivateKey(privateKey, privateKeyLen,
+            &ecPrivateKey);
+      }
+
+      //Release previously allocated memory
+      ecFreePrivateKey(&ecPrivateKey);
+   }
+   else
+#endif
+#if (SSH_ED25519_SUPPORT == ENABLED)
+   //Ed25519 certificate?
+   if(sshCompareAlgo(certType, "ssh-ed25519-cert-v01@openssh.com"))
+   {
+      EddsaPrivateKey ed25519PrivateKey;
+
+      //Initialize Ed25519 private key
+      eddsaInitPrivateKey(&ed25519PrivateKey);
+
+      //The private key can be omitted if a public-key hardware accelerator
+      //is used to generate signatures
+      if(privateKey != NULL)
+      {
+         //Check whether the EdDSA private key is valid
+         error = sshImportEd25519PrivateKey(privateKey, privateKeyLen,
+            &ed25519PrivateKey);
+      }
+
+      //Release previously allocated memory
+      eddsaFreePrivateKey(&ed25519PrivateKey);
+   }
+   else
+#endif
+   //Invalid certificate?
+   {
+      //Report an error
+      error = ERROR_BAD_CERTIFICATE;
+   }
+
+   //Check status code
+   if(!error)
+   {
+      //Acquire exclusive access to the SSH context
+      osAcquireMutex(&context->mutex);
+
+      //Point to the specified slot
+      hostKey = &context->hostKeys[index];
+
+      //Set key format identifier
+      hostKey->keyFormatId = certType;
+
+      //Save certificate
+      hostKey->publicKey = cert;
+      hostKey->publicKeyLen = certLen;
+
+      //Save private key
+      hostKey->privateKey = privateKey;
+      hostKey->privateKeyLen = privateKeyLen;
+
+#if (SSH_CLIENT_SUPPORT == ENABLED)
+      //Select the default public key algorithm to use during user
+      //authentication
+      hostKey->publicKeyAlgo = sshSelectPublicKeyAlgo(context,
+         hostKey->keyFormatId, NULL);
+#endif
+
+      //Release exclusive access to the SSH context
+      osReleaseMutex(&context->mutex);
+   }
+
+   //Return status code
+   return error;
+#else
+   //Not implemented
+   return ERROR_NOT_IMPLEMENTED;
+#endif
+}
+
+
+/**
+ * @brief Unload entity's certificate
+ * @param[in] context Pointer to the SSH context
+ * @param[in] index Zero-based index identifying a slot
+ * @return Error code
+ **/
+
+error_t sshUnloadCertificate(SshContext *context, uint_t index)
+{
+#if (SSH_CERT_SUPPORT == ENABLED)
+   uint_t i;
+   SshConnection *connection;
+
+   //Make sure the SSH context is valid
+   if(context == NULL)
+      return ERROR_INVALID_PARAMETER;
+
+   //Check index
+   if(index >= SSH_MAX_HOST_KEYS)
+      return ERROR_INVALID_PARAMETER;
+
+   //Acquire exclusive access to the SSH context
+   osAcquireMutex(&context->mutex);
+
+   //Loop through SSH connections
+   for(i = 0; i < context->numConnections; i++)
+   {
+      //Point to the structure describing the current connection
+      connection = &context->connections[i];
+
+      //Key exchange in progress?
+      if(connection->state > SSH_CONN_STATE_CLOSED &&
+         connection->state < SSH_CONN_STATE_OPEN)
+      {
+         //Check whether the certificate is currently in use
+         if(connection->hostKeyIndex == index)
+         {
+            //Terminate the connection immediately
+            connection->disconnectRequest = TRUE;
+            //Notify the SSH core of the event
+            sshNotifyEvent(context);
+         }
+      }
+   }
+
+   //Unload the specified certificate
+   osMemset(&context->hostKeys[index], 0, sizeof(SshHostKey));
+
+   //Release exclusive access to the SSH context
+   osReleaseMutex(&context->mutex);
+
+   //Successful processing
+   return NO_ERROR;
+#else
+   //Not implemented
+   return ERROR_NOT_IMPLEMENTED;
+#endif
 }
 
 
@@ -1270,7 +1825,7 @@ error_t sshWriteChannel(SshChannel *channel, const void *data, size_t length,
       }
    }
 
-   //Notify the SSH server that data is pending in the send buffer
+   //Notify the SSH core that data is pending in the send buffer
    sshNotifyEvent(channel->context);
 
    //Release exclusive access to the SSH context
@@ -1549,7 +2104,7 @@ error_t sshPollChannels(SshChannelEventDesc *eventDesc, uint_t size,
       //Valid channel handle?
       if(eventDesc[i].channel != NULL)
       {
-         //Any socket event in the signaled state?
+         //Any channel event in the signaled state?
          if(status)
          {
             //Retrieve event flags for the current channel

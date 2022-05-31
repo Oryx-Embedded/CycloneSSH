@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.1.4
+ * @version 2.1.6
  **/
 
 #ifndef _SSH_H
@@ -34,12 +34,15 @@
 //Dependencies
 #include "ssh_config.h"
 #include "ssh_legacy.h"
+#include "ssh_types.h"
+#include "ssh_cert_parse.h"
 #include "core/net.h"
 #include "core/crypto.h"
 #include "cipher/cipher_algorithms.h"
+#include "cipher_mode/cipher_modes.h"
 #include "hash/hash_algorithms.h"
-#include "mac/hmac.h"
-#include "aead/gcm.h"
+#include "mac/mac_algorithms.h"
+#include "aead/aead_algorithms.h"
 #include "pkc/dh.h"
 #include "ecc/ecdh.h"
 
@@ -71,13 +74,13 @@
 #endif
 
 //Version string
-#define CYCLONE_SSH_VERSION_STRING "2.1.4"
+#define CYCLONE_SSH_VERSION_STRING "2.1.6"
 //Major version
 #define CYCLONE_SSH_MAJOR_VERSION 2
 //Minor version
 #define CYCLONE_SSH_MINOR_VERSION 1
 //Revision number
-#define CYCLONE_SSH_REV_NUMBER 4
+#define CYCLONE_SSH_REV_NUMBER 6
 
 //SSH support
 #ifndef SSH_SUPPORT
@@ -114,6 +117,34 @@
    #error SSH_PASSWORD_AUTH_SUPPORT parameter is not valid
 #endif
 
+//Certificate support (OpenSSH format)
+#ifndef SSH_CERT_SUPPORT
+   #define SSH_CERT_SUPPORT DISABLED
+#elif (SSH_CERT_SUPPORT != ENABLED && SSH_CERT_SUPPORT != DISABLED)
+   #error SSH_CERT_SUPPORT parameter is not valid
+#endif
+
+//Extension negotiation mechanism
+#ifndef SSH_EXT_INFO_SUPPORT
+   #define SSH_EXT_INFO_SUPPORT DISABLED
+#elif (SSH_EXT_INFO_SUPPORT != ENABLED && SSH_EXT_INFO_SUPPORT != DISABLED)
+   #error SSH_EXT_INFO_SUPPORT parameter is not valid
+#endif
+
+//"server-sig-algs" extension support
+#ifndef SSH_SERVER_SIG_ALGS_EXT_SUPPORT
+   #define SSH_SERVER_SIG_ALGS_EXT_SUPPORT ENABLED
+#elif (SSH_SERVER_SIG_ALGS_EXT_SUPPORT != ENABLED && SSH_SERVER_SIG_ALGS_EXT_SUPPORT != DISABLED)
+   #error SSH_SERVER_SIG_ALGS_EXT_SUPPORT parameter is not valid
+#endif
+
+//"global-requests-ok" extension support
+#ifndef SSH_GLOBAL_REQ_OK_EXT_SUPPORT
+   #define SSH_GLOBAL_REQ_OK_EXT_SUPPORT DISABLED
+#elif (SSH_GLOBAL_REQ_OK_EXT_SUPPORT != ENABLED && SSH_GLOBAL_REQ_OK_EXT_SUPPORT != DISABLED)
+   #error SSH_GLOBAL_REQ_OK_EXT_SUPPORT parameter is not valid
+#endif
+
 //Signature generation/verification callback functions
 #ifndef SSH_SIGN_CALLBACK_SUPPORT
    #define SSH_SIGN_CALLBACK_SUPPORT DISABLED
@@ -142,11 +173,39 @@
    #error SSH_MAX_CONNECTIONS parameter is not valid
 #endif
 
-//Maximum number of request callbacks that can be attached
-#ifndef SSH_MAX_REQ_CALLBACKS
-   #define SSH_MAX_REQ_CALLBACKS 3
-#elif (SSH_MAX_REQ_CALLBACKS < 1)
-   #error SSH_MAX_REQ_CALLBACKS parameter is not valid
+//Maximum number of global request callbacks that can be attached
+#ifndef SSH_MAX_GLOBAL_REQ_CALLBACKS
+   #define SSH_MAX_GLOBAL_REQ_CALLBACKS 3
+#elif (SSH_MAX_GLOBAL_REQ_CALLBACKS < 1)
+   #error SSH_MAX_GLOBAL_REQ_CALLBACKS parameter is not valid
+#endif
+
+//Maximum number of channel request callbacks that can be attached
+#ifndef SSH_MAX_CHANNEL_REQ_CALLBACKS
+   #define SSH_MAX_CHANNEL_REQ_CALLBACKS 3
+#elif (SSH_MAX_CHANNEL_REQ_CALLBACKS < 1)
+   #error SSH_MAX_CHANNEL_REQ_CALLBACKS parameter is not valid
+#endif
+
+//Maximum number of channel open callbacks that can be attached
+#ifndef SSH_MAX_CHANNEL_OPEN_CALLBACKS
+   #define SSH_MAX_CHANNEL_OPEN_CALLBACKS 1
+#elif (SSH_MAX_CHANNEL_OPEN_CALLBACKS < 1)
+   #error SSH_MAX_CHANNEL_OPEN_CALLBACKS parameter is not valid
+#endif
+
+//Maximum number of connection open callbacks that can be attached
+#ifndef SSH_MAX_CONN_OPEN_CALLBACKS
+   #define SSH_MAX_CONN_OPEN_CALLBACKS 1
+#elif (SSH_MAX_CONN_OPEN_CALLBACKS < 1)
+   #error SSH_MAX_CONN_OPEN_CALLBACKS parameter is not valid
+#endif
+
+//Maximum number of connection close callbacks that can be attached
+#ifndef SSH_MAX_CONN_CLOSE_CALLBACKS
+   #define SSH_MAX_CONN_CLOSE_CALLBACKS 1
+#elif (SSH_MAX_CONN_CLOSE_CALLBACKS < 1)
+   #error SSH_MAX_CONN_CLOSE_CALLBACKS parameter is not valid
 #endif
 
 //Maximum number of authentication attempts
@@ -226,11 +285,18 @@
    #error SSH_CTR_CIPHER_SUPPORT parameter is not valid
 #endif
 
-//GCM AEAD support
+//GCM AEAD support (OpenSSH variant)
 #ifndef SSH_GCM_CIPHER_SUPPORT
    #define SSH_GCM_CIPHER_SUPPORT ENABLED
 #elif (SSH_GCM_CIPHER_SUPPORT != ENABLED && SSH_GCM_CIPHER_SUPPORT != DISABLED)
    #error SSH_GCM_CIPHER_SUPPORT parameter is not valid
+#endif
+
+//GCM AEAD support (RFC 5647 variant)
+#ifndef SSH_RFC5647_SUPPORT
+   #define SSH_RFC5647_SUPPORT DISABLED
+#elif (SSH_RFC5647_SUPPORT != ENABLED && SSH_RFC5647_SUPPORT != DISABLED)
+   #error SSH_RFC5647_SUPPORT parameter is not valid
 #endif
 
 //ChaCha20Poly1305 AEAD support
@@ -516,6 +582,17 @@
    #define sshFreeMem(p) osFreeMem(p)
 #endif
 
+//HMAC support
+#if (SSH_STREAM_CIPHER_SUPPORT == ENABLED)
+   #define SSH_HMAC_SUPPORT ENABLED
+#elif (SSH_CBC_CIPHER_SUPPORT == ENABLED)
+   #define SSH_HMAC_SUPPORT ENABLED
+#elif (SSH_CTR_CIPHER_SUPPORT == ENABLED)
+   #define SSH_HMAC_SUPPORT ENABLED
+#else
+   #define SSH_HMAC_SUPPORT DISABLED
+#endif
+
 //Maximum key size (encryption algorithms)
 #if (SSH_CHACHA20_POLY1305_SUPPORT == ENABLED)
    #define SSH_MAX_ENC_KEY_SIZE 64
@@ -673,6 +750,9 @@ typedef enum
    SSH_MSG_KEX_DH_GEX_REPLY          = 33,
    SSH_MSG_KEX_ECDH_INIT             = 30,
    SSH_MSG_KEX_ECDH_REPLY            = 31,
+   SSH_MSG_KEXRSA_PUBKEY             = 30,
+   SSH_MSG_KEXRSA_SECRET             = 31,
+   SSH_MSG_KEXRSA_DONE               = 32,
    SSH_MSG_USERAUTH_REQUEST          = 50,
    SSH_MSG_USERAUTH_FAILURE          = 51,
    SSH_MSG_USERAUTH_SUCCESS          = 52,
@@ -754,13 +834,17 @@ typedef enum
    SSH_CONN_STATE_KEX_ECDH_REPLY    = 8,
    SSH_CONN_STATE_CLIENT_NEW_KEYS   = 9,
    SSH_CONN_STATE_SERVER_NEW_KEYS   = 10,
-   SSH_CONN_STATE_SERVICE_REQUEST   = 11,
-   SSH_CONN_STATE_SERVICE_ACCEPT    = 12,
-   SSH_CONN_STATE_USER_AUTH_BANNER  = 13,
-   SSH_CONN_STATE_USER_AUTH_REQUEST = 14,
-   SSH_CONN_STATE_USER_AUTH_REPLY   = 15,
-   SSH_CONN_STATE_OPEN              = 16,
-   SSH_CONN_STATE_DISCONNECT        = 17
+   SSH_CONN_STATE_CLIENT_EXT_INFO   = 11,
+   SSH_CONN_STATE_SERVER_EXT_INFO_1 = 12,
+   SSH_CONN_STATE_SERVER_EXT_INFO_2 = 13,
+   SSH_CONN_STATE_SERVICE_REQUEST   = 14,
+   SSH_CONN_STATE_SERVICE_ACCEPT    = 15,
+   SSH_CONN_STATE_USER_AUTH_BANNER  = 16,
+   SSH_CONN_STATE_USER_AUTH_REQUEST = 17,
+   SSH_CONN_STATE_USER_AUTH_REPLY   = 18,
+   SSH_CONN_STATE_USER_AUTH_SUCCESS = 19,
+   SSH_CONN_STATE_OPEN              = 20,
+   SSH_CONN_STATE_DISCONNECT        = 21
 } SshConnectionState;
 
 
@@ -809,57 +893,32 @@ typedef enum
 
 
 /**
- * @brief Boolean
- **/
-
-typedef bool_t SshBoolean;
-
-
-/**
- * @brief String
- **/
-
-typedef struct
-{
-   const char_t *value;
-   size_t length;
-} SshString;
-
-
-/**
- * @brief Binary string
- **/
-
-typedef struct
-{
-   const uint8_t *value;
-   size_t length;
-} SshBinaryString;
-
-
-/**
- * @brief String containing a comma-separated list of names
- **/
-
-typedef struct
-{
-   const char_t *value;
-   size_t length;
-} SshNameList;
-
-
-/**
  * @brief Host key
  **/
 
 typedef struct
 {
-   char_t keyFormatId[20];   ///<Key format identifier
-   const char_t *publicKey;  ///<Public key (PEM format)
-   size_t publicKeyLen;      ///<Length of the public key
-   const char_t *privateKey; ///<Private key (PEM format)
-   size_t privateKeyLen;     ///<Length of the private key
+   const char_t *keyFormatId;   ///<Key format identifier
+   const char_t *publicKey;     ///<Public key (textual representation)
+   size_t publicKeyLen;         ///<Length of the public key
+   const char_t *privateKey;    ///<Private key (textual representation)
+   size_t privateKeyLen;        ///<Length of the private key
+#if (SSH_CLIENT_SUPPORT == ENABLED)
+   const char_t *publicKeyAlgo; ///<Public key algorithm to use during user authentication
+#endif
 } SshHostKey;
+
+
+/**
+ * @brief Host key algorithm
+ **/
+
+typedef struct
+{
+   const char_t *publicKeyAlgo; ///<Public key algorithm
+   const char_t *keyFormatId;   ///<Key format identifier
+   const char_t *signFormatId;  ///<Signature format identifier
+} SshHostKeyAlgo;
 
 
 /**
@@ -871,11 +930,35 @@ typedef error_t (*SshHostKeyVerifyCallback)(SshConnection *connection,
 
 
 /**
+ * @brief Certificate verification callback function
+ **/
+
+typedef error_t (*SshCertVerifyCallback)(SshConnection *connection,
+   const SshCertificate *cert);
+
+
+/**
+ * @brief CA public key verification callback function
+ **/
+
+typedef error_t (*SshCaPublicKeyVerifyCallback)(SshConnection *connection,
+   const uint8_t *publicKey, size_t publicKeyLen);
+
+
+/**
  * @brief Public key authentication callback function
  **/
 
 typedef error_t (*SshPublicKeyAuthCallback)(SshConnection *connection,
    const char_t *user, const uint8_t *publicKey, size_t publicKeyLen);
+
+
+/**
+ * @brief Certificate authentication callback function
+ **/
+
+typedef error_t (*SshCertAuthCallback)(SshConnection *connection,
+   const char_t *user, const SshCertificate *cert);
 
 
 /**
@@ -901,7 +984,8 @@ typedef SshAuthStatus (*SshPasswordChangeCallback)(SshConnection *connection,
 
 typedef error_t (*SshSignGenCallback)(SshConnection *connection,
    const char_t *publicKeyAlgo, const SshHostKey *hostKey,
-   const void *message, size_t messageLen, uint8_t *p, size_t *written);
+   const SshBinaryString *sessionId, const SshBinaryString *message,
+   uint8_t *p, size_t *written);
 
 
 /**
@@ -910,7 +994,8 @@ typedef error_t (*SshSignGenCallback)(SshConnection *connection,
 
 typedef error_t (*SshSignVerifyCallback)(SshConnection *connection,
    const SshString *publicKeyAlgo, const SshBinaryString *publicKeyBlob,
-   const uint8_t *message, size_t messageLen, const SshBinaryString *signature);
+   const SshBinaryString *sessionId, const SshBinaryString *message,
+   const SshBinaryString *signatureBlob);
 
 
 /**
@@ -931,7 +1016,7 @@ typedef error_t (*SshEcdhSharedSecretCalcCallback)(SshConnection *connection,
 
 
 /**
- * @brief Global request processing callback function
+ * @brief Global request callback function
  **/
 
 typedef error_t (*SshGlobalReqCallback)(SshConnection *connection,
@@ -939,11 +1024,35 @@ typedef error_t (*SshGlobalReqCallback)(SshConnection *connection,
 
 
 /**
- * @brief Channel request processing callback function
+ * @brief Channel request callback function
  **/
 
 typedef error_t (*SshChannelReqCallback)(SshChannel *channel,
    const SshString *type, const uint8_t *data, size_t length, void *param);
+
+
+/**
+ * @brief Channel open callback function
+ **/
+
+typedef error_t (*SshChannelOpenCallback)(SshConnection *connection,
+   const SshString *type, uint32_t senderChannel, uint32_t initialWindowSize,
+   uint32_t maxPacketSize, const uint8_t *data, size_t length, void *param);
+
+   
+/**
+ * @brief Connection open callback function
+ **/
+
+typedef error_t (*SshConnectionOpenCallback)(SshConnection *connection,
+   void *param);
+
+/**
+ * @brief Connection close callback function
+ **/
+
+typedef void (*SshConnectionCloseCallback)(SshConnection *connection,
+   void *param);
 
 
 /**
@@ -964,7 +1073,7 @@ typedef struct
    size_t encKeyLen;                         ///<Length of the encryption key, in bytes
    uint8_t macKey[SSH_MAX_HASH_DIGEST_SIZE]; ///<Integrity key
    uint8_t seqNum[4];                        ///<Sequence number
-#if (SSH_GCM_CIPHER_SUPPORT == ENABLED)
+#if (SSH_GCM_CIPHER_SUPPORT == ENABLED || SSH_RFC5647_SUPPORT == ENABLED)
    GcmContext gcmContext;                    ///<GCM context
 #endif
 #if (SSH_CHACHA20_POLY1305_SUPPORT == ENABLED)
@@ -1049,7 +1158,7 @@ struct _SshConnection
    const char_t *serverMacAlgo;                 ///<Selected server's MAC algorithm name
    const char_t *clientCompressAlgo;            ///<Selected client's encryption algorithm name
    const char_t *serverCompressAlgo;            ///<Selected server's encryption algorithm name
-   uint_t hostKeyIndex;                         ///<Index of the selected host key
+   int_t hostKeyIndex;                          ///<Index of the selected host key
 
    uint8_t sessionId[SSH_MAX_HASH_DIGEST_SIZE]; ///<Session identifier
    size_t sessionIdLen;                         ///<Length of the session identifier, in bytes
@@ -1060,7 +1169,9 @@ struct _SshConnection
 
    const HashAlgo *hashAlgo;                    ///<Exchange hash algorithm
    HashContext hashContext;                     ///<Exchange hash context
+#if (SSH_HMAC_SUPPORT == ENABLED)
    HmacContext hmacContext;                     ///<HMAC context
+#endif
 #if (SSH_DH_SUPPORT == ENABLED)
    DhContext dhContext;                         ///<Diffie-Hellman context
 #endif
@@ -1075,12 +1186,17 @@ struct _SshConnection
    bool_t kexInitReceived;                      ///<An SSH_MSG_KEXINIT message has been received
    bool_t newKeysSent;                          ///<An SSH_MSG_NEWKEYS message has been sent
    bool_t newKeysReceived;                      ///<An SSH_MSG_NEWKEYS message has been received
+   bool_t disconnectRequest;                    ///<Request for disconnection
    bool_t disconnectSent;                       ///<An SSH_MSG_DISCONNECT message has been sent
    bool_t disconnectReceived;                   ///<An SSH_MSG_DISCONNECT message has been received
    bool_t wrongGuess;                           ///<A wrong guessed key exchange packet follows
    uint_t authAttempts;                         ///<Number of authentication attempts
    bool_t publicKeyOk;                          ///<The provided host key is acceptable
    uint32_t localChannelNum;                    ///<Current channel number
+
+#if (SSH_EXT_INFO_SUPPORT == ENABLED)
+   bool_t extInfoReceived;                      ///<"ext-info-c" or "ext-info-s" indicator has been received
+#endif
 
    uint8_t buffer[SSH_BUFFER_SIZE];             ///<Internal buffer
    size_t txBufferLen;                          ///<Number of bytes that are pending to be sent
@@ -1096,45 +1212,57 @@ struct _SshConnection
 
 struct _SshContext
 {
-   SshOperationMode mode;                                           ///<Mode of operation (client or server)
-   uint_t numConnections;                                           ///<Maximum number of SSH connections
-   SshConnection *connections;                                      ///<SSH connections
-   uint_t numChannels;                                              ///<Maximum number of SSH channels
-   SshChannel *channels;                                            ///<SSH channels
-   const PrngAlgo *prngAlgo;                                        ///<Pseudo-random number generator to be used
-   void *prngContext;                                               ///<Pseudo-random number generator context
-   SshHostKey hostKeys[SSH_MAX_HOST_KEYS];                          ///<List of host keys
-   uint_t numHostKeys;                                              ///<Number of host keys
+   SshOperationMode mode;                                        ///<Mode of operation (client or server)
+   uint_t numConnections;                                        ///<Maximum number of SSH connections
+   SshConnection *connections;                                   ///<SSH connections
+   uint_t numChannels;                                           ///<Maximum number of SSH channels
+   SshChannel *channels;                                         ///<SSH channels
+   const PrngAlgo *prngAlgo;                                     ///<Pseudo-random number generator to be used
+   void *prngContext;                                            ///<Pseudo-random number generator context
+   SshHostKey hostKeys[SSH_MAX_HOST_KEYS];                       ///<List of host keys
 
 #if (SSH_CLIENT_SUPPORT == ENABLED)
-   char_t username[SSH_MAX_USERNAME_LEN + 1];                       ///<User name
-   char_t password[SSH_MAX_PASSWORD_LEN + 1];                       ///<Password
+   char_t username[SSH_MAX_USERNAME_LEN + 1];                    ///<User name
+   char_t password[SSH_MAX_PASSWORD_LEN + 1];                    ///<Password
 #endif
 
-   SshHostKeyVerifyCallback hostKeyVerifyCallback;                  ///<Host key verification callback
+   SshHostKeyVerifyCallback hostKeyVerifyCallback;               ///<Host key verification callback
+#if (SSH_CERT_SUPPORT == ENABLED)
+   SshCertVerifyCallback certVerifyCallback;                     ///<Certificate verification callback
+   SshCaPublicKeyVerifyCallback caPublicKeyVerifyCallback;       ///<CA public key verification callback
+#endif
 #if (SSH_PUBLIC_KEY_AUTH_SUPPORT == ENABLED)
-   SshPublicKeyAuthCallback publicKeyAuthCallback;                  ///<Public key authentication callback
+   SshPublicKeyAuthCallback publicKeyAuthCallback;               ///<Public key authentication callback
+#endif
+#if (SSH_PUBLIC_KEY_AUTH_SUPPORT == ENABLED && SSH_CERT_SUPPORT == ENABLED)
+   SshCertAuthCallback certAuthCallback;                         ///<Certificate authentication callback
 #endif
 #if (SSH_PASSWORD_AUTH_SUPPORT == ENABLED)
-   SshPasswordAuthCallback passwordAuthCallback;                    ///<Password authentication callback
-   SshPasswordChangeCallback passwordChangeCallback;                ///<Password change callback
+   SshPasswordAuthCallback passwordAuthCallback;                 ///<Password authentication callback
+   SshPasswordChangeCallback passwordChangeCallback;             ///<Password change callback
 #endif
 #if (SSH_SIGN_CALLBACK_SUPPORT == ENABLED)
-   SshSignGenCallback signGenCallback;                              ///<Signature generation callback
-   SshSignVerifyCallback signVerifyCallback;                        ///<Signature verification callback
+   SshSignGenCallback signGenCallback;                           ///<Signature generation callback
+   SshSignVerifyCallback signVerifyCallback;                     ///<Signature verification callback
 #endif
 #if (SSH_ECDH_CALLBACK_SUPPORT == ENABLED)
-   SshEcdhKeyPairGenCallback ecdhKeyPairGenCallback;                ///<ECDH key pair generation callback
-   SshEcdhSharedSecretCalcCallback ecdhSharedSecretCalcCallback;    ///<ECDH shared secret calculation callback
+   SshEcdhKeyPairGenCallback ecdhKeyPairGenCallback;             ///<ECDH key pair generation callback
+   SshEcdhSharedSecretCalcCallback ecdhSharedSecretCalcCallback; ///<ECDH shared secret calculation callback
 #endif
-   SshGlobalReqCallback globalReqCallback[SSH_MAX_REQ_CALLBACKS];   ///<Global request processing callbacks
-   void *globalReqParam[SSH_MAX_REQ_CALLBACKS];                     ///<Opaque pointer passed to the global request callback
-   SshChannelReqCallback channelReqCallback[SSH_MAX_REQ_CALLBACKS]; ///<Channel request processing callbacks
-   void *channelReqParam[SSH_MAX_REQ_CALLBACKS];                    ///<Opaque pointer passed to the channel request callback
+   SshGlobalReqCallback globalReqCallback[SSH_MAX_GLOBAL_REQ_CALLBACKS];             ///<Global request callbacks
+   void *globalReqParam[SSH_MAX_GLOBAL_REQ_CALLBACKS];                               ///<Opaque pointer passed to the global request callback
+   SshChannelReqCallback channelReqCallback[SSH_MAX_CHANNEL_REQ_CALLBACKS];          ///<Channel request callbacks
+   void *channelReqParam[SSH_MAX_CHANNEL_REQ_CALLBACKS];                             ///<Opaque pointer passed to the channel request callback
+   SshChannelOpenCallback channelOpenCallback[SSH_MAX_CHANNEL_OPEN_CALLBACKS];       ///<Channel open callbacks
+   void *channelOpenParam[SSH_MAX_CHANNEL_OPEN_CALLBACKS];                           ///<Opaque pointer passed to the channel open callback
+   SshConnectionOpenCallback connectionOpenCallback[SSH_MAX_CONN_OPEN_CALLBACKS];    ///<Connection open callback function
+   void *connectionOpenParam[SSH_MAX_CONN_OPEN_CALLBACKS];                           ///<Opaque pointer passed to the connection open callback
+   SshConnectionCloseCallback connectionCloseCallback[SSH_MAX_CONN_CLOSE_CALLBACKS]; ///<Connection close callback function
+   void *connectionCloseParam[SSH_MAX_CONN_CLOSE_CALLBACKS];                         ///<Opaque pointer passed to the connection close callback
 
-   OsMutex mutex;                                                   ///<Mutex preventing simultaneous access to the context
-   OsEvent event;                                                   ///<Event object used to poll the sockets
-   SocketEventDesc eventDesc[SSH_MAX_CONNECTIONS + 1];              ///<The events the application is interested in
+   OsMutex mutex;                                                ///<Mutex preventing simultaneous access to the context
+   OsEvent event;                                                ///<Event object used to poll the sockets
+   SocketEventDesc eventDesc[SSH_MAX_CONNECTIONS + 1];           ///<The events the application is interested in
 };
 
 
@@ -1165,8 +1293,17 @@ error_t sshSetPassword(SshContext *context, const char_t *password);
 error_t sshRegisterHostKeyVerifyCallback(SshContext *context,
    SshHostKeyVerifyCallback callback);
 
+error_t sshRegisterCertVerifyCallback(SshContext *context,
+   SshCertVerifyCallback callback);
+
+error_t sshRegisterCaPublicKeyVerifyCallback(SshContext *context,
+   SshCaPublicKeyVerifyCallback callback);
+
 error_t sshRegisterPublicKeyAuthCallback(SshContext *context,
    SshPublicKeyAuthCallback callback);
+
+error_t sshRegisterCertAuthCallback(SshContext *context,
+   SshCertAuthCallback callback);
 
 error_t sshRegisterPasswordAuthCallback(SshContext *context,
    SshPasswordAuthCallback callback);
@@ -1198,10 +1335,35 @@ error_t sshRegisterChannelRequestCallback(SshContext *context,
 error_t sshUnregisterChannelRequestCallback(SshContext *context,
    SshChannelReqCallback callback);
 
-error_t sshLoadHostKey(SshContext *context, const char_t *publicKey,
-   size_t publicKeyLen, const char_t *privateKey, size_t privateKeyLen);
+error_t sshRegisterChannelOpenCallback(SshContext *context,
+   SshChannelOpenCallback callback, void *param);
 
-error_t sshUnloadAllHostKeys(SshContext *context);
+error_t sshUnregisterChannelOpenCallback(SshContext *context,
+   SshChannelOpenCallback callback);
+
+error_t sshRegisterConnectionOpenCallback(SshContext *context,
+   SshConnectionOpenCallback callback, void *param);
+
+error_t sshUnregisterConnectionOpenCallback(SshContext *context,
+   SshConnectionOpenCallback callback);
+
+error_t sshRegisterConnectionCloseCallback(SshContext *context,
+   SshConnectionCloseCallback callback, void *param);
+
+error_t sshUnregisterConnectionCloseCallback(SshContext *context,
+   SshConnectionCloseCallback callback);
+
+error_t sshLoadHostKey(SshContext *context, uint_t index,
+   const char_t *publicKey, size_t publicKeyLen,
+   const char_t *privateKey, size_t privateKeyLen);
+
+error_t sshUnloadHostKey(SshContext *context, uint_t index);
+
+error_t sshLoadCertificate(SshContext *context, uint_t index,
+   const char_t *cert, size_t certLen, const char_t *privateKey,
+   size_t privateKeyLen);
+
+error_t sshUnloadCertificate(SshContext *context, uint_t index);
 
 error_t sshSetPasswordChangePrompt(SshConnection *connection,
    const char_t *prompt);

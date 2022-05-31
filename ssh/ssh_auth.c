@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.1.4
+ * @version 2.1.6
  **/
 
 //Switch to the appropriate trace level
@@ -45,7 +45,7 @@
 #if (SSH_SUPPORT == ENABLED)
 
 //Supported authentication methods
-const char_t *sshSupportedAuthMethods[] =
+static const char_t *const sshSupportedAuthMethods[] =
 {
 #if (SSH_PUBLIC_KEY_AUTH_SUPPORT == ENABLED)
    "publickey",
@@ -117,10 +117,10 @@ error_t sshSendUserAuthRequest(SshConnection *connection)
    if(sshGetAuthMethod(connection) == SSH_AUTH_METHOD_PUBLIC_KEY)
    {
       //First authentication request?
-      if(connection->hostKeyIndex == 0)
+      if(connection->hostKeyIndex < 0)
       {
-         //Select the host key to use
-         connection->hostKeyIndex = 1;
+         //Select the first host key to use
+         sshSelectNextHostKey(connection);
          //The client first verifies whether the key is acceptable
          connection->publicKeyOk = FALSE;
       }
@@ -149,8 +149,16 @@ error_t sshSendUserAuthRequest(SshConnection *connection)
    {
       //Increment the number of authentication attempts
       connection->authAttempts++;
-      //Wait for an SSH_MSG_USERAUTH_SUCCESS or SSH_MSG_USERAUTH_FAILURE message
+
+#if (SSH_EXT_INFO_SUPPORT == ENABLED)
+      //The server may send the SSH_MSG_EXT_INFO message immediately preceding
+      //the server's SSH_MSG_USERAUTH_SUCCESS message
+      connection->state = SSH_CONN_STATE_SERVER_EXT_INFO_2;
+#else
+      //Wait for an SSH_MSG_USERAUTH_SUCCESS or SSH_MSG_USERAUTH_FAILURE
+      //message
       connection->state = SSH_CONN_STATE_USER_AUTH_REPLY;
+#endif
    }
 
    //Return status code
@@ -247,6 +255,36 @@ error_t sshSendUserAuthFailure(SshConnection *connection)
 
    //Return status code
    return error;
+}
+
+
+/**
+ * @brief Accept client's authentication request
+ * @param[in] connection Pointer to the SSH connection
+ * @return Error code
+ **/
+
+error_t sshAcceptAuthRequest(SshConnection *connection)
+{
+#if (SSH_EXT_INFO_SUPPORT == ENABLED)
+   //If the server receives an "ext-info-c", it may send an SSH_MSG_EXT_INFO
+   //message (refer to RFC 8308, section 2.1)
+   if(connection->extInfoReceived)
+   {
+      //The server may send the SSH_MSG_EXT_INFO message immediately preceding
+      //the server's SSH_MSG_USERAUTH_SUCCESS message
+      connection->state = SSH_CONN_STATE_SERVER_EXT_INFO_2;
+   }
+   else
+#endif
+   {
+      //When the server accepts authentication, it must respond with an
+      //SSH_MSG_USERAUTH_SUCCESS message
+      connection->state = SSH_CONN_STATE_USER_AUTH_SUCCESS;
+   }
+
+   //Successful processing
+   return NO_ERROR;
 }
 
 
@@ -623,8 +661,11 @@ error_t sshParseUserAuthBanner(SshConnection *connection,
    //The SSH server may send an SSH_MSG_USERAUTH_BANNER message at any time
    //after this authentication protocol starts and before authentication is
    //successful (refer to RFC 4252, section 5.4)
-   if(connection->state != SSH_CONN_STATE_USER_AUTH_REPLY)
+   if(connection->state != SSH_CONN_STATE_SERVER_EXT_INFO_2 &&
+      connection->state != SSH_CONN_STATE_USER_AUTH_REPLY)
+   {
       return ERROR_UNEXPECTED_MESSAGE;
+   }
 
    //Sanity check
    if(length < sizeof(uint8_t))
@@ -867,7 +908,7 @@ error_t sshParseNoneAuthParams(SshConnection *connection,
    {
       //If no authentication is needed for the user, the server must return
       //an SSH_MSG_USERAUTH_SUCCESS message
-      error = sshSendUserAuthSuccess(connection);
+      error = sshAcceptAuthRequest(connection);
    }
    else
    {
@@ -902,8 +943,12 @@ error_t sshParseUserAuthSuccess(SshConnection *connection,
       return ERROR_UNEXPECTED_MESSAGE;
 
    //Check connection state
-   if(connection->state != SSH_CONN_STATE_USER_AUTH_REPLY)
+   if(connection->state != SSH_CONN_STATE_SERVER_EXT_INFO_2 &&
+      connection->state != SSH_CONN_STATE_USER_AUTH_REPLY &&
+      connection->state != SSH_CONN_STATE_USER_AUTH_SUCCESS)
+   {
       return ERROR_UNEXPECTED_MESSAGE;
+   }
 
    //Malformed message?
    if(length != sizeof(uint8_t))
@@ -954,8 +999,11 @@ error_t sshParseUserAuthFailure(SshConnection *connection,
       return ERROR_UNEXPECTED_MESSAGE;
 
    //Check connection state
-   if(connection->state != SSH_CONN_STATE_USER_AUTH_REPLY)
+   if(connection->state != SSH_CONN_STATE_SERVER_EXT_INFO_2 &&
+      connection->state != SSH_CONN_STATE_USER_AUTH_REPLY)
+   {
       return ERROR_UNEXPECTED_MESSAGE;
+   }
 
    //Sanity check
    if(length < sizeof(uint8_t))
@@ -992,8 +1040,8 @@ error_t sshParseUserAuthFailure(SshConnection *connection,
    //Public key authentication method?
    if(sshGetAuthMethod(connection) == SSH_AUTH_METHOD_PUBLIC_KEY)
    {
-      //Select the next host key
-      connection->hostKeyIndex++;
+      //Select the next host key to use
+      sshSelectNextHostKey(connection);
       //The client first verifies whether the key is acceptable
       connection->publicKeyOk = FALSE;
 
@@ -1110,8 +1158,7 @@ SshAuthMethod sshGetAuthMethod(SshConnection *connection)
    context = connection->context;
 
    //Public key or password authentication method?
-   if(context->numHostKeys > 0 &&
-      connection->hostKeyIndex <= context->numHostKeys)
+   if(connection->hostKeyIndex < SSH_MAX_HOST_KEYS)
    {
       authMethod = SSH_AUTH_METHOD_PUBLIC_KEY;
    }
