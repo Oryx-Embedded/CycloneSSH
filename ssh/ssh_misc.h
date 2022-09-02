@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.1.6
+ * @version 2.1.8
  **/
 
 #ifndef _SSH_MISC_H
@@ -34,6 +34,9 @@
 //Dependencies
 #include "ssh/ssh.h"
 #include "mpi/mpi.h"
+
+//Maximum port number
+#define SSH_MAX_PORT_NUM 65535
 
 //C++ guard
 #ifdef __cplusplus

@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.1.6
+ * @version 2.1.8
  **/
 
 //Switch to the appropriate trace level
@@ -455,7 +455,7 @@ error_t sshParseEd448HostKey(const uint8_t *data, size_t length,
  * @return Error code
  **/
 
-error_t sshParsePrivateKeyHeader(const uint8_t *data, size_t length,
+error_t sshParseOpenSshPrivateKeyHeader(const uint8_t *data, size_t length,
    SshPrivateKeyHeader *privateKeyHeader)
 {
    error_t error;
@@ -541,6 +541,10 @@ error_t sshParsePrivateKeyHeader(const uint8_t *data, size_t length,
    if(error)
       return error;
 
+   //The length of the 'encrypted' section must be a multiple of the block size
+   if((privateKeyHeader->encrypted.length % 8) != 0)
+      return ERROR_INVALID_SYNTAX;
+
    //Point to the next field
    data += sizeof(uint32_t) + privateKeyHeader->encrypted.length;
    length -= sizeof(uint32_t) + privateKeyHeader->encrypted.length;
@@ -555,19 +559,20 @@ error_t sshParsePrivateKeyHeader(const uint8_t *data, size_t length,
 
 
 /**
- * @brief Parse RSA private key (OpenSSH format)
- * @param[in] data Pointer to the private key structure
- * @param[in] length Length of the private key structure, in bytes
+ * @brief Parse RSA private key blob (OpenSSH format)
+ * @param[in] data Pointer to the private key blob
+ * @param[in] length Length of the private key blob, in bytes
  * @param[out] privateKey Information resulting from the parsing process
  * @return Error code
  **/
 
-error_t sshParseRsaPrivateKey(const uint8_t *data, size_t length,
+error_t sshParseOpenSshRsaPrivateKey(const uint8_t *data, size_t length,
    SshRsaPrivateKey *privateKey)
 {
+#if (SSH_RSA_SUPPORT == ENABLED)
    error_t error;
 
-   //Malformed private key?
+   //Malformed private key blob?
    if(length < sizeof(uint64_t))
       return ERROR_INVALID_SYNTAX;
 
@@ -671,23 +676,28 @@ error_t sshParseRsaPrivateKey(const uint8_t *data, size_t length,
 
    //Successful processing
    return NO_ERROR;
+#else
+   //Not implemented
+   return ERROR_NOT_IMPLEMENTED;
+#endif
 }
 
 
 /**
- * @brief Parse DSA private key (OpenSSH format)
- * @param[in] data Pointer to the private key structure
- * @param[in] length Length of the private key structure, in bytes
+ * @brief Parse DSA private key blob (OpenSSH format)
+ * @param[in] data Pointer to the private key blob
+ * @param[in] length Length of the private key blob, in bytes
  * @param[out] privateKey Information resulting from the parsing process
  * @return Error code
  **/
 
-error_t sshParseDsaPrivateKey(const uint8_t *data, size_t length,
+error_t sshParseOpenSshDsaPrivateKey(const uint8_t *data, size_t length,
    SshDsaPrivateKey *privateKey)
 {
+#if (SSH_DSA_SUPPORT == ENABLED)
    error_t error;
 
-   //Malformed private key?
+   //Malformed private key blob?
    if(length < sizeof(uint64_t))
       return ERROR_INVALID_SYNTAX;
 
@@ -781,23 +791,28 @@ error_t sshParseDsaPrivateKey(const uint8_t *data, size_t length,
 
    //Successful processing
    return NO_ERROR;
+#else
+   //Not implemented
+   return ERROR_NOT_IMPLEMENTED;
+#endif
 }
 
 
 /**
- * @brief Parse ECDSA private key (OpenSSH format)
- * @param[in] data Pointer to the private key structure
- * @param[in] length Length of the private key structure, in bytes
+ * @brief Parse ECDSA private key blob (OpenSSH format)
+ * @param[in] data Pointer to the private key blob
+ * @param[in] length Length of the private key blob, in bytes
  * @param[out] privateKey Information resulting from the parsing process
  * @return Error code
  **/
 
-error_t sshParseEcdsaPrivateKey(const uint8_t *data, size_t length,
+error_t sshParseOpenSshEcdsaPrivateKey(const uint8_t *data, size_t length,
    SshEcdsaPrivateKey *privateKey)
 {
+#if (SSH_ECDSA_SUPPORT == ENABLED)
    error_t error;
 
-   //Malformed private key?
+   //Malformed private key blob?
    if(length < sizeof(uint64_t))
       return ERROR_INVALID_SYNTAX;
 
@@ -875,23 +890,28 @@ error_t sshParseEcdsaPrivateKey(const uint8_t *data, size_t length,
 
    //Successful processing
    return NO_ERROR;
+#else
+   //Not implemented
+   return ERROR_NOT_IMPLEMENTED;
+#endif
 }
 
 
 /**
- * @brief Parse Ed25519 private key (OpenSSH format)
- * @param[in] data Pointer to the private key structure
- * @param[in] length Length of the private key structure, in bytes
+ * @brief Parse Ed25519 private key blob (OpenSSH format)
+ * @param[in] data Pointer to the private key blob
+ * @param[in] length Length of the private key blob, in bytes
  * @param[out] privateKey Information resulting from the parsing process
  * @return Error code
  **/
 
-error_t sshParseEd25519PrivateKey(const uint8_t *data, size_t length,
-   SshEd25519PrivateKey *privateKey)
+error_t sshParseOpenSshEd25519PrivateKey(const uint8_t *data, size_t length,
+   SshEddsaPrivateKey *privateKey)
 {
+#if (SSH_ED25519_SUPPORT == ENABLED)
    error_t error;
 
-   //Malformed private key?
+   //Malformed private key blob?
    if(length < sizeof(uint64_t))
       return ERROR_INVALID_SYNTAX;
 
@@ -963,6 +983,103 @@ error_t sshParseEd25519PrivateKey(const uint8_t *data, size_t length,
 
    //Successful processing
    return NO_ERROR;
+#else
+   //Not implemented
+   return ERROR_NOT_IMPLEMENTED;
+#endif
+}
+
+
+/**
+ * @brief Parse Ed448 private key blob (OpenSSH format)
+ * @param[in] data Pointer to the private key blob
+ * @param[in] length Length of the private key blob, in bytes
+ * @param[out] privateKey Information resulting from the parsing process
+ * @return Error code
+ **/
+
+error_t sshParseOpenSshEd448PrivateKey(const uint8_t *data, size_t length,
+   SshEddsaPrivateKey *privateKey)
+{
+#if (SSH_ED448_SUPPORT == ENABLED)
+   error_t error;
+
+   //Malformed private key blob?
+   if(length < sizeof(uint64_t))
+      return ERROR_INVALID_SYNTAX;
+
+   //Decode 'checkint' fields
+   privateKey->checkInt1 = LOAD32BE(data);
+   privateKey->checkInt2 = LOAD32BE(data + 4);
+
+   //Before the key is encrypted, a random integer is assigned to both
+   //'checkint' fields so successful decryption can be quickly checked
+   //by verifying that both checkint fields hold the same value
+   if(privateKey->checkInt1 != privateKey->checkInt2)
+      return ERROR_INVALID_SYNTAX;
+
+   //Point to the next field
+   data += sizeof(uint64_t);
+   length -= sizeof(uint64_t);
+
+   //Decode key format identifier
+   error = sshParseString(data, length, &privateKey->keyFormatId);
+   //Any error to report?
+   if(error)
+      return error;
+
+   //Unexpected key format identifier?
+   if(!sshCompareString(&privateKey->keyFormatId, "ssh-ed448"))
+      return ERROR_WRONG_IDENTIFIER;
+
+   //Point to the next field
+   data += sizeof(uint32_t) + privateKey->keyFormatId.length;
+   length -= sizeof(uint32_t) + privateKey->keyFormatId.length;
+
+   //Parse Ed448 public key
+   error = sshParseBinaryString(data, length, &privateKey->q);
+   //Any error to report?
+   if(error)
+      return error;
+
+   //The public key shall consist of 57 octets
+   if(privateKey->q.length != ED448_PUBLIC_KEY_LEN)
+      return ERROR_INVALID_SYNTAX;
+
+   //Point to the next field
+   data += sizeof(uint32_t) + privateKey->q.length;
+   length -= sizeof(uint32_t) + privateKey->q.length;
+
+   //Parse Ed448 private key
+   error = sshParseBinaryString(data, length, &privateKey->d);
+   //Any error to report?
+   if(error)
+      return error;
+
+   //The private key shall consist of 114 octets
+   if(privateKey->d.length != (ED448_PRIVATE_KEY_LEN + ED448_PUBLIC_KEY_LEN))
+      return ERROR_INVALID_SYNTAX;
+
+   //Point to the next field
+   data += sizeof(uint32_t) + privateKey->d.length;
+   length -= sizeof(uint32_t) + privateKey->d.length;
+
+   //The private key is followed by a comment
+   error = sshParseString(data, length, &privateKey->comment);
+   //Any error to report?
+   if(error)
+      return error;
+
+   //Point to the next field
+   data += sizeof(uint32_t) + privateKey->comment.length;
+   length -= sizeof(uint32_t) + privateKey->comment.length;
+
+   //Successful processing
+   return NO_ERROR;
+#else
+   //Not implemented
+   return ERROR_NOT_IMPLEMENTED;
+#endif
 }
 
 #endif

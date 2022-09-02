@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.1.6
+ * @version 2.1.8
  **/
 
 #ifndef _SSH_SERVER_H
@@ -74,6 +74,7 @@ typedef struct
 {
    NetInterface *interface;                                      ///<Underlying network interface
    uint16_t port;                                                ///<SSH port number
+   systime_t timeout;                                            ///<Idle connection timeout
    uint_t numConnections;                                        ///<Maximum number of SSH connections
    SshConnection *connections;                                   ///<SSH connections
    uint_t numChannels;                                           ///<Maximum number of SSH channels
@@ -118,6 +119,7 @@ typedef struct
    NetInterface *interface;                      ///<Underlying network interface
    Socket *socket;                               ///<Listening socket
    uint16_t port;                                ///<SSH port number
+   systime_t timeout;                            ///<Idle connection timeout
    SshContext sshContext;                        ///<SSH context
 } SshServerContext;
 

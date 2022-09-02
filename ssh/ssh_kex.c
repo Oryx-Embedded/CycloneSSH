@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.1.6
+ * @version 2.1.8
  **/
 
 //Switch to the appropriate trace level
@@ -190,6 +190,9 @@ error_t sshSendNewKeys(SshConnection *connection)
    {
       //Check whether SSH operates as a client or a server
       x = (connection->context->mode == SSH_OPERATION_MODE_CLIENT) ? 'A' : 'B';
+
+      //Release encryption engine
+      sshFreeEncryptionEngine(&connection->encryptionEngine);
 
       //The key exchange method specifies how one-time session keys are
       //generated for encryption and for authentication
@@ -953,6 +956,9 @@ error_t sshParseNewKeys(SshConnection *connection, const uint8_t *message,
 
    //Check whether SSH operates as a client or a server
    x = (connection->context->mode == SSH_OPERATION_MODE_CLIENT) ? 'B' : 'A';
+
+   //Release decryption engine
+   sshFreeEncryptionEngine(&connection->decryptionEngine);
 
    //The key exchange method specifies how one-time session keys are generated
    //for encryption and for authentication

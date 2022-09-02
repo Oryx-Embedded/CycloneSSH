@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.1.6
+ * @version 2.1.8
  **/
 
 //Switch to the appropriate trace level
@@ -1119,6 +1119,14 @@ error_t sshParseTcpIpFwdParams(const uint8_t *p, size_t length,
    //for forwarding are to be accepted
    params->portNumToBind = LOAD32BE(p);
 
+   //Invalid port number?
+   if(params->portNumToBind > SSH_MAX_PORT_NUM)
+      return ERROR_INVALID_PORT;
+
+   //Debug message
+   TRACE_INFO("  Address To Bind = %s\r\n", params->addrToBind.value);
+   TRACE_INFO("  Port Number To Bind = %" PRIu32 "\r\n", params->portNumToBind);
+
    //Successful processing
    return NO_ERROR;
 }
@@ -1153,6 +1161,14 @@ error_t sshParseCancelTcpIpFwdParams(const uint8_t *p, size_t length,
 
    //Parse 'port number to bind' field
    params->portNumToBind = LOAD32BE(p);
+
+   //Invalid port number?
+   if(params->portNumToBind > SSH_MAX_PORT_NUM)
+      return ERROR_INVALID_PORT;
+
+   //Debug message
+   TRACE_INFO("  Address To Bind = %s\r\n", params->addrToBind.value);
+   TRACE_INFO("  Port Number To Bind = %" PRIu32 "\r\n", params->portNumToBind);
 
    //Successful processing
    return NO_ERROR;

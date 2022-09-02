@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.1.6
+ * @version 2.1.8
  **/
 
 //Switch to the appropriate trace level
@@ -54,6 +54,8 @@ void sshServerGetDefaultSettings(SshServerSettings *settings)
 
    //SSH port number
    settings->port = SSH_PORT;
+   //Idle connection timeout
+   settings->timeout = SSH_SERVER_TIMEOUT;
 
    //SSH connections
    settings->numConnections = 0;
@@ -142,6 +144,7 @@ error_t sshServerInit(SshServerContext *context,
    //Save settings
    context->interface = settings->interface;
    context->port = settings->port;
+   context->timeout = settings->timeout;
 
    //Start of exception handling block
    do

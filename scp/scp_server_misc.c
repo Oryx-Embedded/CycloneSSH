@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.1.6
+ * @version 2.1.8
  **/
 
 //Switch to the appropriate trace level
@@ -261,12 +261,12 @@ void scpServerParseCommandLine(ScpServerSession *session,
          //Check whether the command line is valid
          if(t && !f)
          {
-            //Update SCP session state
+            //Initiate a write operation
             session->state = SCP_SERVER_SESSION_STATE_WRITE_INIT;
          }
          else if(f && !t)
          {
-            //Update SCP session state
+            //Initiate a read operation
             session->state = SCP_SERVER_SESSION_STATE_READ_INIT;
          }
          else
@@ -423,7 +423,7 @@ void scpServerCloseSession(ScpServerSession *session)
 /**
  * @brief Register session events
  * @param[in] session Handle referencing an SCP session
- * @param[in] eventDesc Event to be registered
+ * @param[in] eventDesc SSH channel events to be registered
  **/
 
 void scpServerRegisterSessionEvents(ScpServerSession *session,

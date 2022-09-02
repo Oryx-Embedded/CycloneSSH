@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.1.6
+ * @version 2.1.8
  **/
 
 //Switch to the appropriate trace level
@@ -42,6 +42,7 @@
 #include "ssh/ssh_auth.h"
 #include "ssh/ssh_channel.h"
 #include "ssh/ssh_packet.h"
+#include "ssh/ssh_key_material.h"
 #include "ssh/ssh_key_import.h"
 #include "ssh/ssh_key_format.h"
 #include "ssh/ssh_cert_import.h"
@@ -223,6 +224,11 @@ void sshCloseConnection(SshConnection *connection)
    ecdhFree(&connection->ecdhContext);
 #endif
 
+   //Release encryption engine
+   sshFreeEncryptionEngine(&connection->encryptionEngine);
+   //Release decryption engine
+   sshFreeEncryptionEngine(&connection->decryptionEngine);
+
    //Multiple callbacks may be registered
    for(i = 0; i < SSH_MAX_CONN_CLOSE_CALLBACKS; i++)
    {
@@ -247,7 +253,7 @@ void sshCloseConnection(SshConnection *connection)
  * @brief Register connection events
  * @param[in] context Pointer to the SSH context
  * @param[in] connection Pointer to the SSH connection
- * @param[in] eventDesc Event to be registered
+ * @param[in] eventDesc Socket events to be registered
  **/
 
 void sshRegisterConnectionEvents(SshContext *context, SshConnection *connection,
@@ -1217,7 +1223,7 @@ error_t sshParseNameList(const uint8_t *p, size_t length,
 /**
  * @brief Search a name list for a given name
  * @param[in] nameList List of names
- * @param[in] NULL-terminated string containing the name
+ * @param[in] name NULL-terminated string containing the name
  * @return The index of the name, or -1 if the name does not appear in the
  *   name list
  **/

@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.1.6
+ * @version 2.1.8
  **/
 
 //Switch to the appropriate trace level
@@ -63,7 +63,6 @@ error_t sshSendPacket(SshConnection *connection, uint8_t *payload,
    size_t paddingLen;
    SshContext *context;
    SshEncryptionEngine *encryptionEngine;
-   SshPacketHeader *header;
 
    //Point to the SSH context
    context = connection->context;
@@ -138,12 +137,9 @@ error_t sshSendPacket(SshConnection *connection, uint8_t *payload,
       //The length of the packet does not include the packet_length field itself
       packetLen = payloadLen + paddingLen + sizeof(uint8_t);
 
-      //Point to the SSH packet header
-      header = (SshPacketHeader *) connection->buffer;
-
       //Format SSH packet header
-      header->packetLen = htonl(packetLen);
-      header->paddingLen = paddingLen;
+      STORE32BE(packetLen, connection->buffer);
+      connection->buffer[4] = paddingLen;
 
       //Determine the total length of the packet
       connection->txBufferLen = packetLen + sizeof(uint32_t);
@@ -338,7 +334,7 @@ error_t sshParsePacket(SshConnection *connection, uint8_t *packet,
 {
    error_t error;
    size_t n;
-   SshPacketHeader *header;
+   size_t paddingLen;
 
    //Initialize status code
    error = NO_ERROR;
@@ -361,23 +357,23 @@ error_t sshParsePacket(SshConnection *connection, uint8_t *packet,
       //Check the length of the received packet
       if(length >= SSH_MIN_PACKET_SIZE)
       {
-         //Point to the SSH packet header
-         header = (SshPacketHeader *) packet;
-
-         //Convert the packet length to host byte order
-         n = ntohl(header->packetLen);
+         //Parse SSH packet header
+         n = LOAD32BE(packet);
+         paddingLen = packet[4];
 
          //Sanity check
          if(length == (n + sizeof(uint32_t)))
          {
             //Check the length of the padding string
-            if(n >= (header->paddingLen + sizeof(uint8_t)))
+            if(n >= (paddingLen + sizeof(uint8_t)))
             {
+               //Point to the payload
+               packet += SSH_PACKET_HEADER_SIZE;
                //Retrieve the length of the payload
-               n -= header->paddingLen + sizeof(uint8_t);
+               n -= paddingLen + sizeof(uint8_t);
 
                //Parse the received message
-               error = sshParseMessage(connection, header->payload, n);
+               error = sshParseMessage(connection, packet, n);
             }
             else
             {

@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.1.6
+ * @version 2.1.8
  **/
 
 #ifndef _SSH_KEY_MATERIAL_H
@@ -43,6 +43,8 @@ extern "C" {
 error_t sshInitEncryptionEngine(SshConnection *connection,
    SshEncryptionEngine *encryptionEngine, const char_t *encAlgo,
    const char_t *macAlgo, uint8_t x);
+
+void sshFreeEncryptionEngine(SshEncryptionEngine *encryptionEngine);
 
 error_t sshSelectCipherAlgo(SshEncryptionEngine *encryptionEngine,
    const char_t *encAlgo);

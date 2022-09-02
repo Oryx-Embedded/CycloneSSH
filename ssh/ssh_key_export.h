@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.1.6
+ * @version 2.1.8
  **/
 
 #ifndef _SSH_KEY_EXPORT_H
@@ -55,6 +55,16 @@ typedef enum
 } SshPublicKeyFormat;
 
 
+/**
+ * @brief SSH private key formats
+ **/
+
+typedef enum
+{
+   SSH_PRIVATE_KEY_FORMAT_OPENSSH = 2 ///<OpenSSH private key format
+} SshPrivateKeyFormat;
+
+
 //SSH key file export functions
 error_t sshExportRsaPublicKey(const RsaPublicKey *publicKey,
    char_t *output, size_t *written, SshPublicKeyFormat format);
@@ -72,6 +82,42 @@ error_t sshExportEd25519PublicKey(const EddsaPublicKey *publicKey,
 error_t sshExportEd448PublicKey(const EddsaPublicKey *publicKey,
    char_t *output, size_t *written, SshPublicKeyFormat format);
 
+error_t sshExportRsaPrivateKey(const RsaPrivateKey *privateKey,
+   const RsaPublicKey *publicKey, char_t *output, size_t *written,
+   SshPrivateKeyFormat format);
+
+error_t sshExportDsaPrivateKey(const DsaPrivateKey *privateKey,
+   const DsaPublicKey *publicKey, char_t *output, size_t *written,
+   SshPrivateKeyFormat format);
+
+error_t sshExportEcdsaPrivateKey(const EcDomainParameters *params,
+   const EcPrivateKey *privateKey, const EcPublicKey *publicKey,
+   char_t *output, size_t *written, SshPrivateKeyFormat format);
+
+error_t sshExportEd25519PrivateKey(const EddsaPrivateKey *privateKey,
+   const EddsaPublicKey *publicKey, char_t *output, size_t *written,
+   SshPrivateKeyFormat format);
+
+error_t sshExportEd448PrivateKey(const EddsaPrivateKey *privateKey,
+   const EddsaPublicKey *publicKey, char_t *output, size_t *written,
+   SshPrivateKeyFormat format);
+
+error_t sshExportOpenSshRsaPrivateKey(const RsaPrivateKey *privateKey,
+   const RsaPublicKey *publicKey, char_t *output, size_t *written);
+
+error_t sshExportOpenSshDsaPrivateKey(const DsaPrivateKey *privateKey,
+   const DsaPublicKey *publicKey, char_t *output, size_t *written);
+
+error_t sshExportOpenSshEcdsaPrivateKey(const EcDomainParameters *params,
+   const EcPrivateKey *privateKey, const EcPublicKey *publicKey,
+   char_t *output, size_t *written);
+
+error_t sshExportOpenSshEd25519PrivateKey(const EddsaPrivateKey *privateKey,
+   const EddsaPublicKey *publicKey, char_t *output, size_t *written);
+
+error_t sshExportOpenSshEd448PrivateKey(const EddsaPrivateKey *privateKey,
+   const EddsaPublicKey *publicKey, char_t *output, size_t *written);
+
 error_t sshEncodePublicKeyFile(const void *input, size_t inputLen,
    char_t *output, size_t *outputLen, SshPublicKeyFormat format);
 
@@ -79,6 +125,9 @@ error_t sshEncodeSsh2PublicKeyFile(const void *input, size_t inputLen,
    char_t *output, size_t *outputLen);
 
 error_t sshEncodeOpenSshPublicKeyFile(const void *input, size_t inputLen,
+   char_t *output, size_t *outputLen);
+
+error_t sshEncodeOpenSshPrivateKeyFile(const void *input, size_t inputLen,
    char_t *output, size_t *outputLen);
 
 //C++ guard

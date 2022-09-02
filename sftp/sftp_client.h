@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.1.6
+ * @version 2.1.8
  **/
 
 #ifndef _SFTP_CLIENT_H
@@ -230,6 +230,8 @@ error_t sftpClientRenameFile(SftpClientContext *context, const char_t *oldPath,
    const char_t *newPath);
 
 error_t sftpClientDeleteFile(SftpClientContext *context, const char_t *path);
+
+SftpStatusCode sftpClientGetStatusCode(SftpClientContext *context);
 
 error_t sftpClientDisconnect(SftpClientContext *context);
 error_t sftpClientClose(SftpClientContext *context);

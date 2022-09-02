@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.1.6
+ * @version 2.1.8
  **/
 
 #ifndef _SSH_H
@@ -74,13 +74,13 @@
 #endif
 
 //Version string
-#define CYCLONE_SSH_VERSION_STRING "2.1.6"
+#define CYCLONE_SSH_VERSION_STRING "2.1.8"
 //Major version
 #define CYCLONE_SSH_MAJOR_VERSION 2
 //Minor version
 #define CYCLONE_SSH_MINOR_VERSION 1
 //Revision number
-#define CYCLONE_SSH_REV_NUMBER 6
+#define CYCLONE_SSH_REV_NUMBER 8
 
 //SSH support
 #ifndef SSH_SUPPORT
@@ -320,6 +320,13 @@
    #error SSH_RC4_256_SUPPORT parameter is not valid
 #endif
 
+//CAST-128 cipher support (insecure)
+#ifndef SSH_CAST128_SUPPORT
+   #define SSH_CAST128_SUPPORT DISABLED
+#elif (SSH_CAST128_SUPPORT != ENABLED && SSH_CAST128_SUPPORT != DISABLED)
+   #error SSH_CAST128_SUPPORT parameter is not valid
+#endif
+
 //IDEA cipher support (insecure)
 #ifndef SSH_IDEA_SUPPORT
    #define SSH_IDEA_SUPPORT DISABLED
@@ -360,6 +367,48 @@
    #define SSH_AES_256_SUPPORT ENABLED
 #elif (SSH_AES_256_SUPPORT != ENABLED && SSH_AES_256_SUPPORT != DISABLED)
    #error SSH_AES_256_SUPPORT parameter is not valid
+#endif
+
+//Twofish 128-bit cipher support
+#ifndef SSH_TWOFISH_128_SUPPORT
+   #define SSH_TWOFISH_128_SUPPORT DISABLED
+#elif (SSH_TWOFISH_128_SUPPORT != ENABLED && SSH_TWOFISH_128_SUPPORT != DISABLED)
+   #error SSH_TWOFISH_128_SUPPORT parameter is not valid
+#endif
+
+//Twofish 192-bit cipher support
+#ifndef SSH_TWOFISH_192_SUPPORT
+   #define SSH_TWOFISH_192_SUPPORT DISABLED
+#elif (SSH_TWOFISH_192_SUPPORT != ENABLED && SSH_TWOFISH_192_SUPPORT != DISABLED)
+   #error SSH_TWOFISH_192_SUPPORT parameter is not valid
+#endif
+
+//Twofish 256-bit cipher support
+#ifndef SSH_TWOFISH_256_SUPPORT
+   #define SSH_TWOFISH_256_SUPPORT DISABLED
+#elif (SSH_TWOFISH_256_SUPPORT != ENABLED && SSH_TWOFISH_256_SUPPORT != DISABLED)
+   #error SSH_TWOFISH_256_SUPPORT parameter is not valid
+#endif
+
+//Serpent 128-bit cipher support
+#ifndef SSH_SERPENT_128_SUPPORT
+   #define SSH_SERPENT_128_SUPPORT DISABLED
+#elif (SSH_SERPENT_128_SUPPORT != ENABLED && SSH_SERPENT_128_SUPPORT != DISABLED)
+   #error SSH_SERPENT_128_SUPPORT parameter is not valid
+#endif
+
+//Serpent 192-bit cipher support
+#ifndef SSH_SERPENT_192_SUPPORT
+   #define SSH_SERPENT_192_SUPPORT DISABLED
+#elif (SSH_SERPENT_192_SUPPORT != ENABLED && SSH_SERPENT_192_SUPPORT != DISABLED)
+   #error SSH_SERPENT_192_SUPPORT parameter is not valid
+#endif
+
+//Serpent 256-bit cipher support
+#ifndef SSH_SERPENT_256_SUPPORT
+   #define SSH_SERPENT_256_SUPPORT DISABLED
+#elif (SSH_SERPENT_256_SUPPORT != ENABLED && SSH_SERPENT_256_SUPPORT != DISABLED)
+   #error SSH_SERPENT_256_SUPPORT parameter is not valid
 #endif
 
 //Camellia 128-bit cipher support
@@ -607,6 +656,18 @@
    #define SSH_MAX_CIPHER_BLOCK_SIZE AES_BLOCK_SIZE
 #elif (SSH_AES_256_SUPPORT == ENABLED)
    #define SSH_MAX_CIPHER_BLOCK_SIZE AES_BLOCK_SIZE
+#elif (SSH_TWOFISH_128_SUPPORT == ENABLED)
+   #define SSH_MAX_CIPHER_BLOCK_SIZE TWOFISH_BLOCK_SIZE
+#elif (SSH_TWOFISH_192_SUPPORT == ENABLED)
+   #define SSH_MAX_CIPHER_BLOCK_SIZE TWOFISH_BLOCK_SIZE
+#elif (SSH_TWOFISH_256_SUPPORT == ENABLED)
+   #define SSH_MAX_CIPHER_BLOCK_SIZE TWOFISH_BLOCK_SIZE
+#elif (SSH_SERPENT_128_SUPPORT == ENABLED)
+   #define SSH_MAX_CIPHER_BLOCK_SIZE SERPENT_BLOCK_SIZE
+#elif (SSH_SERPENT_192_SUPPORT == ENABLED)
+   #define SSH_MAX_CIPHER_BLOCK_SIZE SERPENT_BLOCK_SIZE
+#elif (SSH_SERPENT_256_SUPPORT == ENABLED)
+   #define SSH_MAX_CIPHER_BLOCK_SIZE SERPENT_BLOCK_SIZE
 #elif (SSH_CAMELLIA_128_SUPPORT == ENABLED)
    #define SSH_MAX_CIPHER_BLOCK_SIZE CAMELLIA_BLOCK_SIZE
 #elif (SSH_CAMELLIA_192_SUPPORT == ENABLED)
@@ -615,6 +676,8 @@
    #define SSH_MAX_CIPHER_BLOCK_SIZE CAMELLIA_BLOCK_SIZE
 #elif (SSH_SEED_SUPPORT == ENABLED)
    #define SSH_MAX_CIPHER_BLOCK_SIZE SEED_BLOCK_SIZE
+#elif (SSH_CAST128_SUPPORT == ENABLED)
+   #define SSH_MAX_CIPHER_BLOCK_SIZE CAST128_BLOCK_SIZE
 #elif (SSH_IDEA_SUPPORT == ENABLED)
    #define SSH_MAX_CIPHER_BLOCK_SIZE IDEA_BLOCK_SIZE
 #elif (SSH_BLOWFISH_SUPPORT == ENABLED)
@@ -1039,13 +1102,14 @@ typedef error_t (*SshChannelOpenCallback)(SshConnection *connection,
    const SshString *type, uint32_t senderChannel, uint32_t initialWindowSize,
    uint32_t maxPacketSize, const uint8_t *data, size_t length, void *param);
 
-   
+
 /**
  * @brief Connection open callback function
  **/
 
 typedef error_t (*SshConnectionOpenCallback)(SshConnection *connection,
    void *param);
+
 
 /**
  * @brief Connection close callback function

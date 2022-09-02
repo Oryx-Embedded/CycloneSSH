@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.1.6
+ * @version 2.1.8
  **/
 
 //Switch to the appropriate trace level
@@ -1411,6 +1411,33 @@ error_t sftpClientDeleteFile(SftpClientContext *context, const char_t *path)
 
    //Return status code
    return error;
+}
+
+
+/**
+ * @brief Retrieve SFTP status code
+ * @param[in] context Pointer to the SFTP client context
+ * @return SFTP status code
+ **/
+
+SftpStatusCode sftpClientGetStatusCode(SftpClientContext *context)
+{
+   SftpStatusCode statusCode;
+
+   //Make sure the SFTP client context is valid
+   if(context != NULL)
+   {
+      //Get SFTP status code
+      statusCode = (SftpStatusCode) context->statusCode;
+   }
+   else
+   {
+      //The SFTP client context is not valid
+      statusCode = SSH_FX_FAILURE;
+   }
+
+   //Return SFTP status code
+   return statusCode;
 }
 
 

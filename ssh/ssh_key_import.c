@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.1.6
+ * @version 2.1.8
  **/
 
 //Switch to the appropriate trace level
@@ -544,14 +544,14 @@ error_t sshImportRsaPrivateKey(const char_t *input, size_t length,
          if(!error)
          {
             //Parse private key header
-            error = sshParsePrivateKeyHeader(buffer, n, &privateKeyHeader);
+            error = sshParseOpenSshPrivateKeyHeader(buffer, n, &privateKeyHeader);
          }
 
          //Check status code
          if(!error)
          {
-            //Parse RSA private key
-            error = sshParseRsaPrivateKey(privateKeyHeader.encrypted.value,
+            //Parse RSA private key blob
+            error = sshParseOpenSshRsaPrivateKey(privateKeyHeader.encrypted.value,
                privateKeyHeader.encrypted.length, &privateKeyInfo);
          }
 
@@ -707,14 +707,14 @@ error_t sshImportDsaPrivateKey(const char_t *input, size_t length,
          if(!error)
          {
             //Parse private key header
-            error = sshParsePrivateKeyHeader(buffer, n, &privateKeyHeader);
+            error = sshParseOpenSshPrivateKeyHeader(buffer, n, &privateKeyHeader);
          }
 
          //Check status code
          if(!error)
          {
-            //Parse DSA private key
-            error = sshParseDsaPrivateKey(privateKeyHeader.encrypted.value,
+            //Parse DSA private key blob
+            error = sshParseOpenSshDsaPrivateKey(privateKeyHeader.encrypted.value,
                privateKeyHeader.encrypted.length, &privateKeyInfo);
          }
 
@@ -824,14 +824,14 @@ error_t sshImportEcdsaPrivateKey(const char_t *input, size_t length,
          if(!error)
          {
             //Parse private key header
-            error = sshParsePrivateKeyHeader(buffer, n, &privateKeyHeader);
+            error = sshParseOpenSshPrivateKeyHeader(buffer, n, &privateKeyHeader);
          }
 
          //Check status code
          if(!error)
          {
-            //Parse ECDSA private key
-            error = sshParseEcdsaPrivateKey(privateKeyHeader.encrypted.value,
+            //Parse ECDSA private key blob
+            error = sshParseOpenSshEcdsaPrivateKey(privateKeyHeader.encrypted.value,
                privateKeyHeader.encrypted.length, &privateKeyInfo);
          }
 
@@ -890,7 +890,7 @@ error_t sshImportEd25519PrivateKey(const char_t *input, size_t length,
    size_t n;
    uint8_t *buffer;
    SshPrivateKeyHeader privateKeyHeader;
-   SshEd25519PrivateKey privateKeyInfo;
+   SshEddsaPrivateKey privateKeyInfo;
 
    //Check parameters
    if(input == NULL && length != 0)
@@ -917,14 +917,14 @@ error_t sshImportEd25519PrivateKey(const char_t *input, size_t length,
          if(!error)
          {
             //Parse private key header
-            error = sshParsePrivateKeyHeader(buffer, n, &privateKeyHeader);
+            error = sshParseOpenSshPrivateKeyHeader(buffer, n, &privateKeyHeader);
          }
 
          //Check status code
          if(!error)
          {
-            //Parse Ed25519 private key
-            error = sshParseEd25519PrivateKey(privateKeyHeader.encrypted.value,
+            //Parse Ed25519 private key blob
+            error = sshParseOpenSshEd25519PrivateKey(privateKeyHeader.encrypted.value,
                privateKeyHeader.encrypted.length, &privateKeyInfo);
          }
 
@@ -979,8 +979,80 @@ error_t sshImportEd448PrivateKey(const char_t *input, size_t length,
    EddsaPrivateKey *privateKey)
 {
 #if (SSH_ED448_SUPPORT == ENABLED)
-   //Decode the content of the private key file (PEM format)
-   return pemImportEddsaPrivateKey(input, length, privateKey);
+   error_t error;
+   size_t n;
+   uint8_t *buffer;
+   SshPrivateKeyHeader privateKeyHeader;
+   SshEddsaPrivateKey privateKeyInfo;
+
+   //Check parameters
+   if(input == NULL && length != 0)
+      return ERROR_INVALID_PARAMETER;
+   if(privateKey == NULL)
+      return ERROR_INVALID_PARAMETER;
+
+   //Retrieve the length of the private key structure
+   error = sshDecodeOpenSshPrivateKeyFile(input, length, NULL, &n);
+
+   //Check status code
+   if(!error)
+   {
+      //Allocate a memory buffer to hold the private key structure
+      buffer = sshAllocMem(n);
+
+      //Successful memory allocation?
+      if(buffer != NULL)
+      {
+         //Decode the content of the private key file (OpenSSH format)
+         error = sshDecodeOpenSshPrivateKeyFile(input, length, buffer, &n);
+
+         //Check status code
+         if(!error)
+         {
+            //Parse private key header
+            error = sshParseOpenSshPrivateKeyHeader(buffer, n, &privateKeyHeader);
+         }
+
+         //Check status code
+         if(!error)
+         {
+            //Parse Ed448 private key blob
+            error = sshParseOpenSshEd448PrivateKey(privateKeyHeader.encrypted.value,
+               privateKeyHeader.encrypted.length, &privateKeyInfo);
+         }
+
+         //Check status code
+         if(!error)
+         {
+            //Import Ed448 private key
+            error = mpiImport(&privateKey->d, privateKeyInfo.d.value,
+               ED448_PRIVATE_KEY_LEN, MPI_FORMAT_LITTLE_ENDIAN);
+         }
+
+         //Release previously allocated memory
+         sshFreeMem(buffer);
+      }
+      else
+      {
+         //Failed to allocate memory
+         error = ERROR_OUT_OF_MEMORY;
+      }
+   }
+   else
+   {
+      //Decode the content of the private key file (PEM format)
+      error = pemImportEddsaPrivateKey(input, length, privateKey);
+   }
+
+   //Any error to report?
+   if(error)
+   {
+      //Clean up side effects
+      eddsaFreePrivateKey(privateKey);
+   }
+
+   //Return status code
+   return error;
 #else
    //Not implemented
    return ERROR_NOT_IMPLEMENTED;

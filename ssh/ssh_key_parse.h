@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.1.6
+ * @version 2.1.8
  **/
 
 #ifndef _SSH_KEY_PARSE_H
@@ -162,7 +162,7 @@ typedef struct
 
 
 /**
- * @brief Ed25519 private key (OpenSSH format)
+ * @brief EdDSA private key (OpenSSH format)
  **/
 
 typedef struct
@@ -173,7 +173,7 @@ typedef struct
    SshBinaryString q;
    SshBinaryString d;
    SshString comment;
-} SshEd25519PrivateKey;
+} SshEddsaPrivateKey;
 
 
 //SSH key parsing functions
@@ -195,20 +195,23 @@ error_t sshParseEd25519HostKey(const uint8_t *data, size_t length,
 error_t sshParseEd448HostKey(const uint8_t *data, size_t length,
    SshEddsaHostKey *hostKey);
 
-error_t sshParsePrivateKeyHeader(const uint8_t *data, size_t length,
+error_t sshParseOpenSshPrivateKeyHeader(const uint8_t *data, size_t length,
    SshPrivateKeyHeader *privateKeyHeader);
 
-error_t sshParseRsaPrivateKey(const uint8_t *data, size_t length,
+error_t sshParseOpenSshRsaPrivateKey(const uint8_t *data, size_t length,
    SshRsaPrivateKey *privateKey);
 
-error_t sshParseDsaPrivateKey(const uint8_t *data, size_t length,
+error_t sshParseOpenSshDsaPrivateKey(const uint8_t *data, size_t length,
    SshDsaPrivateKey *privateKey);
 
-error_t sshParseEcdsaPrivateKey(const uint8_t *data, size_t length,
+error_t sshParseOpenSshEcdsaPrivateKey(const uint8_t *data, size_t length,
    SshEcdsaPrivateKey *privateKey);
 
-error_t sshParseEd25519PrivateKey(const uint8_t *data, size_t length,
-   SshEd25519PrivateKey *privateKey);
+error_t sshParseOpenSshEd25519PrivateKey(const uint8_t *data, size_t length,
+   SshEddsaPrivateKey *privateKey);
+
+error_t sshParseOpenSshEd448PrivateKey(const uint8_t *data, size_t length,
+   SshEddsaPrivateKey *privateKey);
 
 //C++ guard
 #ifdef __cplusplus

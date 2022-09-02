@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.1.6
+ * @version 2.1.8
  **/
 
 //Switch to the appropriate trace level
@@ -491,7 +491,7 @@ error_t sshFormatForwardedTcpIpParams(const SshForwardedTcpIpParams *params,
    STORE32BE(params->originPort, p);
 
    //Total number of bytes that have been written
-   *written += n;
+   *written += sizeof(uint32_t);
 
    //Successful processing
    return NO_ERROR;
@@ -556,7 +556,7 @@ error_t sshFormatDirectTcpIpParams(const SshDirectTcpIpParams *params,
    STORE32BE(params->originPort, p);
 
    //Total number of bytes that have been written
-   *written += n;
+   *written += sizeof(uint32_t);
 
    //Successful processing
    return NO_ERROR;
@@ -930,7 +930,7 @@ error_t sshParseChannelOpen(SshConnection *connection,
 
    //Malformed message?
    if(length < sizeof(uint32_t))
-       return ERROR_INVALID_MESSAGE;
+      return ERROR_INVALID_MESSAGE;
 
    //Get maximum packet size
    maxPacketSize = LOAD32BE(p);
@@ -1057,6 +1057,10 @@ error_t sshParseForwardedTcpIpParams(const uint8_t *p, size_t length,
    //Parse 'port that was connected' field
    params->portConnected = LOAD32BE(p);
 
+   //Invalid port number?
+   if(params->portConnected > SSH_MAX_PORT_NUM)
+      return ERROR_INVALID_PORT;
+
    //Point to the next field
    p += sizeof(uint32_t);
    length -= sizeof(uint32_t);
@@ -1077,6 +1081,10 @@ error_t sshParseForwardedTcpIpParams(const uint8_t *p, size_t length,
 
    //Parse 'originator port' field
    params->originPort = LOAD32BE(p);
+
+   //Invalid port number?
+   if(params->originPort > SSH_MAX_PORT_NUM)
+      return ERROR_INVALID_PORT;
 
    //Successful processing
    return NO_ERROR;
@@ -1115,6 +1123,10 @@ error_t sshParseDirectTcpIpParams(const uint8_t *p, size_t length,
    //connect the channel
    params->portToConnect = LOAD32BE(p);
 
+   //Invalid port number?
+   if(params->portToConnect > SSH_MAX_PORT_NUM)
+      return ERROR_INVALID_PORT;
+
    //Point to the next field
    p += sizeof(uint32_t);
    length -= sizeof(uint32_t);
@@ -1138,6 +1150,10 @@ error_t sshParseDirectTcpIpParams(const uint8_t *p, size_t length,
    //connection originated
    params->originPort = LOAD32BE(p);
 
+   //Invalid port number?
+   if(params->originPort > SSH_MAX_PORT_NUM)
+      return ERROR_INVALID_PORT;
+
    //Successful processing
    return NO_ERROR;
 }
@@ -1154,7 +1170,6 @@ error_t sshParseDirectTcpIpParams(const uint8_t *p, size_t length,
 error_t sshParseChannelOpenConfirmation(SshConnection *connection,
    const uint8_t *message, size_t length)
 {
-#if (SSH_CLIENT_SUPPORT == ENABLED)
    error_t error;
    const uint8_t *p;
    uint32_t recipientChannel;
@@ -1166,10 +1181,6 @@ error_t sshParseChannelOpenConfirmation(SshConnection *connection,
    //Debug message
    TRACE_INFO("SSH_MSG_CHANNEL_OPEN_CONFIRMATION message received (%" PRIuSIZE " bytes)...\r\n", length);
    TRACE_VERBOSE_ARRAY("  ", message, length);
-
-   //Check operation mode
-   if(connection->context->mode != SSH_OPERATION_MODE_CLIENT)
-      return ERROR_UNEXPECTED_MESSAGE;
 
    //Check connection state
    if(connection->state != SSH_CONN_STATE_OPEN)
@@ -1287,10 +1298,6 @@ error_t sshParseChannelOpenConfirmation(SshConnection *connection,
 
    //Return status code
    return error;
-#else
-   //Client operation mode is not implemented
-   return ERROR_NOT_IMPLEMENTED;
-#endif
 }
 
 
@@ -1305,7 +1312,6 @@ error_t sshParseChannelOpenConfirmation(SshConnection *connection,
 error_t sshParseChannelOpenFailure(SshConnection *connection,
    const uint8_t *message, size_t length)
 {
-#if (SSH_CLIENT_SUPPORT == ENABLED)
    error_t error;
    const uint8_t *p;
    uint32_t recipientChannel;
@@ -1317,10 +1323,6 @@ error_t sshParseChannelOpenFailure(SshConnection *connection,
    //Debug message
    TRACE_INFO("SSH_MSG_CHANNEL_OPEN_FAILURE message received (%" PRIuSIZE " bytes)...\r\n", length);
    TRACE_VERBOSE_ARRAY("  ", message, length);
-
-   //Check operation mode
-   if(connection->context->mode != SSH_OPERATION_MODE_CLIENT)
-      return ERROR_UNEXPECTED_MESSAGE;
 
    //Check connection state
    if(connection->state != SSH_CONN_STATE_OPEN)
@@ -1420,10 +1422,6 @@ error_t sshParseChannelOpenFailure(SshConnection *connection,
 
    //Return status code
    return error;
-#else
-   //Client operation mode is not implemented
-   return ERROR_NOT_IMPLEMENTED;
-#endif
 }
 
 

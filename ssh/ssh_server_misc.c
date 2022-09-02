@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.1.6
+ * @version 2.1.8
  **/
 
 //Switch to the appropriate trace level
@@ -68,21 +68,25 @@ void sshServerTick(SshServerContext *context)
       //Active connection?
       if(connection->state != SSH_CONN_STATE_CLOSED)
       {
-         //Disconnect inactive client after idle timeout
-         if(timeCompare(time, connection->timestamp + SSH_SERVER_TIMEOUT) >= 0)
+         //Check idle connection timeout (a value of zero means no timeout)
+         if(context->timeout != 0)
          {
-            //Debug message
-            TRACE_INFO("SSH server: Closing inactive connection...\r\n");
-
-            //Send an SSH_MSG_DISCONNECT message
-            error = sshSendDisconnect(connection, SSH_DISCONNECT_BY_APPLICATION,
-               "Session idle timeout");
-
-            //Failed to send message?
-            if(error)
+            //Disconnect inactive client after idle timeout
+            if(timeCompare(time, connection->timestamp + context->timeout) >= 0)
             {
-               //Close the SSH connection
-               sshCloseConnection(connection);
+               //Debug message
+               TRACE_INFO("SSH server: Closing inactive connection...\r\n");
+
+               //Send an SSH_MSG_DISCONNECT message
+               error = sshSendDisconnect(connection, SSH_DISCONNECT_BY_APPLICATION,
+                  "Session idle timeout");
+
+               //Failed to send message?
+               if(error)
+               {
+                  //Close the SSH connection
+                  sshCloseConnection(connection);
+               }
             }
          }
       }

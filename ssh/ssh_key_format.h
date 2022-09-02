@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.1.6
+ * @version 2.1.8
  **/
 
 #ifndef _SSH_KEY_FORMAT_H
@@ -58,6 +58,24 @@ error_t sshFormatEd25519PublicKey(const EddsaPublicKey *publicKey,
 
 error_t sshFormatEd448PublicKey(const EddsaPublicKey *publicKey,
    uint8_t *p, size_t *written);
+
+error_t sshFormatOpenSshPrivateKeyHeader(uint8_t *p, size_t *written);
+
+error_t sshFormatOpenSshRsaPrivateKey(const RsaPrivateKey *privateKey,
+   uint8_t *p, size_t *written);
+
+error_t sshFormatOpenSshDsaPrivateKey(const DsaPrivateKey *privateKey,
+   const DsaPublicKey *publicKey, uint8_t *p, size_t *written);
+
+error_t sshFormatOpenSshEcdsaPrivateKey(const EcDomainParameters *params,
+   const EcPrivateKey *privateKey, const EcPublicKey *publicKey,
+   uint8_t *p, size_t *written);
+
+error_t sshFormatOpenSshEd25519PrivateKey(const EddsaPrivateKey *privateKey,
+   const EddsaPublicKey *publicKey, uint8_t *p, size_t *written);
+
+error_t sshFormatOpenSshEd448PrivateKey(const EddsaPrivateKey *privateKey,
+   const EddsaPublicKey *publicKey, uint8_t *p, size_t *written);
 
 //C++ guard
 #ifdef __cplusplus

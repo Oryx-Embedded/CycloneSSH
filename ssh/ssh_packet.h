@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.1.6
+ * @version 2.1.8
  **/
 
 #ifndef _SSH_PACKET_H
@@ -46,29 +46,6 @@
 //C++ guard
 #ifdef __cplusplus
 extern "C" {
-#endif
-
-//CodeWarrior or Win32 compiler?
-#if defined(__CWCC__) || defined(_WIN32)
-   #pragma pack(push, 1)
-#endif
-
-
-/**
- * @brief SSH packet header
- **/
-
-typedef __start_packed struct
-{
-   uint32_t packetLen; //0-3
-   uint8_t paddingLen; //4
-   uint8_t payload[];  //5
-} __end_packed SshPacketHeader;
-
-
-//CodeWarrior or Win32 compiler?
-#if defined(__CWCC__) || defined(_WIN32)
-   #pragma pack(pop)
 #endif
 
 //SSH related functions

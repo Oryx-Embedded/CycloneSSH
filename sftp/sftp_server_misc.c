@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.1.6
+ * @version 2.1.8
  **/
 
 //Switch to the appropriate trace level
@@ -296,7 +296,7 @@ void sftpServerCloseSession(SftpServerSession *session)
 /**
  * @brief Register session events
  * @param[in] session Handle referencing an SFTP session
- * @param[in] eventDesc Event to be registered
+ * @param[in] eventDesc SSH channel events to be registered
  **/
 
 void sftpServerRegisterSessionEvents(SftpServerSession *session,

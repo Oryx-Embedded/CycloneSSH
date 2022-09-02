@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.1.6
+ * @version 2.1.8
  **/
 
 //Switch to the appropriate trace level
@@ -265,6 +265,24 @@ static const char_t *const sshSupportedEncAlgos[] =
 #if (SSH_AES_256_SUPPORT == ENABLED && SSH_CTR_CIPHER_SUPPORT == ENABLED)
    "aes256-ctr",
 #endif
+#if (SSH_TWOFISH_128_SUPPORT == ENABLED && SSH_CTR_CIPHER_SUPPORT == ENABLED)
+   "twofish128-ctr",
+#endif
+#if (SSH_TWOFISH_192_SUPPORT == ENABLED && SSH_CTR_CIPHER_SUPPORT == ENABLED)
+   "twofish192-ctr",
+#endif
+#if (SSH_TWOFISH_256_SUPPORT == ENABLED && SSH_CTR_CIPHER_SUPPORT == ENABLED)
+   "twofish256-ctr",
+#endif
+#if (SSH_SERPENT_128_SUPPORT == ENABLED && SSH_CTR_CIPHER_SUPPORT == ENABLED)
+   "serpent128-ctr",
+#endif
+#if (SSH_SERPENT_192_SUPPORT == ENABLED && SSH_CTR_CIPHER_SUPPORT == ENABLED)
+   "serpent192-ctr",
+#endif
+#if (SSH_SERPENT_256_SUPPORT == ENABLED && SSH_CTR_CIPHER_SUPPORT == ENABLED)
+   "serpent256-ctr",
+#endif
 #if (SSH_CAMELLIA_128_SUPPORT == ENABLED && SSH_CTR_CIPHER_SUPPORT == ENABLED)
    "camellia128-ctr",
 #endif
@@ -283,6 +301,25 @@ static const char_t *const sshSupportedEncAlgos[] =
 #if (SSH_AES_256_SUPPORT == ENABLED && SSH_CBC_CIPHER_SUPPORT == ENABLED)
    "aes256-cbc",
 #endif
+#if (SSH_TWOFISH_128_SUPPORT == ENABLED && SSH_CBC_CIPHER_SUPPORT == ENABLED)
+   "twofish128-cbc",
+#endif
+#if (SSH_TWOFISH_192_SUPPORT == ENABLED && SSH_CBC_CIPHER_SUPPORT == ENABLED)
+   "twofish192-cbc",
+#endif
+#if (SSH_TWOFISH_256_SUPPORT == ENABLED && SSH_CBC_CIPHER_SUPPORT == ENABLED)
+   "twofish256-cbc",
+   "twofish-cbc",
+#endif
+#if (SSH_SERPENT_128_SUPPORT == ENABLED && SSH_CBC_CIPHER_SUPPORT == ENABLED)
+   "serpent128-cbc",
+#endif
+#if (SSH_SERPENT_192_SUPPORT == ENABLED && SSH_CBC_CIPHER_SUPPORT == ENABLED)
+   "serpent192-cbc",
+#endif
+#if (SSH_SERPENT_256_SUPPORT == ENABLED && SSH_CBC_CIPHER_SUPPORT == ENABLED)
+   "serpent256-cbc",
+#endif
 #if (SSH_CAMELLIA_128_SUPPORT == ENABLED && SSH_CBC_CIPHER_SUPPORT == ENABLED)
    "camellia128-cbc",
 #endif
@@ -291,9 +328,6 @@ static const char_t *const sshSupportedEncAlgos[] =
 #endif
 #if (SSH_CAMELLIA_256_SUPPORT == ENABLED && SSH_CBC_CIPHER_SUPPORT == ENABLED)
    "camellia256-cbc",
-#endif
-#if (SSH_SEED_SUPPORT == ENABLED && SSH_CTR_CIPHER_SUPPORT == ENABLED)
-   "seed-ctr@ssh.com",
 #endif
 #if (SSH_SEED_SUPPORT == ENABLED && SSH_CBC_CIPHER_SUPPORT == ENABLED)
    "seed-cbc@ssh.com",
@@ -315,6 +349,12 @@ static const char_t *const sshSupportedEncAlgos[] =
 #endif
 #if (SSH_IDEA_SUPPORT == ENABLED && SSH_CBC_CIPHER_SUPPORT == ENABLED)
    "idea-cbc",
+#endif
+#if (SSH_CAST128_SUPPORT == ENABLED && SSH_CTR_CIPHER_SUPPORT == ENABLED)
+   "cast128-ctr",
+#endif
+#if (SSH_CAST128_SUPPORT == ENABLED && SSH_CBC_CIPHER_SUPPORT == ENABLED)
+   "cast128-cbc",
 #endif
 #if (SSH_RC4_256_SUPPORT == ENABLED && SSH_STREAM_CIPHER_SUPPORT == ENABLED)
    "arcfour256",
@@ -900,7 +940,8 @@ const char_t *sshSelectMacAlgo(SshContext *context, const char_t *encAlgo,
 {
    const char_t *selectedAlgo;
 
-   //AEAD encryption algorithm?
+#if(SSH_GCM_CIPHER_SUPPORT == ENABLED || SSH_CHACHA20_POLY1305_SUPPORT == ENABLED)
+   //AES-GCM or ChaCha20Poly1305 encryption algorithm?
    if(sshCompareAlgo(encAlgo, "aes128-gcm@openssh.com") ||
       sshCompareAlgo(encAlgo, "aes256-gcm@openssh.com") ||
       sshCompareAlgo(encAlgo, "chacha20-poly1305@openssh.com"))
@@ -908,7 +949,11 @@ const char_t *sshSelectMacAlgo(SshContext *context, const char_t *encAlgo,
       //AEAD algorithms offer both encryption and authentication
       selectedAlgo = sshSupportedMacAlgos[arraysize(sshSupportedMacAlgos) - 1];
    }
-   else if(sshCompareAlgo(encAlgo, "AEAD_AES_128_GCM") ||
+   else
+#endif
+#if (SSH_RFC5647_SUPPORT == ENABLED)
+   //AES-GCM or Camellia-GCM encryption algorithm?
+   if(sshCompareAlgo(encAlgo, "AEAD_AES_128_GCM") ||
       sshCompareAlgo(encAlgo, "AEAD_AES_256_GCM") ||
       sshCompareAlgo(encAlgo, "AEAD_CAMELLIA_128_GCM") ||
       sshCompareAlgo(encAlgo, "AEAD_CAMELLIA_256_GCM"))
@@ -918,6 +963,8 @@ const char_t *sshSelectMacAlgo(SshContext *context, const char_t *encAlgo,
       selectedAlgo = encAlgo;
    }
    else
+#endif
+   //Non-AEAD encryption algorithm?
    {
       //The chosen MAC algorithm to each direction must be the first algorithm
       //on the client's name-list that is also on the server's name-list

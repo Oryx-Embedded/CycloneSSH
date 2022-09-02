@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.1.6
+ * @version 2.1.8
  **/
 
 //Switch to the appropriate trace level
@@ -206,6 +206,45 @@ error_t sshInitEncryptionEngine(SshConnection *connection,
 
 
 /**
+ * @brief Release encryption engine
+ * @param[in] encryptionEngine Pointer to the encryption/decryption engine
+ **/
+
+void sshFreeEncryptionEngine(SshEncryptionEngine *encryptionEngine)
+{
+   //Valid cipher context?
+   if(encryptionEngine->cipherAlgo != NULL)
+   {
+      //Erase cipher context
+      encryptionEngine->cipherAlgo->deinit(&encryptionEngine->cipherContext);
+   }
+
+#if (SSH_GCM_CIPHER_SUPPORT == ENABLED || SSH_RFC5647_SUPPORT == ENABLED)
+   //Erase GCM context
+   osMemset(&encryptionEngine->gcmContext, 0, sizeof(GcmContext));
+#endif
+
+   //Reset encryption parameters
+   encryptionEngine->cipherMode = CIPHER_MODE_NULL;
+   encryptionEngine->cipherAlgo = NULL;
+   encryptionEngine->hashAlgo = NULL;
+   encryptionEngine->hmacContext = NULL;
+   encryptionEngine->macSize = 0;
+   encryptionEngine->etm = FALSE;
+
+   //Erase IV
+   osMemset(encryptionEngine->iv, 0, SSH_MAX_CIPHER_BLOCK_SIZE);
+
+   //Erase encryption key
+   osMemset(encryptionEngine->encKey, 0, SSH_MAX_ENC_KEY_SIZE);
+   encryptionEngine->encKeyLen = 0;
+
+   //Erase integrity key
+   osMemset(encryptionEngine->macKey, 0, SSH_MAX_HASH_DIGEST_SIZE);
+}
+
+
+/**
  * @brief Select the relevant cipher algorithm
  * @param[in] encryptionEngine Pointer to the encryption/decryption engine to
  *   be initialized
@@ -240,6 +279,30 @@ error_t sshSelectCipherAlgo(SshEncryptionEngine *encryptionEngine,
       encryptionEngine->cipherMode = CIPHER_MODE_STREAM;
       encryptionEngine->cipherAlgo = RC4_CIPHER_ALGO;
       encryptionEngine->encKeyLen = 32;
+   }
+   else
+#endif
+#if (SSH_CAST128_SUPPORT == ENABLED && SSH_CBC_CIPHER_SUPPORT == ENABLED)
+   //CAST-128-CBC encryption algorithm?
+   if(sshCompareAlgo(encAlgo, "cast128-cbc"))
+   {
+      //This cipher uses CAST-128 in CBC mode with a 128-bit key (refer to
+      //RFC 4253, section 6.3)
+      encryptionEngine->cipherMode = CIPHER_MODE_CBC;
+      encryptionEngine->cipherAlgo = CAST128_CIPHER_ALGO;
+      encryptionEngine->encKeyLen = 16;
+   }
+   else
+#endif
+#if (SSH_CAST128_SUPPORT == ENABLED && SSH_CTR_CIPHER_SUPPORT == ENABLED)
+   //CAST-128-CTR encryption algorithm?
+   if(sshCompareAlgo(encAlgo, "cast128-ctr"))
+   {
+      //This cipher uses CAST-128 in CTR mode with a 128-bit key (refer to
+      //RFC 4344, section 4)
+      encryptionEngine->cipherMode = CIPHER_MODE_CTR;
+      encryptionEngine->cipherAlgo = CAST128_CIPHER_ALGO;
+      encryptionEngine->encKeyLen = 16;
    }
    else
 #endif
@@ -385,6 +448,139 @@ error_t sshSelectCipherAlgo(SshEncryptionEngine *encryptionEngine,
    }
    else
 #endif
+#if (SSH_TWOFISH_128_SUPPORT == ENABLED && SSH_CBC_CIPHER_SUPPORT == ENABLED)
+   //Twofish-CBC with 128-bit key encryption algorithm?
+   if(sshCompareAlgo(encAlgo, "twofish128-cbc"))
+   {
+      //This cipher uses Twofish in CBC mode with a 128-bit key
+      encryptionEngine->cipherMode = CIPHER_MODE_CBC;
+      encryptionEngine->cipherAlgo = TWOFISH_CIPHER_ALGO;
+      encryptionEngine->encKeyLen = 16;
+   }
+   else
+#endif
+#if (SSH_TWOFISH_192_SUPPORT == ENABLED && SSH_CBC_CIPHER_SUPPORT == ENABLED)
+   //Twofish-CBC with 192-bit key encryption algorithm?
+   if(sshCompareAlgo(encAlgo, "twofish192-cbc"))
+   {
+      //This cipher uses Twofish in CBC mode with a 192-bit key
+      encryptionEngine->cipherMode = CIPHER_MODE_CBC;
+      encryptionEngine->cipherAlgo = TWOFISH_CIPHER_ALGO;
+      encryptionEngine->encKeyLen = 24;
+   }
+   else
+#endif
+#if (SSH_TWOFISH_256_SUPPORT == ENABLED && SSH_CBC_CIPHER_SUPPORT == ENABLED)
+   //Twofish-CBC with 256-bit key encryption algorithm?
+   if(sshCompareAlgo(encAlgo, "twofish256-cbc") ||
+      sshCompareAlgo(encAlgo, "twofish-cbc"))
+   {
+      //This cipher uses Twofish in CBC mode with a 256-bit key
+      encryptionEngine->cipherMode = CIPHER_MODE_CBC;
+      encryptionEngine->cipherAlgo = TWOFISH_CIPHER_ALGO;
+      encryptionEngine->encKeyLen = 32;
+   }
+   else
+#endif
+#if (SSH_TWOFISH_128_SUPPORT == ENABLED && SSH_CTR_CIPHER_SUPPORT == ENABLED)
+   //Twofish-CTR with 128-bit key encryption algorithm?
+   if(sshCompareAlgo(encAlgo, "twofish128-ctr"))
+   {
+      //This cipher uses Twofish in CTR mode with a 128-bit key
+      encryptionEngine->cipherMode = CIPHER_MODE_CTR;
+      encryptionEngine->cipherAlgo = TWOFISH_CIPHER_ALGO;
+      encryptionEngine->encKeyLen = 16;
+   }
+   else
+#endif
+#if (SSH_TWOFISH_192_SUPPORT == ENABLED && SSH_CTR_CIPHER_SUPPORT == ENABLED)
+   //Twofish-CTR with 192-bit key encryption algorithm?
+   if(sshCompareAlgo(encAlgo, "twofish192-ctr"))
+   {
+      //This cipher uses Twofish in CTR mode with a 192-bit key
+      encryptionEngine->cipherMode = CIPHER_MODE_CTR;
+      encryptionEngine->cipherAlgo = TWOFISH_CIPHER_ALGO;
+      encryptionEngine->encKeyLen = 24;
+   }
+   else
+#endif
+#if (SSH_TWOFISH_256_SUPPORT == ENABLED && SSH_CTR_CIPHER_SUPPORT == ENABLED)
+   //Twofish-CTR with 256-bit key encryption algorithm?
+   if(sshCompareAlgo(encAlgo, "twofish256-ctr"))
+   {
+      //This cipher uses Twofish in CTR mode with a 256-bit key
+      encryptionEngine->cipherMode = CIPHER_MODE_CTR;
+      encryptionEngine->cipherAlgo = TWOFISH_CIPHER_ALGO;
+      encryptionEngine->encKeyLen = 32;
+   }
+   else
+#endif
+#if (SSH_SERPENT_128_SUPPORT == ENABLED && SSH_CBC_CIPHER_SUPPORT == ENABLED)
+   //Serpent-CBC with 128-bit key encryption algorithm?
+   if(sshCompareAlgo(encAlgo, "serpent128-cbc"))
+   {
+      //This cipher uses Serpent in CBC mode with a 128-bit key
+      encryptionEngine->cipherMode = CIPHER_MODE_CBC;
+      encryptionEngine->cipherAlgo = SERPENT_CIPHER_ALGO;
+      encryptionEngine->encKeyLen = 16;
+   }
+   else
+#endif
+#if (SSH_SERPENT_192_SUPPORT == ENABLED && SSH_CBC_CIPHER_SUPPORT == ENABLED)
+   //Serpent-CBC with 192-bit key encryption algorithm?
+   if(sshCompareAlgo(encAlgo, "serpent192-cbc"))
+   {
+      //This cipher uses Serpent in CBC mode with a 192-bit key
+      encryptionEngine->cipherMode = CIPHER_MODE_CBC;
+      encryptionEngine->cipherAlgo = SERPENT_CIPHER_ALGO;
+      encryptionEngine->encKeyLen = 24;
+   }
+   else
+#endif
+#if (SSH_SERPENT_256_SUPPORT == ENABLED && SSH_CBC_CIPHER_SUPPORT == ENABLED)
+   //Serpent-CBC with 256-bit key encryption algorithm?
+   if(sshCompareAlgo(encAlgo, "serpent256-cbc"))
+   {
+      //This cipher uses Serpent in CBC mode with a 256-bit key
+      encryptionEngine->cipherMode = CIPHER_MODE_CBC;
+      encryptionEngine->cipherAlgo = SERPENT_CIPHER_ALGO;
+      encryptionEngine->encKeyLen = 32;
+   }
+   else
+#endif
+#if (SSH_SERPENT_128_SUPPORT == ENABLED && SSH_CTR_CIPHER_SUPPORT == ENABLED)
+   //Serpent-CTR with 128-bit key encryption algorithm?
+   if(sshCompareAlgo(encAlgo, "serpent128-ctr"))
+   {
+      //This cipher uses Serpent in CTR mode with a 128-bit key
+      encryptionEngine->cipherMode = CIPHER_MODE_CTR;
+      encryptionEngine->cipherAlgo = SERPENT_CIPHER_ALGO;
+      encryptionEngine->encKeyLen = 16;
+   }
+   else
+#endif
+#if (SSH_SERPENT_192_SUPPORT == ENABLED && SSH_CTR_CIPHER_SUPPORT == ENABLED)
+   //Serpent-CTR with 192-bit key encryption algorithm?
+   if(sshCompareAlgo(encAlgo, "serpent192-ctr"))
+   {
+      //This cipher uses Serpent in CTR mode with a 192-bit key
+      encryptionEngine->cipherMode = CIPHER_MODE_CTR;
+      encryptionEngine->cipherAlgo = SERPENT_CIPHER_ALGO;
+      encryptionEngine->encKeyLen = 24;
+   }
+   else
+#endif
+#if (SSH_SERPENT_256_SUPPORT == ENABLED && SSH_CTR_CIPHER_SUPPORT == ENABLED)
+   //Serpent-CTR with 256-bit key encryption algorithm?
+   if(sshCompareAlgo(encAlgo, "serpent256-ctr"))
+   {
+      //This cipher uses Serpent in CTR mode with a 256-bit key
+      encryptionEngine->cipherMode = CIPHER_MODE_CTR;
+      encryptionEngine->cipherAlgo = SERPENT_CIPHER_ALGO;
+      encryptionEngine->encKeyLen = 32;
+   }
+   else
+#endif
 #if (SSH_CAMELLIA_128_SUPPORT == ENABLED && SSH_CBC_CIPHER_SUPPORT == ENABLED)
    //Camellia-CBC with 128-bit key encryption algorithm?
    if(sshCompareAlgo(encAlgo, "camellia128-cbc"))
@@ -457,17 +653,6 @@ error_t sshSelectCipherAlgo(SshEncryptionEngine *encryptionEngine,
    {
       //This cipher uses SEED in CBC mode
       encryptionEngine->cipherMode = CIPHER_MODE_CBC;
-      encryptionEngine->cipherAlgo = SEED_CIPHER_ALGO;
-      encryptionEngine->encKeyLen = 16;
-   }
-   else
-#endif
-#if (SSH_SEED_SUPPORT == ENABLED && SSH_CTR_CIPHER_SUPPORT == ENABLED)
-   //SEED-CTR encryption algorithm?
-   if(sshCompareAlgo(encAlgo, "seed-ctr@ssh.com"))
-   {
-      //This cipher uses SEED in CTR mode
-      encryptionEngine->cipherMode = CIPHER_MODE_CTR;
       encryptionEngine->cipherAlgo = SEED_CIPHER_ALGO;
       encryptionEngine->encKeyLen = 16;
    }
