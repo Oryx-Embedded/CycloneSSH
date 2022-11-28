@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.1.8
+ * @version 2.2.0
  **/
 
 #ifndef _SSH_LEGACY_H
@@ -102,5 +102,33 @@
 
 #define SshWindowChangeReqParams SshWindowChangeParams
 #define sshParseWindowChangeReqParams sshParseWindowChangeParams
+
+#ifdef SSH_DH_SUPPORT
+   #define SSH_DH_KEX_SUPPORT SSH_DH_SUPPORT
+#endif
+
+#ifdef SSH_ECDH_SUPPORT
+   #define SSH_ECDH_KEX_SUPPORT SSH_ECDH_SUPPORT
+#endif
+
+#ifdef SSH_RSA_SUPPORT
+   #define SSH_RSA_SIGN_SUPPORT SSH_RSA_SUPPORT
+#endif
+
+#ifdef SSH_DSA_SUPPORT
+   #define SSH_DSA_SIGN_SUPPORT SSH_DSA_SUPPORT
+#endif
+
+#ifdef SSH_ECDSA_SUPPORT
+   #define SSH_ECDSA_SIGN_SUPPORT SSH_ECDSA_SUPPORT
+#endif
+
+#ifdef SSH_ED25519_SUPPORT
+   #define SSH_ED25519_SIGN_SUPPORT SSH_ED25519_SUPPORT
+#endif
+
+#ifdef SSH_ED448_SUPPORT
+   #define SSH_ED448_SIGN_SUPPORT SSH_ED448_SUPPORT
+#endif
 
 #endif

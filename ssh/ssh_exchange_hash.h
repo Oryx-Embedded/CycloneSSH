@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.1.8
+ * @version 2.2.0
  **/
 
 #ifndef _SSH_EXCHANGE_HASH_H
@@ -47,6 +47,9 @@ error_t sshUpdateExchangeHash(SshConnection *connection, const void *data,
 
 error_t sshFinalizeExchangeHash(SshConnection *connection, uint8_t *digest,
    size_t *digestLen);
+
+error_t sshUpdateExchangeHashRaw(SshConnection *connection, const void *data,
+   size_t length);
 
 error_t sshGenerateExchangeHashSignature(SshConnection *connection,
    uint8_t *p, size_t *written);

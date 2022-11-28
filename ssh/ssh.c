@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.1.8
+ * @version 2.2.0
  **/
 
 //Switch to the appropriate trace level
@@ -38,6 +38,7 @@
 #include "ssh/ssh_key_import.h"
 #include "ssh/ssh_cert_import.h"
 #include "ssh/ssh_misc.h"
+#include "pkix/pem_import.h"
 #include "debug.h"
 
 //Check SSH stack configuration
@@ -1042,6 +1043,256 @@ error_t sshUnregisterConnectionCloseCallback(SshContext *context,
 
 
 /**
+ * @brief Load transient RSA key (for RSA key exchange)
+ * @param[in] context Pointer to the SSH context
+ * @param[in] index Zero-based index identifying a slot
+ * @param[in] publicKey RSA public key (PEM, SSH2 or OpenSSH format). This
+ *   parameter is taken as reference
+ * @param[in] publicKeyLen Length of the RSA public key
+ * @param[in] privateKey RSA private key (PEM or OpenSSH format). This
+ *   parameter is taken as reference
+ * @param[in] privateKeyLen Length of the RSA private key
+ * @return Error code
+ **/
+
+error_t sshLoadRsaKey(SshContext *context, uint_t index,
+   const char_t *publicKey, size_t publicKeyLen,
+   const char_t *privateKey, size_t privateKeyLen)
+{
+#if (SSH_SERVER_SUPPORT == ENABLED && SSH_RSA_KEX_SUPPORT == ENABLED)
+   error_t error;
+   uint_t k;
+   RsaPublicKey rsaPublicKey;
+   RsaPrivateKey rsaPrivateKey;
+
+   //Make sure the SSH context is valid
+   if(context == NULL)
+      return ERROR_INVALID_PARAMETER;
+
+   //Check index
+   if(index >= SSH_MAX_RSA_KEYS)
+      return ERROR_INVALID_PARAMETER;
+
+   //Check public key
+   if(publicKey == NULL || publicKeyLen == 0)
+      return ERROR_INVALID_PARAMETER;
+
+   //Check private key
+   if(privateKey == NULL || publicKeyLen == 0)
+      return ERROR_INVALID_PARAMETER;
+
+   //Initialize RSA public and private keys
+   rsaInitPublicKey(&rsaPublicKey);
+   rsaInitPrivateKey(&rsaPrivateKey);
+
+   //Check whether the RSA public key is valid
+   error = sshImportRsaPublicKey(publicKey, publicKeyLen, &rsaPublicKey);
+
+   //Check status code
+   if(!error)
+   {
+      //Check whether the RSA private key is valid
+      error = sshImportRsaPrivateKey(privateKey, privateKeyLen,
+         &rsaPrivateKey);
+   }
+
+   //Check status code
+   if(!error)
+   {
+      //Get the length of the modulus, in bits
+      k = mpiGetBitLength(&rsaPublicKey.n);
+
+      //Make sure the prime modulus is acceptable
+      if(k < SSH_MIN_RSA_MODULUS_SIZE || k > SSH_MAX_RSA_MODULUS_SIZE)
+      {
+         //Report an error
+         error = ERROR_INVALID_LENGTH;
+      }
+   }
+
+   //Release previously allocated memory
+   rsaFreePublicKey(&rsaPublicKey);
+   rsaFreePrivateKey(&rsaPrivateKey);
+
+   //Check status code
+   if(!error)
+   {
+      //Acquire exclusive access to the SSH context
+      osAcquireMutex(&context->mutex);
+
+      //Save the length of the modulus, in bits
+      context->rsaKeys[index].modulusSize = k;
+
+      //Save public key (PEM, SSH2 or OpenSSH format)
+      context->rsaKeys[index].publicKey = publicKey;
+      context->rsaKeys[index].publicKeyLen = publicKeyLen;
+
+      //Save private key (PEM or OpenSSH format)
+      context->rsaKeys[index].privateKey = privateKey;
+      context->rsaKeys[index].privateKeyLen = privateKeyLen;
+
+      //Release exclusive access to the SSH context
+      osReleaseMutex(&context->mutex);
+   }
+
+   //Return status code
+   return error;
+#else
+   //Not implemented
+   return ERROR_NOT_IMPLEMENTED;
+#endif
+}
+
+
+/**
+ * @brief Unload transient RSA key (for RSA key exchange)
+ * @param[in] context Pointer to the SSH context
+ * @param[in] index Zero-based index identifying a slot
+ * @return Error code
+ **/
+
+error_t sshUnloadRsaKey(SshContext *context, uint_t index)
+{
+#if (SSH_SERVER_SUPPORT == ENABLED && SSH_RSA_KEX_SUPPORT == ENABLED)
+   //Make sure the SSH context is valid
+   if(context == NULL)
+      return ERROR_INVALID_PARAMETER;
+
+   //Check index
+   if(index >= SSH_MAX_RSA_KEYS)
+      return ERROR_INVALID_PARAMETER;
+
+   //Acquire exclusive access to the SSH context
+   osAcquireMutex(&context->mutex);
+   //Unload the specified transient RSA key
+   osMemset(&context->rsaKeys[index], 0, sizeof(SshRsaKey));
+   //Release exclusive access to the SSH context
+   osReleaseMutex(&context->mutex);
+
+   //Successful processing
+   return NO_ERROR;
+#else
+   //Not implemented
+   return ERROR_NOT_IMPLEMENTED;
+#endif
+}
+
+
+/**
+ * @brief Load Diffie-Hellman group
+ * @param[in] context Pointer to the SSH context
+ * @param[in] index Zero-based index identifying a slot
+ * @param[in] dhParams Diffie-Hellman parameters (PEM format). This parameter
+ *   is taken as reference
+ * @param[in] dhParamsLen Length of the Diffie-Hellman parameters
+ * @return Error code
+ **/
+
+error_t sshLoadDhGexGroup(SshContext *context, uint_t index,
+   const char_t *dhParams, size_t dhParamsLen)
+{
+#if (SSH_SERVER_SUPPORT == ENABLED && SSH_DH_GEX_KEX_SUPPORT == ENABLED)
+   error_t error;
+   uint_t k;
+   DhParameters params;
+
+   //Make sure the SSH context is valid
+   if(context == NULL)
+      return ERROR_INVALID_PARAMETER;
+
+   //The implementation limits the number of Diffie-Hellman groups that can
+   //be loaded
+   if(index >= SSH_MAX_DH_GEX_GROUPS)
+      return ERROR_INVALID_PARAMETER;
+
+   //Check Diffie-Hellman parameters
+   if(dhParams == NULL || dhParamsLen == 0)
+      return ERROR_INVALID_PARAMETER;
+
+   //Initialize Diffie-Hellman parameters
+   dhInitParameters(&params);
+
+   //Decode the PEM structure that holds Diffie-Hellman parameters
+   error = pemImportDhParameters(dhParams, dhParamsLen, &params);
+
+   //Check status code
+   if(!error)
+   {
+      //Get the length of the prime modulus, in bits
+      k = mpiGetBitLength(&params.p);
+
+      //Make sure the prime modulus is acceptable
+      if(k < SSH_MIN_DH_MODULUS_SIZE || k > SSH_MAX_DH_MODULUS_SIZE)
+      {
+         //Report an error
+         error = ERROR_INVALID_LENGTH;
+      }
+   }
+
+   //Release previously allocated memory
+   dhFreeParameters(&params);
+
+   //Check status code
+   if(!error)
+   {
+      //Acquire exclusive access to the SSH context
+      osAcquireMutex(&context->mutex);
+
+      //Save the length of the prime modulus, in bits
+      context->dhGexGroups[index].dhModulusSize = k;
+
+      //Save Diffie-Hellman parameters (PEM format)
+      context->dhGexGroups[index].dhParams = dhParams;
+      context->dhGexGroups[index].dhParamsLen = dhParamsLen;
+
+      //Release exclusive access to the SSH context
+      osReleaseMutex(&context->mutex);
+   }
+
+   //Return status code
+   return error;
+#else
+   //Not implemented
+   return ERROR_NOT_IMPLEMENTED;
+#endif
+}
+
+
+/**
+ * @brief Unload Diffie-Hellman group
+ * @param[in] context Pointer to the SSH context
+ * @param[in] index Zero-based index identifying a slot
+ * @return Error code
+ **/
+
+error_t sshUnloadDhGexGroup(SshContext *context, uint_t index)
+{
+#if (SSH_SERVER_SUPPORT == ENABLED && SSH_DH_GEX_KEX_SUPPORT == ENABLED)
+   //Make sure the SSH context is valid
+   if(context == NULL)
+      return ERROR_INVALID_PARAMETER;
+
+   //Check index
+   if(index >= SSH_MAX_DH_GEX_GROUPS)
+      return ERROR_INVALID_PARAMETER;
+
+   //Acquire exclusive access to the SSH context
+   osAcquireMutex(&context->mutex);
+   //Unload the specified Diffie-Hellman group
+   osMemset(&context->dhGexGroups[index], 0, sizeof(SshDhGexGroup));
+   //Release exclusive access to the SSH context
+   osReleaseMutex(&context->mutex);
+
+   //Successful processing
+   return NO_ERROR;
+#else
+   //Not implemented
+   return ERROR_NOT_IMPLEMENTED;
+#endif
+}
+
+
+/**
  * @brief Load entity's host key
  * @param[in] context Pointer to the SSH context
  * @param[in] index Zero-based index identifying a slot
@@ -1084,7 +1335,7 @@ error_t sshLoadHostKey(SshContext *context, uint_t index,
    //Retrieve public key type
    keyType = sshGetPublicKeyType(publicKey, publicKeyLen);
 
-#if (SSH_RSA_SUPPORT == ENABLED)
+#if (SSH_RSA_SIGN_SUPPORT == ENABLED)
    //RSA host key?
    if(sshCompareAlgo(keyType, "ssh-rsa"))
    {
@@ -1117,7 +1368,7 @@ error_t sshLoadHostKey(SshContext *context, uint_t index,
    }
    else
 #endif
-#if (SSH_DSA_SUPPORT == ENABLED)
+#if (SSH_DSA_SIGN_SUPPORT == ENABLED)
    //DSA host key?
    if(sshCompareAlgo(keyType, "ssh-dss"))
    {
@@ -1150,7 +1401,7 @@ error_t sshLoadHostKey(SshContext *context, uint_t index,
    }
    else
 #endif
-#if (SSH_ECDSA_SUPPORT == ENABLED)
+#if (SSH_ECDSA_SIGN_SUPPORT == ENABLED)
    //ECDSA host key?
    if(sshCompareAlgo(keyType, "ecdsa-sha2-nistp256") ||
       sshCompareAlgo(keyType, "ecdsa-sha2-nistp384") ||
@@ -1189,7 +1440,7 @@ error_t sshLoadHostKey(SshContext *context, uint_t index,
    }
    else
 #endif
-#if (SSH_ED25519_SUPPORT == ENABLED)
+#if (SSH_ED25519_SIGN_SUPPORT == ENABLED)
    //Ed25519 host key?
    if(sshCompareAlgo(keyType, "ssh-ed25519"))
    {
@@ -1223,7 +1474,7 @@ error_t sshLoadHostKey(SshContext *context, uint_t index,
    }
    else
 #endif
-#if (SSH_ED448_SUPPORT == ENABLED)
+#if (SSH_ED448_SIGN_SUPPORT == ENABLED)
    //Ed448 host key?
    if(sshCompareAlgo(keyType, "ssh-ed448"))
    {
@@ -1275,11 +1526,11 @@ error_t sshLoadHostKey(SshContext *context, uint_t index,
       //Set key format identifier
       hostKey->keyFormatId = keyType;
 
-      //Save public key
+      //Save public key (PEM, SSH2 or OpenSSH format)
       hostKey->publicKey = publicKey;
       hostKey->publicKeyLen = publicKeyLen;
 
-      //Save private key
+      //Save private key (PEM or OpenSSH format)
       hostKey->privateKey = privateKey;
       hostKey->privateKeyLen = privateKeyLen;
 
@@ -1398,7 +1649,7 @@ error_t sshLoadCertificate(SshContext *context, uint_t index,
    //Retrieve certificate type
    certType = sshGetCertType(cert, certLen);
 
-#if (SSH_RSA_SUPPORT == ENABLED)
+#if (SSH_RSA_SIGN_SUPPORT == ENABLED)
    //RSA certificate?
    if(sshCompareAlgo(certType, "ssh-rsa-cert-v01@openssh.com"))
    {
@@ -1421,7 +1672,7 @@ error_t sshLoadCertificate(SshContext *context, uint_t index,
    }
    else
 #endif
-#if (SSH_DSA_SUPPORT == ENABLED)
+#if (SSH_DSA_SIGN_SUPPORT == ENABLED)
    //DSA certificate?
    if(sshCompareAlgo(certType, "ssh-dss-cert-v01@openssh.com"))
    {
@@ -1444,7 +1695,7 @@ error_t sshLoadCertificate(SshContext *context, uint_t index,
    }
    else
 #endif
-#if (SSH_ECDSA_SUPPORT == ENABLED)
+#if (SSH_ECDSA_SIGN_SUPPORT == ENABLED)
    //ECDSA certificate?
    if(sshCompareAlgo(certType, "ecdsa-sha2-nistp256-cert-v01@openssh.com") ||
       sshCompareAlgo(certType, "ecdsa-sha2-nistp384-cert-v01@openssh.com") ||
@@ -1469,7 +1720,7 @@ error_t sshLoadCertificate(SshContext *context, uint_t index,
    }
    else
 #endif
-#if (SSH_ED25519_SUPPORT == ENABLED)
+#if (SSH_ED25519_SIGN_SUPPORT == ENABLED)
    //Ed25519 certificate?
    if(sshCompareAlgo(certType, "ssh-ed25519-cert-v01@openssh.com"))
    {
@@ -1510,11 +1761,11 @@ error_t sshLoadCertificate(SshContext *context, uint_t index,
       //Set key format identifier
       hostKey->keyFormatId = certType;
 
-      //Save certificate
+      //Save certificate (OpenSSH format)
       hostKey->publicKey = cert;
       hostKey->publicKeyLen = certLen;
 
-      //Save private key
+      //Save private key (PEM or OpenSSH format)
       hostKey->privateKey = privateKey;
       hostKey->privateKeyLen = privateKeyLen;
 

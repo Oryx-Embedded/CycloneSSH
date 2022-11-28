@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.1.8
+ * @version 2.2.0
  **/
 
 //Switch to the appropriate trace level
@@ -433,6 +433,12 @@ error_t sshParsePacket(SshConnection *connection, uint8_t *packet,
          //Flow control error
          error = sshSendDisconnect(connection, SSH_DISCONNECT_PROTOCOL_ERROR,
             "Flow control error");
+      }
+      else if(error == ERROR_INVALID_GROUP)
+      {
+         //Diffie-Hellman group out of range
+         error = sshSendDisconnect(connection, SSH_DISCONNECT_PROTOCOL_ERROR,
+            "Diffie-Hellman group out of range");
       }
       else
       {

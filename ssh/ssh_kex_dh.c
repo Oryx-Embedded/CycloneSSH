@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.1.8
+ * @version 2.2.0
  **/
 
 //Switch to the appropriate trace level
@@ -46,7 +46,7 @@
 #include "debug.h"
 
 //Check SSH stack configuration
-#if (SSH_SUPPORT == ENABLED && SSH_DH_SUPPORT == ENABLED)
+#if (SSH_SUPPORT == ENABLED && SSH_DH_KEX_SUPPORT == ENABLED)
 
 
 /**
@@ -57,11 +57,11 @@
 
 error_t sshSendKexDhInit(SshConnection *connection)
 {
+#if (SSH_CLIENT_SUPPORT == ENABLED)
    error_t error;
    size_t length;
    uint8_t *message;
    SshContext *context;
-   const SshDhGroup *dhGroup;
 
    //Point to the SSH context
    context = connection->context;
@@ -69,28 +69,17 @@ error_t sshSendKexDhInit(SshConnection *connection)
    //Point to the buffer where to format the message
    message = connection->buffer + SSH_PACKET_HEADER_SIZE;
 
-   //Get the MODP group that matches the key exchange algorithm name
-   dhGroup = sshGetDhGroup(connection->kexAlgo);
-   //Unsupported MODP group?
-   if(dhGroup == NULL)
-      return ERROR_UNSUPPORTED_KEY_EXCH_ALGO;
+   //Load the MODP group that matches the key exchange algorithm name
+   error = sshLoadDhModpGroup(&connection->dhContext.params,
+      connection->kexAlgo);
 
-   //Convert the prime modulus to a multiple precision integer
-   error = mpiImport(&connection->dhContext.params.p, dhGroup->p, dhGroup->pLen,
-      MPI_FORMAT_BIG_ENDIAN);
-   //Any error to report?
-   if(error)
-      return error;
-
-   //Convert the generator to a multiple precision integer
-   error = mpiSetValue(&connection->dhContext.params.g, dhGroup->g);
-   //Any error to report?
-   if(error)
-      return error;
-
-   //Generate an ephemeral key pair
-   error = dhGenerateKeyPair(&connection->dhContext, context->prngAlgo,
-      context->prngContext);
+   //Check status code
+   if(!error)
+   {
+      //Generate an ephemeral key pair
+      error = dhGenerateKeyPair(&connection->dhContext, context->prngAlgo,
+         context->prngContext);
+   }
 
    //Check status code
    if(!error)
@@ -119,6 +108,10 @@ error_t sshSendKexDhInit(SshConnection *connection)
 
    //Return status code
    return error;
+#else
+   //Client operation mode is not implemented
+   return ERROR_NOT_IMPLEMENTED;
+#endif
 }
 
 
@@ -130,6 +123,7 @@ error_t sshSendKexDhInit(SshConnection *connection)
 
 error_t sshSendKexDhReply(SshConnection *connection)
 {
+#if (SSH_SERVER_SUPPORT == ENABLED)
    error_t error;
    size_t length;
    uint8_t *message;
@@ -172,6 +166,10 @@ error_t sshSendKexDhReply(SshConnection *connection)
 
    //Return status code
    return error;
+#else
+   //Server operation mode is not implemented
+   return ERROR_NOT_IMPLEMENTED;
+#endif
 }
 
 
@@ -200,7 +198,7 @@ error_t sshFormatKexDhInit(SshConnection *connection, uint8_t *p,
    p += sizeof(uint8_t);
    *length += sizeof(uint8_t);
 
-   //Format client's ephemeral public key
+   //Format client's ephemeral public key (e)
    error = sshFormatMpint(&connection->dhContext.ya, p, &n);
    //Any error to report?
    if(error)
@@ -243,7 +241,7 @@ error_t sshFormatKexDhReply(SshConnection *connection, uint8_t *p,
    p += sizeof(uint8_t);
    *length += sizeof(uint8_t);
 
-   //Format K_S (server's public host key)
+   //Format server's public host key (K_S)
    error = sshFormatHostKey(connection, p + sizeof(uint32_t), &n);
    //Any error to report?
    if(error)
@@ -256,19 +254,14 @@ error_t sshFormatKexDhReply(SshConnection *connection, uint8_t *p,
    p += sizeof(uint32_t) + n;
    *length += sizeof(uint32_t) + n;
 
-   //Format server's ephemeral public key
+   //Format server's ephemeral public key (f)
    error = sshFormatMpint(&connection->dhContext.ya, p, &n);
    //Any error to report?
    if(error)
       return error;
 
-   //Sanity check
-   if(n < sizeof(uint32_t))
-      return ERROR_INVALID_LENGTH;
-
-   //Update exchange hash H with Q_S (server's ephemeral public key octet string)
-   error = sshUpdateExchangeHash(connection, p + sizeof(uint32_t),
-      n - sizeof(uint32_t));
+   //Update exchange hash H with f (exchange value sent by the server)
+   error = sshUpdateExchangeHashRaw(connection, p, n);
    //Any error to report?
    if(error)
       return error;
@@ -284,7 +277,8 @@ error_t sshFormatKexDhReply(SshConnection *connection, uint8_t *p,
       return error;
 
    //Update exchange hash H with K (shared secret)
-   error = sshUpdateExchangeHash(connection, connection->k, connection->kLen);
+   error = sshUpdateExchangeHashRaw(connection, connection->k,
+      connection->kLen);
    //Any error to report?
    if(error)
       return error;
@@ -331,7 +325,6 @@ error_t sshParseKexDhInit(SshConnection *connection, const uint8_t *message,
    error_t error;
    const uint8_t *p;
    SshBinaryString publicKey;
-   const SshDhGroup *dhGroup;
 
    //Debug message
    TRACE_INFO("SSH_MSG_KEX_DH_INIT message received (%" PRIuSIZE " bytes)...\r\n", length);
@@ -354,7 +347,7 @@ error_t sshParseKexDhInit(SshConnection *connection, const uint8_t *message,
    //Remaining bytes to process
    length -= sizeof(uint8_t);
 
-   //Decode client's ephemeral public key (Q_C)
+   //Decode client's ephemeral public key (e)
    error = sshParseBinaryString(p, length, &publicKey);
    //Any error to report?
    if(error)
@@ -368,29 +361,16 @@ error_t sshParseKexDhInit(SshConnection *connection, const uint8_t *message,
    if(length != 0)
       return ERROR_INVALID_MESSAGE;
 
-   //Update exchange hash H with Q_C (client's ephemeral public key octet
-   //string)
+   //Update exchange hash H with e (exchange value sent by the client)
    error = sshUpdateExchangeHash(connection, publicKey.value,
       publicKey.length);
    //Any error to report?
    if(error)
       return error;
 
-   //Get the MODP group that matches the key exchange algorithm name
-   dhGroup = sshGetDhGroup(connection->kexAlgo);
-   //Unsupported MODP group?
-   if(dhGroup == NULL)
-      return ERROR_UNSUPPORTED_KEY_EXCH_ALGO;
-
-   //Convert the prime modulus to a multiple precision integer
-   error = mpiImport(&connection->dhContext.params.p, dhGroup->p,
-      dhGroup->pLen, MPI_FORMAT_BIG_ENDIAN);
-   //Any error to report?
-   if(error)
-      return error;
-
-   //Convert the generator to a multiple precision integer
-   error = mpiSetValue(&connection->dhContext.params.g, dhGroup->g);
+   //Load the MODP group that matches the key exchange algorithm name
+   error = sshLoadDhModpGroup(&connection->dhContext.params,
+      connection->kexAlgo);
    //Any error to report?
    if(error)
       return error;
@@ -436,17 +416,13 @@ error_t sshParseKexDhReply(SshConnection *connection, const uint8_t *message,
    SshBinaryString hostKey;
    SshBinaryString publicKey;
    SshBinaryString signature;
-   SshContext *context;
-
-   //Point to the SSH context
-   context = connection->context;
 
    //Debug message
    TRACE_INFO("SSH_MSG_KEX_DH_REPLY message received (%" PRIuSIZE " bytes)...\r\n", length);
    TRACE_VERBOSE_ARRAY("  ", message, length);
 
    //Check operation mode
-   if(context->mode != SSH_OPERATION_MODE_CLIENT)
+   if(connection->context->mode != SSH_OPERATION_MODE_CLIENT)
       return ERROR_UNEXPECTED_MESSAGE;
 
    //Check connection state
@@ -472,7 +448,7 @@ error_t sshParseKexDhReply(SshConnection *connection, const uint8_t *message,
    p += sizeof(uint32_t) + hostKey.length;
    length -= sizeof(uint32_t) + hostKey.length;
 
-   //Decode server's ephemeral public key
+   //Decode server's ephemeral public key (f)
    error = sshParseBinaryString(p, length, &publicKey);
    //Any error to report?
    if(error)
@@ -515,7 +491,8 @@ error_t sshParseKexDhReply(SshConnection *connection, const uint8_t *message,
    }
 
    //If the client fails to verify the server's host key, it should disconnect
-   //from the server by sending an SSH_DISCONNECT_HOST_KEY_NOT_VERIFIABLE message
+   //from the server by sending an SSH_DISCONNECT_HOST_KEY_NOT_VERIFIABLE
+   //message
    if(error)
       return ERROR_INVALID_KEY;
 
@@ -525,15 +502,13 @@ error_t sshParseKexDhReply(SshConnection *connection, const uint8_t *message,
    if(error)
       return error;
 
-   //Update exchange hash H with Q_C (client's ephemeral public key octet
-   //string)
+   //Update exchange hash H with e (exchange value sent by the client)
    error = sshDigestClientDhPublicKey(connection);
    //Any error to report?
    if(error)
       return error;
 
-   //Update exchange hash H with Q_S (server's ephemeral public key octet
-   //string)
+   //Update exchange hash H with f (exchange value sent by the server)
    error = sshUpdateExchangeHash(connection, publicKey.value, publicKey.length);
    //Any error to report?
    if(error)
@@ -560,7 +535,8 @@ error_t sshParseKexDhReply(SshConnection *connection, const uint8_t *message,
       return error;
 
    //Update exchange hash H with K (shared secret)
-   error = sshUpdateExchangeHash(connection, connection->k, connection->kLen);
+   error = sshUpdateExchangeHashRaw(connection, connection->k,
+      connection->kLen);
    //Any error to report?
    if(error)
       return error;
@@ -658,31 +634,14 @@ error_t sshComputeDhSharedSecret(SshConnection *connection)
 
    //Compute the shared secret K
    error = dhComputeSharedSecret(&connection->dhContext, connection->k,
-      SSH_MAX_SHARED_SECRET_LEN, &connection->kLen);
+      SSH_MAX_SHARED_SECRET_LEN - SSH_MAX_MPINT_OVERHEAD, &connection->kLen);
 
    //Check status code
    if(!error)
    {
-      //Unnecessary leading bytes with the value 0 must not be included
-      while(connection->kLen > 0 && connection->k[0] == 0)
-      {
-         //Adjust the length of the shared secret
-         connection->kLen--;
-         //Strip leading byte
-         osMemmove(connection->k, connection->k + 1, connection->kLen);
-      }
-
-      //If the most significant bit would be set for a positive number, the
-      //number must be preceded by a zero byte
-      if((connection->k[0] & 0x80) != 0)
-      {
-         //Make room for the leading byte
-         osMemmove(connection->k + 1, connection->k, connection->kLen);
-         //The number is preceded by a zero byte
-         connection->k[0] = 0;
-         //Adjust the length of the shared secret
-         connection->kLen++;
-      }
+      //Convert the shared secret K to mpint representation
+      error = sshConvertArrayToMpint(connection->k, connection->kLen,
+         connection->k, &connection->kLen);
    }
 
    //Return status code
@@ -714,19 +673,8 @@ error_t sshDigestClientDhPublicKey(SshConnection *connection)
       //Check status code
       if(!error)
       {
-         //Sanity check
-         if(n >= sizeof(uint32_t))
-         {
-            //Update exchange hash H with Q_C (client's ephemeral public key
-            //octet string)
-            error = sshUpdateExchangeHash(connection, buffer + sizeof(uint32_t),
-               n - sizeof(uint32_t));
-         }
-         else
-         {
-            //Report an error
-            error = ERROR_INVALID_LENGTH;
-         }
+         //Update exchange hash H with e (exchange value sent by the client)
+         error = sshUpdateExchangeHashRaw(connection, buffer, n);
       }
 
       //Release previously allocated memory

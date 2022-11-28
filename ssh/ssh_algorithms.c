@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.1.8
+ * @version 2.2.0
  **/
 
 //Switch to the appropriate trace level
@@ -34,6 +34,8 @@
 //Dependencies
 #include "ssh/ssh.h"
 #include "ssh/ssh_algorithms.h"
+#include "ssh/ssh_kex_rsa.h"
+#include "ssh/ssh_kex_dh_gex.h"
 #include "ssh/ssh_misc.h"
 #include "debug.h"
 
@@ -47,46 +49,81 @@
 
 static const char_t *const sshSupportedKexAlgos[] =
 {
-#if (SSH_ECDH_SUPPORT == ENABLED && SSH_CURVE25519_SUPPORT == ENABLED && \
+#if (SSH_HBR_KEX_SUPPORT == ENABLED && SSH_SNTRUP761_SUPPORT == ENABLED && \
+   SSH_CURVE25519_SUPPORT == ENABLED && SSH_SHA512_SUPPORT == ENABLED)
+   "sntrup761x25519-sha512@openssh.com",
+#endif
+#if (SSH_ECDH_KEX_SUPPORT == ENABLED && SSH_CURVE25519_SUPPORT == ENABLED && \
    SSH_SHA256_SUPPORT == ENABLED)
    "curve25519-sha256",
    "curve25519-sha256@libssh.org",
 #endif
-#if (SSH_ECDH_SUPPORT == ENABLED && SSH_CURVE448_SUPPORT == ENABLED && \
+#if (SSH_ECDH_KEX_SUPPORT == ENABLED && SSH_CURVE448_SUPPORT == ENABLED && \
    SSH_SHA512_SUPPORT == ENABLED)
    "curve448-sha512",
 #endif
-#if (SSH_ECDH_SUPPORT == ENABLED && SSH_NISTP256_SUPPORT == ENABLED && \
+#if (SSH_ECDH_KEX_SUPPORT == ENABLED && SSH_NISTP256_SUPPORT == ENABLED && \
    SSH_SHA256_SUPPORT == ENABLED)
    "ecdh-sha2-nistp256",
 #endif
-#if (SSH_ECDH_SUPPORT == ENABLED && SSH_NISTP384_SUPPORT == ENABLED && \
+#if (SSH_ECDH_KEX_SUPPORT == ENABLED && SSH_NISTP384_SUPPORT == ENABLED && \
    SSH_SHA384_SUPPORT == ENABLED)
    "ecdh-sha2-nistp384",
 #endif
-#if (SSH_ECDH_SUPPORT == ENABLED && SSH_NISTP521_SUPPORT == ENABLED && \
+#if (SSH_ECDH_KEX_SUPPORT == ENABLED && SSH_NISTP521_SUPPORT == ENABLED && \
    SSH_SHA512_SUPPORT == ENABLED)
    "ecdh-sha2-nistp521",
 #endif
-#if (SSH_DH_SUPPORT == ENABLED && SSH_SHA512_SUPPORT == ENABLED && \
-   SSH_MAX_DH_MODULUS_SIZE >= 4096 && SSH_MIN_DH_MODULUS_SIZE <= 4096)
-   "diffie-hellman-group16-sha512",
+#if (SSH_DH_GEX_KEX_SUPPORT == ENABLED && SSH_SHA256_SUPPORT == ENABLED)
+   "diffie-hellman-group-exchange-sha256",
 #endif
-#if (SSH_DH_SUPPORT == ENABLED && SSH_SHA512_SUPPORT == ENABLED && \
-   SSH_MAX_DH_MODULUS_SIZE >= 3072 && SSH_MIN_DH_MODULUS_SIZE <= 3072)
-   "diffie-hellman-group15-sha512",
+#if (SSH_DH_GEX_KEX_SUPPORT == ENABLED && SSH_SHA384_SUPPORT == ENABLED)
+   "diffie-hellman-group-exchange-sha384@ssh.com",
 #endif
-#if (SSH_DH_SUPPORT == ENABLED && SSH_SHA256_SUPPORT == ENABLED && \
+#if (SSH_DH_GEX_KEX_SUPPORT == ENABLED && SSH_SHA512_SUPPORT == ENABLED)
+   "diffie-hellman-group-exchange-sha512@ssh.com",
+#endif
+#if (SSH_DH_KEX_SUPPORT == ENABLED && SSH_SHA256_SUPPORT == ENABLED && \
    SSH_MAX_DH_MODULUS_SIZE >= 2048 && SSH_MIN_DH_MODULUS_SIZE <= 2048)
    "diffie-hellman-group14-sha256",
 #endif
-#if (SSH_DH_SUPPORT == ENABLED && SSH_SHA1_SUPPORT == ENABLED && \
+#if (SSH_DH_KEX_SUPPORT == ENABLED && SSH_SHA512_SUPPORT == ENABLED && \
+   SSH_MAX_DH_MODULUS_SIZE >= 3072 && SSH_MIN_DH_MODULUS_SIZE <= 3072)
+   "diffie-hellman-group15-sha512",
+#endif
+#if (SSH_DH_KEX_SUPPORT == ENABLED && SSH_SHA512_SUPPORT == ENABLED && \
+   SSH_MAX_DH_MODULUS_SIZE >= 4096 && SSH_MIN_DH_MODULUS_SIZE <= 4096)
+   "diffie-hellman-group16-sha512",
+#endif
+#if (SSH_DH_KEX_SUPPORT == ENABLED && SSH_SHA512_SUPPORT == ENABLED && \
+   SSH_MAX_DH_MODULUS_SIZE >= 6144 && SSH_MIN_DH_MODULUS_SIZE <= 6144)
+   "diffie-hellman-group17-sha512",
+#endif
+#if (SSH_DH_KEX_SUPPORT == ENABLED && SSH_SHA512_SUPPORT == ENABLED && \
+   SSH_MAX_DH_MODULUS_SIZE >= 8192 && SSH_MIN_DH_MODULUS_SIZE <= 8192)
+   "diffie-hellman-group18-sha512",
+#endif
+#if (SSH_RSA_KEX_SUPPORT == ENABLED && SSH_SHA256_SUPPORT == ENABLED && \
+   SSH_MAX_RSA_MODULUS_SIZE >= 2048)
+   "rsa2048-sha256",
+#endif
+#if (SSH_DH_GEX_KEX_SUPPORT == ENABLED && SSH_SHA224_SUPPORT == ENABLED)
+   "diffie-hellman-group-exchange-sha224@ssh.com",
+#endif
+#if (SSH_DH_GEX_KEX_SUPPORT == ENABLED && SSH_SHA1_SUPPORT == ENABLED)
+   "diffie-hellman-group-exchange-sha1",
+#endif
+#if (SSH_DH_KEX_SUPPORT == ENABLED && SSH_SHA1_SUPPORT == ENABLED && \
    SSH_MAX_DH_MODULUS_SIZE >= 2048 && SSH_MIN_DH_MODULUS_SIZE <= 2048)
    "diffie-hellman-group14-sha1",
 #endif
-#if (SSH_DH_SUPPORT == ENABLED && SSH_SHA1_SUPPORT == ENABLED && \
+#if (SSH_DH_KEX_SUPPORT == ENABLED && SSH_SHA1_SUPPORT == ENABLED && \
    SSH_MAX_DH_MODULUS_SIZE >= 1024 && SSH_MIN_DH_MODULUS_SIZE <= 1024)
    "diffie-hellman-group1-sha1",
+#endif
+#if (SSH_RSA_KEX_SUPPORT == ENABLED && SSH_SHA1_SUPPORT == ENABLED && \
+   SSH_MAX_RSA_MODULUS_SIZE >= 1024)
+   "rsa1024-sha1",
 #endif
 };
 
@@ -97,28 +134,28 @@ static const char_t *const sshSupportedKexAlgos[] =
 
 static const SshHostKeyAlgo sshSupportedHostKeyAlgos[] =
 {
-#if (SSH_ED25519_SUPPORT == ENABLED && SSH_CERT_SUPPORT == ENABLED)
+#if (SSH_ED25519_SIGN_SUPPORT == ENABLED && SSH_CERT_SUPPORT == ENABLED)
    {
       "ssh-ed25519-cert-v01@openssh.com",
       "ssh-ed25519-cert-v01@openssh.com",
       "ssh-ed25519"
    },
 #endif
-#if (SSH_ED25519_SUPPORT == ENABLED)
+#if (SSH_ED25519_SIGN_SUPPORT == ENABLED)
    {
       "ssh-ed25519",
       "ssh-ed25519",
       "ssh-ed25519"
    },
 #endif
-#if (SSH_ED448_SUPPORT == ENABLED)
+#if (SSH_ED448_SIGN_SUPPORT == ENABLED)
    {
       "ssh-ed448",
       "ssh-ed448",
       "ssh-ed448"
    },
 #endif
-#if (SSH_ECDSA_SUPPORT == ENABLED && SSH_NISTP256_SUPPORT == ENABLED && \
+#if (SSH_ECDSA_SIGN_SUPPORT == ENABLED && SSH_NISTP256_SUPPORT == ENABLED && \
    SSH_SHA256_SUPPORT == ENABLED && SSH_CERT_SUPPORT == ENABLED)
    {
       "ecdsa-sha2-nistp256-cert-v01@openssh.com",
@@ -126,7 +163,7 @@ static const SshHostKeyAlgo sshSupportedHostKeyAlgos[] =
       "ecdsa-sha2-nistp256"
    },
 #endif
-#if (SSH_ECDSA_SUPPORT == ENABLED && SSH_NISTP256_SUPPORT == ENABLED && \
+#if (SSH_ECDSA_SIGN_SUPPORT == ENABLED && SSH_NISTP256_SUPPORT == ENABLED && \
    SSH_SHA256_SUPPORT == ENABLED)
    {
       "ecdsa-sha2-nistp256",
@@ -134,7 +171,7 @@ static const SshHostKeyAlgo sshSupportedHostKeyAlgos[] =
       "ecdsa-sha2-nistp256"
    },
 #endif
-#if (SSH_ECDSA_SUPPORT == ENABLED && SSH_NISTP384_SUPPORT == ENABLED && \
+#if (SSH_ECDSA_SIGN_SUPPORT == ENABLED && SSH_NISTP384_SUPPORT == ENABLED && \
    SSH_SHA384_SUPPORT == ENABLED && SSH_CERT_SUPPORT == ENABLED)
    {
       "ecdsa-sha2-nistp384-cert-v01@openssh.com",
@@ -142,7 +179,7 @@ static const SshHostKeyAlgo sshSupportedHostKeyAlgos[] =
       "ecdsa-sha2-nistp384"
    },
 #endif
-#if (SSH_ECDSA_SUPPORT == ENABLED && SSH_NISTP384_SUPPORT == ENABLED && \
+#if (SSH_ECDSA_SIGN_SUPPORT == ENABLED && SSH_NISTP384_SUPPORT == ENABLED && \
    SSH_SHA384_SUPPORT == ENABLED)
    {
       "ecdsa-sha2-nistp384",
@@ -150,7 +187,7 @@ static const SshHostKeyAlgo sshSupportedHostKeyAlgos[] =
       "ecdsa-sha2-nistp384"
    },
 #endif
-#if (SSH_ECDSA_SUPPORT == ENABLED && SSH_NISTP521_SUPPORT == ENABLED && \
+#if (SSH_ECDSA_SIGN_SUPPORT == ENABLED && SSH_NISTP521_SUPPORT == ENABLED && \
    SSH_SHA512_SUPPORT == ENABLED && SSH_CERT_SUPPORT == ENABLED)
    {
       "ecdsa-sha2-nistp521-cert-v01@openssh.com",
@@ -158,7 +195,7 @@ static const SshHostKeyAlgo sshSupportedHostKeyAlgos[] =
       "ecdsa-sha2-nistp521"
    },
 #endif
-#if (SSH_ECDSA_SUPPORT == ENABLED && SSH_NISTP521_SUPPORT == ENABLED && \
+#if (SSH_ECDSA_SIGN_SUPPORT == ENABLED && SSH_NISTP521_SUPPORT == ENABLED && \
    SSH_SHA512_SUPPORT == ENABLED)
    {
       "ecdsa-sha2-nistp521",
@@ -166,7 +203,7 @@ static const SshHostKeyAlgo sshSupportedHostKeyAlgos[] =
       "ecdsa-sha2-nistp521"
    },
 #endif
-#if (SSH_RSA_SUPPORT == ENABLED && SSH_SHA256_SUPPORT == ENABLED && \
+#if (SSH_RSA_SIGN_SUPPORT == ENABLED && SSH_SHA256_SUPPORT == ENABLED && \
    SSH_CERT_SUPPORT == ENABLED)
    {
       "rsa-sha2-256-cert-v01@openssh.com",
@@ -174,14 +211,14 @@ static const SshHostKeyAlgo sshSupportedHostKeyAlgos[] =
       "rsa-sha2-256"
    },
 #endif
-#if (SSH_RSA_SUPPORT == ENABLED && SSH_SHA256_SUPPORT == ENABLED)
+#if (SSH_RSA_SIGN_SUPPORT == ENABLED && SSH_SHA256_SUPPORT == ENABLED)
    {
       "rsa-sha2-256",
       "ssh-rsa",
       "rsa-sha2-256"
    },
 #endif
-#if (SSH_RSA_SUPPORT == ENABLED && SSH_SHA512_SUPPORT == ENABLED && \
+#if (SSH_RSA_SIGN_SUPPORT == ENABLED && SSH_SHA512_SUPPORT == ENABLED && \
    SSH_CERT_SUPPORT == ENABLED)
    {
       "rsa-sha2-512-cert-v01@openssh.com",
@@ -189,14 +226,14 @@ static const SshHostKeyAlgo sshSupportedHostKeyAlgos[] =
       "rsa-sha2-512"
    },
 #endif
-#if (SSH_RSA_SUPPORT == ENABLED && SSH_SHA512_SUPPORT == ENABLED)
+#if (SSH_RSA_SIGN_SUPPORT == ENABLED && SSH_SHA512_SUPPORT == ENABLED)
    {
       "rsa-sha2-512",
       "ssh-rsa",
       "rsa-sha2-512"
    },
 #endif
-#if (SSH_RSA_SUPPORT == ENABLED && SSH_SHA1_SUPPORT == ENABLED && \
+#if (SSH_RSA_SIGN_SUPPORT == ENABLED && SSH_SHA1_SUPPORT == ENABLED && \
    SSH_CERT_SUPPORT == ENABLED)
    {
       "ssh-rsa-cert-v01@openssh.com",
@@ -204,14 +241,14 @@ static const SshHostKeyAlgo sshSupportedHostKeyAlgos[] =
       "ssh-rsa"
    },
 #endif
-#if (SSH_RSA_SUPPORT == ENABLED && SSH_SHA1_SUPPORT == ENABLED)
+#if (SSH_RSA_SIGN_SUPPORT == ENABLED && SSH_SHA1_SUPPORT == ENABLED)
    {
       "ssh-rsa",
       "ssh-rsa",
       "ssh-rsa"
    },
 #endif
-#if (SSH_DSA_SUPPORT == ENABLED && SSH_SHA1_SUPPORT == ENABLED && \
+#if (SSH_DSA_SIGN_SUPPORT == ENABLED && SSH_SHA1_SUPPORT == ENABLED && \
    SSH_CERT_SUPPORT == ENABLED)
    {
       "ssh-dss-cert-v01@openssh.com",
@@ -219,7 +256,7 @@ static const SshHostKeyAlgo sshSupportedHostKeyAlgos[] =
       "ssh-dss"
    },
 #endif
-#if (SSH_DSA_SUPPORT == ENABLED && SSH_SHA1_SUPPORT == ENABLED)
+#if (SSH_DSA_SIGN_SUPPORT == ENABLED && SSH_SHA1_SUPPORT == ENABLED)
    {
       "ssh-dss",
       "ssh-dss",
@@ -397,6 +434,7 @@ static const char_t *const sshSupportedMacAlgos[] =
    "hmac-ripemd160-etm@openssh.com",
 #endif
 #if (SSH_HMAC_SUPPORT == ENABLED && SSH_RIPEMD160_SUPPORT == ENABLED)
+   "hmac-ripemd160",
    "hmac-ripemd160@openssh.com",
 #endif
 #if (SSH_HMAC_SUPPORT == ENABLED && SSH_MD5_SUPPORT == ENABLED && \
@@ -457,10 +495,9 @@ static const char_t *const sshSupportedCompressionAlgos[] =
 error_t sshFormatKexAlgoList(SshConnection *connection, uint8_t *p,
    size_t *written)
 {
-#if (SSH_EXT_INFO_SUPPORT == ENABLED)
    uint_t i;
    size_t n;
-   const char_t *indicatorName;
+   bool_t acceptable;
 
    //The algorithm name-list is represented as a uint32 containing its length
    //followed by a comma-separated list of zero or more names
@@ -469,25 +506,71 @@ error_t sshFormatKexAlgoList(SshConnection *connection, uint8_t *p,
    //Loop through the list of key exchange algorithms
    for(i = 0; i < arraysize(sshSupportedKexAlgos); i++)
    {
-      //Names are separated by commas
-      if(n != sizeof(uint32_t))
+      //Initialize flag
+      acceptable = FALSE;
+
+#if (SSH_RSA_KEX_SUPPORT == ENABLED)
+      //RSA key exchange algorithm?
+      if(connection->context->mode == SSH_OPERATION_MODE_SERVER &&
+         sshIsRsaKexAlgo(sshSupportedKexAlgos[i]))
       {
-         p[n++] = ',';
+         //RSA algorithms can only be negotiated at server-side if a valid
+         //transient RSA key has been loaded
+         if(sshSelectTransientRsaKey(connection->context,
+            sshSupportedKexAlgos[i]) >= 0)
+         {
+            acceptable = TRUE;
+         }
+      }
+      else
+#endif
+#if (SSH_DH_GEX_KEX_SUPPORT == ENABLED)
+      //DH GEX key exchange algorithm?
+      if(connection->context->mode == SSH_OPERATION_MODE_SERVER &&
+         sshIsDhGexKexAlgo(sshSupportedKexAlgos[i]))
+      {
+         //Diffie-Hellman Group Exchange algorithms can only be negotiated at
+         //server-side if a valid group has been loaded
+         if(sshSelectDhGexGroup(connection->context, SSH_MIN_DH_MODULUS_SIZE,
+            SSH_PREFERRED_DH_MODULUS_SIZE, SSH_MAX_DH_MODULUS_SIZE) >= 0)
+         {
+            acceptable = TRUE;
+         }
+      }
+      else
+#endif
+      //Diffie-Hellman or ECDH key exchange algorithm?
+      {
+         //The current key exchange algorithm is acceptable
+         acceptable = TRUE;
       }
 
-      //A name must have a non-zero length and it must not contain a comma
-      osStrcpy((char_t *) p + n, sshSupportedKexAlgos[i]);
+      //Acceptable key exchange algorithm?
+      if(acceptable)
+      {
+         //Names are separated by commas
+         if(n != sizeof(uint32_t))
+         {
+            p[n++] = ',';
+         }
 
-      //Update the length of the name list
-      n += osStrlen(sshSupportedKexAlgos[i]);
+         //A name must have a non-zero length and it must not contain a comma
+         osStrcpy((char_t *) p + n, sshSupportedKexAlgos[i]);
+
+         //Update the length of the name list
+         n += osStrlen(sshSupportedKexAlgos[i]);
+      }
    }
 
+#if (SSH_EXT_INFO_SUPPORT == ENABLED)
    //Applications implementing the extension negotiation mechanism must add an
    //indicator name to the field kex_algorithms in the SSH_MSG_KEXINIT message
    //sent by the application in the first key exchange (refer to RFC 8308,
    //section 2.1)
    if(!connection->newKeysSent)
    {
+      const char_t *indicatorName;
+
       //Names are separated by commas
       if(n != sizeof(uint32_t))
       {
@@ -512,6 +595,7 @@ error_t sshFormatKexAlgoList(SshConnection *connection, uint8_t *p,
       //Update the length of the name list
       n += osStrlen(indicatorName);
    }
+#endif
 
    //The name list is preceded by a uint32 containing its length
    STORE32BE(n - sizeof(uint32_t), p);
@@ -521,12 +605,6 @@ error_t sshFormatKexAlgoList(SshConnection *connection, uint8_t *p,
 
    //Successful processing
    return NO_ERROR;
-#else
-   //The algorithm name-list must be a comma-separated list of algorithm names.
-   //The first algorithm must be the preferred (and guessed) algorithm
-   return sshFormatNameList(sshSupportedKexAlgos,
-      arraysize(sshSupportedKexAlgos), p, written);
-#endif
 }
 
 
@@ -778,15 +856,112 @@ const char_t *sshSelectAlgo(SshContext *context, const SshNameList *peerAlgoList
 const char_t *sshSelectKexAlgo(SshConnection *connection,
    const SshNameList *peerAlgoList)
 {
-#if (SSH_EXT_INFO_SUPPORT == ENABLED)
-   const char_t *indicatorName;
+   uint_t i;
+   uint_t j;
+   SshString name;
+   const char_t *selectedAlgo;
 
+   //Name of the chosen host key algorithm
+   selectedAlgo = NULL;
+
+   //Check whether SSH operates as a client or a server
+   if(connection->context->mode == SSH_OPERATION_MODE_CLIENT)
+   {
+      //Loop through the list of algorithms supported by the SSH client
+      for(i = 0; i < arraysize(sshSupportedKexAlgos) &&
+         selectedAlgo == NULL; i++)
+      {
+         //Loop through the list of algorithms offered by the SSH server
+         for(j = 0; selectedAlgo == NULL; j++)
+         {
+            //Algorithm names are separated by commas
+            if(sshGetName(peerAlgoList, j, &name))
+            {
+               //Compare algorithm names
+               if(sshCompareString(&name, sshSupportedKexAlgos[i]))
+               {
+                  //The chosen algorithm must be the first algorithm on the
+                  //client's name list that is also on the server's name list
+                  selectedAlgo = sshSupportedKexAlgos[i];
+               }
+            }
+            else
+            {
+               //The end of the list was reached
+               break;
+            }
+         }
+      }
+   }
+   else
+   {
+      //Loop through the list of algorithms offered by the SSH client
+      for(j = 0; selectedAlgo == NULL; j++)
+      {
+         //Algorithm names are separated by commas
+         if(sshGetName(peerAlgoList, j, &name))
+         {
+            //Loop through the list of algorithms supported by the SSH server
+            for(i = 0; i < arraysize(sshSupportedKexAlgos) &&
+               selectedAlgo == NULL; i++)
+            {
+               //Compare algorithm names
+               if(sshCompareString(&name, sshSupportedKexAlgos[i]))
+               {
+#if (SSH_RSA_KEX_SUPPORT == ENABLED)
+                  //RSA key exchange algorithm?
+                  if(sshIsRsaKexAlgo(sshSupportedKexAlgos[i]))
+                  {
+                     //RSA algorithms can only be negotiated at server-side if
+                     //a valid transient RSA key has been loaded
+                     if(sshSelectTransientRsaKey(connection->context,
+                        sshSupportedKexAlgos[i]) >= 0)
+                     {
+                        selectedAlgo = sshSupportedKexAlgos[i];
+                     }
+                  }
+                  else
+#endif
+#if (SSH_DH_GEX_KEX_SUPPORT == ENABLED)
+                  //DH GEX key exchange algorithm?
+                  if(sshIsDhGexKexAlgo(sshSupportedKexAlgos[i]))
+                  {
+                     //Diffie-Hellman Group Exchange algorithms can only be
+                     //negotiated at server-side if a valid group has been loaded
+                     if(sshSelectDhGexGroup(connection->context,
+                        SSH_MIN_DH_MODULUS_SIZE, SSH_PREFERRED_DH_MODULUS_SIZE,
+                        SSH_MAX_DH_MODULUS_SIZE) >= 0)
+                     {
+                        selectedAlgo = sshSupportedKexAlgos[i];
+                     }
+                  }
+                  else
+#endif
+                  //Diffie-Hellman or ECDH key exchange algorithm?
+                  {
+                     //Select current host key algorithm
+                     selectedAlgo = sshSupportedKexAlgos[i];
+                  }
+               }
+            }
+         }
+         else
+         {
+            //The end of the list was reached
+            break;
+         }
+      }
+   }
+
+#if (SSH_EXT_INFO_SUPPORT == ENABLED)
    //Applications implementing the extension negotiation mechanism must add an
    //indicator name to the field kex_algorithms in the SSH_MSG_KEXINIT message
    //sent by the application in the first key exchange (refer to RFC 8308,
    //section 2.1)
    if(!connection->newKeysSent)
    {
+      const char_t *indicatorName;
+
       //The indicator names inserted by the client and server are different
       //to ensure these names will not produce a match and therefore not
       //affect the algorithm chosen in key exchange algorithm negotiation
@@ -811,10 +986,8 @@ const char_t *sshSelectKexAlgo(SshConnection *connection,
    }
 #endif
 
-   //The first algorithm on the client's name-list that satisfies the
-   //requirements and is also supported by the server must be chosen
-   return sshSelectAlgo(connection->context, peerAlgoList,
-      sshSupportedKexAlgos, arraysize(sshSupportedKexAlgos));
+   //Return the name of the chosen host key algorithm, if any
+   return selectedAlgo;
 }
 
 
@@ -940,7 +1113,7 @@ const char_t *sshSelectMacAlgo(SshContext *context, const char_t *encAlgo,
 {
    const char_t *selectedAlgo;
 
-#if(SSH_GCM_CIPHER_SUPPORT == ENABLED || SSH_CHACHA20_POLY1305_SUPPORT == ENABLED)
+#if (SSH_GCM_CIPHER_SUPPORT == ENABLED || SSH_CHACHA20_POLY1305_SUPPORT == ENABLED)
    //AES-GCM or ChaCha20Poly1305 encryption algorithm?
    if(sshCompareAlgo(encAlgo, "aes128-gcm@openssh.com") ||
       sshCompareAlgo(encAlgo, "aes256-gcm@openssh.com") ||
@@ -1175,6 +1348,27 @@ bool_t sshIsGuessCorrect(SshContext *context, const SshNameList *kexAlgoList,
 
 
 /**
+ * @brief Test if the specified algorithm is an RSA key exchange algorithm
+ * @param[in] kexAlgo Key exchange algorithm name
+ * @return TRUE if RSA key exchange algorithm, else FALSE
+ **/
+
+bool_t sshIsRsaKexAlgo(const char_t *kexAlgo)
+{
+   //RSA key exchange algorithm?
+   if(sshCompareAlgo(kexAlgo, "rsa1024-sha1") ||
+      sshCompareAlgo(kexAlgo, "rsa2048-sha256"))
+   {
+      return TRUE;
+   }
+   else
+   {
+      return FALSE;
+   }
+}
+
+
+/**
  * @brief Test if the specified algorithm is a Diffie-Hellman key exchange algorithm
  * @param[in] kexAlgo Key exchange algorithm name
  * @return TRUE if Diffie-Hellman key exchange algorithm, else FALSE
@@ -1188,8 +1382,32 @@ bool_t sshIsDhKexAlgo(const char_t *kexAlgo)
       sshCompareAlgo(kexAlgo, "diffie-hellman-group14-sha256") ||
       sshCompareAlgo(kexAlgo, "diffie-hellman-group15-sha512") ||
       sshCompareAlgo(kexAlgo, "diffie-hellman-group16-sha512") ||
-      sshCompareAlgo(kexAlgo, "diffie-hellman-group-exchange-sha1") ||
-      sshCompareAlgo(kexAlgo, "diffie-hellman-group-exchange-sha256"))
+      sshCompareAlgo(kexAlgo, "diffie-hellman-group17-sha512") ||
+      sshCompareAlgo(kexAlgo, "diffie-hellman-group18-sha512"))
+   {
+      return TRUE;
+   }
+   else
+   {
+      return FALSE;
+   }
+}
+
+
+/**
+ * @brief Test if the specified algorithm is a DH GEX key exchange algorithm
+ * @param[in] kexAlgo Key exchange algorithm name
+ * @return TRUE if DH GEX key exchange algorithm, else FALSE
+ **/
+
+bool_t sshIsDhGexKexAlgo(const char_t *kexAlgo)
+{
+   //DH GEX key exchange algorithm?
+   if(sshCompareAlgo(kexAlgo, "diffie-hellman-group-exchange-sha1") ||
+      sshCompareAlgo(kexAlgo, "diffie-hellman-group-exchange-sha256") ||
+      sshCompareAlgo(kexAlgo, "diffie-hellman-group-exchange-sha224@ssh.com") ||
+      sshCompareAlgo(kexAlgo, "diffie-hellman-group-exchange-sha384@ssh.com") ||
+      sshCompareAlgo(kexAlgo, "diffie-hellman-group-exchange-sha512@ssh.com"))
    {
       return TRUE;
    }
@@ -1215,6 +1433,26 @@ bool_t sshIsEcdhKexAlgo(const char_t *kexAlgo)
       sshCompareAlgo(kexAlgo, "curve25519-sha256") ||
       sshCompareAlgo(kexAlgo, "curve25519-sha256@libssh.org") ||
       sshCompareAlgo(kexAlgo, "curve448-sha512"))
+   {
+      return TRUE;
+   }
+   else
+   {
+      return FALSE;
+   }
+}
+
+
+/**
+ * @brief Test if the specified algorithm is a PQ-hybrid key exchange algorithm
+ * @param[in] kexAlgo Key exchange algorithm name
+ * @return TRUE if PQ-hybrid key exchange algorithm, else FALSE
+ **/
+
+bool_t sshIsHbrKexAlgo(const char_t *kexAlgo)
+{
+   //Post-quantum hybrid key exchange algorithm?
+   if(sshCompareAlgo(kexAlgo, "sntrup761x25519-sha512@openssh.com"))
    {
       return TRUE;
    }

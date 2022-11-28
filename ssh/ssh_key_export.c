@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.1.8
+ * @version 2.2.0
  **/
 
 //Switch to the appropriate trace level
@@ -56,7 +56,7 @@
 error_t sshExportRsaPublicKey(const RsaPublicKey *publicKey,
    char_t *output, size_t *written, SshPublicKeyFormat format)
 {
-#if (SSH_RSA_SUPPORT == ENABLED)
+#if (SSH_RSA_SIGN_SUPPORT == ENABLED)
    error_t error;
    size_t n;
 
@@ -100,7 +100,7 @@ error_t sshExportRsaPublicKey(const RsaPublicKey *publicKey,
 error_t sshExportDsaPublicKey(const DsaPublicKey *publicKey,
    char_t *output, size_t *written, SshPublicKeyFormat format)
 {
-#if (SSH_DSA_SUPPORT == ENABLED)
+#if (SSH_DSA_SIGN_SUPPORT == ENABLED)
    error_t error;
    size_t n;
 
@@ -146,7 +146,7 @@ error_t sshExportEcdsaPublicKey(const EcDomainParameters *params,
    const EcPublicKey *publicKey, char_t *output, size_t *written,
    SshPublicKeyFormat format)
 {
-#if (SSH_ECDSA_SUPPORT == ENABLED)
+#if (SSH_ECDSA_SIGN_SUPPORT == ENABLED)
    error_t error;
    size_t n;
 
@@ -191,7 +191,7 @@ error_t sshExportEd25519PublicKey(const EddsaPublicKey *publicKey,
    char_t *output, size_t *written, SshPublicKeyFormat format)
 
 {
-#if (SSH_ED25519_SUPPORT == ENABLED)
+#if (SSH_ED25519_SIGN_SUPPORT == ENABLED)
    error_t error;
    size_t n;
 
@@ -235,7 +235,7 @@ error_t sshExportEd25519PublicKey(const EddsaPublicKey *publicKey,
 error_t sshExportEd448PublicKey(const EddsaPublicKey *publicKey,
    char_t *output, size_t *written, SshPublicKeyFormat format)
 {
-#if (SSH_ED448_SUPPORT == ENABLED)
+#if (SSH_ED448_SIGN_SUPPORT == ENABLED)
    error_t error;
    size_t n;
 
@@ -450,7 +450,7 @@ error_t sshExportEd448PrivateKey(const EddsaPrivateKey *privateKey,
 error_t sshExportOpenSshRsaPrivateKey(const RsaPrivateKey *privateKey,
    const RsaPublicKey *publicKey, char_t *output, size_t *written)
 {
-#if (SSH_RSA_SUPPORT == ENABLED)
+#if (SSH_RSA_SIGN_SUPPORT == ENABLED)
    error_t error;
    size_t n;
    size_t length;
@@ -525,7 +525,7 @@ error_t sshExportOpenSshRsaPrivateKey(const RsaPrivateKey *privateKey,
 error_t sshExportOpenSshDsaPrivateKey(const DsaPrivateKey *privateKey,
    const DsaPublicKey *publicKey, char_t *output, size_t *written)
 {
-#if (SSH_DSA_SUPPORT == ENABLED)
+#if (SSH_DSA_SIGN_SUPPORT == ENABLED)
    error_t error;
    size_t n;
    size_t length;
@@ -603,7 +603,7 @@ error_t sshExportOpenSshEcdsaPrivateKey(const EcDomainParameters *params,
    const EcPrivateKey *privateKey, const EcPublicKey *publicKey,
    char_t *output, size_t *written)
 {
-#if (SSH_ECDSA_SUPPORT == ENABLED)
+#if (SSH_ECDSA_SIGN_SUPPORT == ENABLED)
    error_t error;
    size_t n;
    size_t length;
@@ -679,7 +679,7 @@ error_t sshExportOpenSshEcdsaPrivateKey(const EcDomainParameters *params,
 error_t sshExportOpenSshEd25519PrivateKey(const EddsaPrivateKey *privateKey,
    const EddsaPublicKey *publicKey, char_t *output, size_t *written)
 {
-#if (SSH_ED25519_SUPPORT == ENABLED)
+#if (SSH_ED25519_SIGN_SUPPORT == ENABLED)
    error_t error;
    size_t n;
    size_t length;
@@ -755,7 +755,7 @@ error_t sshExportOpenSshEd25519PrivateKey(const EddsaPrivateKey *privateKey,
 error_t sshExportOpenSshEd448PrivateKey(const EddsaPrivateKey *privateKey,
    const EddsaPublicKey *publicKey, char_t *output, size_t *written)
 {
-#if (SSH_ED448_SUPPORT == ENABLED)
+#if (SSH_ED448_SIGN_SUPPORT == ENABLED)
    error_t error;
    size_t n;
    size_t length;

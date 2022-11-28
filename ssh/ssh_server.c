@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.1.8
+ * @version 2.2.0
  **/
 
 //Switch to the appropriate trace level
@@ -444,6 +444,76 @@ error_t sshServerUnregisterConnectionCloseCallback(SshServerContext *context,
 {
    //Unregister connection close callback function
    return sshUnregisterConnectionCloseCallback(&context->sshContext, callback);
+}
+
+
+/**
+ * @brief Load transient RSA key (for RSA key exchange)
+ * @param[in] context Pointer to the SSH server context
+ * @param[in] index Zero-based index identifying a slot
+ * @param[in] publicKey RSA public key (PEM, SSH2 or OpenSSH format). This
+ *   parameter is taken as reference
+ * @param[in] publicKeyLen Length of the RSA public key
+ * @param[in] privateKey RSA private key (PEM or OpenSSH format). This
+ *   parameter is taken as reference
+ * @param[in] privateKeyLen Length of the RSA private key
+ * @return Error code
+ **/
+
+error_t sshServerLoadRsaKey(SshServerContext *context, uint_t index,
+   const char_t *publicKey, size_t publicKeyLen,
+   const char_t *privateKey, size_t privateKeyLen)
+{
+   //Load the specified transient RSA key
+   return sshLoadRsaKey(&context->sshContext, index, publicKey,
+      publicKeyLen, privateKey, privateKeyLen);
+}
+
+
+/**
+ * @brief Unload transient RSA key (for RSA key exchange)
+ * @param[in] context Pointer to the SSH server context
+ * @param[in] index Zero-based index identifying a slot
+ * @return Error code
+ **/
+
+error_t sshServerUnloadRsaKey(SshServerContext *context, uint_t index)
+{
+   //Unload the specified transient RSA key
+   return sshUnloadRsaKey(&context->sshContext, index);
+}
+
+
+/**
+ * @brief Load Diffie-Hellman group
+ * @param[in] context Pointer to the SSH server context
+ * @param[in] index Zero-based index identifying a slot
+ * @param[in] dhParams Diffie-Hellman parameters (PEM format). This parameter
+ *   is taken as reference
+ * @param[in] dhParamsLen Length of the Diffie-Hellman parameters
+ * @return Error code
+ **/
+
+error_t sshServerLoadDhGexGroup(SshServerContext *context, uint_t index,
+   const char_t *dhParams, size_t dhParamsLen)
+{
+   //Load the specified Diffie-Hellman group
+   return sshLoadDhGexGroup(&context->sshContext, index, dhParams,
+      dhParamsLen);
+}
+
+
+/**
+ * @brief Unload Diffie-Hellman group
+ * @param[in] context Pointer to the SSH server context
+ * @param[in] index Zero-based index identifying a slot
+ * @return Error code
+ **/
+
+error_t sshServerUnloadDhGexGroup(SshServerContext *context, uint_t index)
+{
+   //Unload the specified Diffie-Hellman group
+   return sshUnloadDhGexGroup(&context->sshContext, index);
 }
 
 

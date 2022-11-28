@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.1.8
+ * @version 2.2.0
  **/
 
 //Switch to the appropriate trace level
@@ -35,8 +35,11 @@
 #include "ssh/ssh.h"
 #include "ssh/ssh_algorithms.h"
 #include "ssh/ssh_kex.h"
+#include "ssh/ssh_kex_rsa.h"
 #include "ssh/ssh_kex_dh.h"
+#include "ssh/ssh_kex_dh_gex.h"
 #include "ssh/ssh_kex_ecdh.h"
+#include "ssh/ssh_kex_hbr.h"
 #include "ssh/ssh_packet.h"
 #include "ssh/ssh_key_material.h"
 #include "ssh/ssh_exchange_hash.h"
@@ -109,7 +112,16 @@ error_t sshSendKexInit(SshConnection *connection)
          //Check whether a key re-exchange has been initiated by the peer
          if(connection->kexInitReceived)
          {
-#if (SSH_DH_SUPPORT == ENABLED)
+#if (SSH_RSA_KEX_SUPPORT == ENABLED)
+            //RSA key exchange algorithm?
+            if(sshIsRsaKexAlgo(connection->kexAlgo))
+            {
+               //The server sends an SSH_MSG_KEXRSA_PUBKEY message
+               connection->state = SSH_CONN_STATE_KEX_RSA_PUB_KEY;
+            }
+            else
+#endif
+#if (SSH_DH_KEX_SUPPORT == ENABLED)
             //Diffie-Hellman key exchange algorithm?
             if(sshIsDhKexAlgo(connection->kexAlgo))
             {
@@ -118,12 +130,30 @@ error_t sshSendKexInit(SshConnection *connection)
             }
             else
 #endif
-#if (SSH_ECDH_SUPPORT == ENABLED)
+#if (SSH_DH_GEX_KEX_SUPPORT == ENABLED)
+            //DH GEX key exchange algorithm?
+            if(sshIsDhGexKexAlgo(connection->kexAlgo))
+            {
+               //The client sends an SSH_MSG_KEY_DH_GEX_REQUEST message
+               connection->state = SSH_CONN_STATE_KEX_DH_GEX_REQUEST;
+            }
+            else
+#endif
+#if (SSH_ECDH_KEX_SUPPORT == ENABLED)
             //ECDH key exchange algorithm?
             if(sshIsEcdhKexAlgo(connection->kexAlgo))
             {
                //The client sends an SSH_MSG_KEX_ECDH_INIT message
                connection->state = SSH_CONN_STATE_KEX_ECDH_INIT;
+            }
+            else
+#endif
+#if (SSH_HBR_KEX_SUPPORT == ENABLED)
+            //Post-quantum hybrid key exchange algorithm?
+            if(sshIsHbrKexAlgo(connection->kexAlgo))
+            {
+               //The client sends an SSH_MSG_HBR_INIT message
+               connection->state = SSH_CONN_STATE_KEX_HBR_INIT;
             }
             else
 #endif
@@ -853,7 +883,7 @@ error_t sshParseKexInit(SshConnection *connection, const uint8_t *message,
       if(error)
          return error;
 
-      //Format server's host public key
+      //Format server's public host key
       error = sshFormatHostKey(connection, connection->buffer, &n);
       //Any error to report?
       if(error)
@@ -888,7 +918,16 @@ error_t sshParseKexInit(SshConnection *connection, const uint8_t *message,
    }
    else
    {
-#if (SSH_DH_SUPPORT == ENABLED)
+#if (SSH_RSA_KEX_SUPPORT == ENABLED)
+      //RSA key exchange algorithm?
+      if(sshIsRsaKexAlgo(connection->kexAlgo))
+      {
+         //The server sends an SSH_MSG_KEXRSA_PUBKEY message
+         connection->state = SSH_CONN_STATE_KEX_RSA_PUB_KEY;
+      }
+      else
+#endif
+#if (SSH_DH_KEX_SUPPORT == ENABLED)
       //Diffie-Hellman key exchange algorithm?
       if(sshIsDhKexAlgo(connection->kexAlgo))
       {
@@ -897,12 +936,30 @@ error_t sshParseKexInit(SshConnection *connection, const uint8_t *message,
       }
       else
 #endif
-#if (SSH_ECDH_SUPPORT == ENABLED)
+#if (SSH_DH_GEX_KEX_SUPPORT == ENABLED)
+      //DH GEX key exchange algorithm?
+      if(sshIsDhGexKexAlgo(connection->kexAlgo))
+      {
+         //The client sends an SSH_MSG_KEY_DH_GEX_REQUEST message
+         connection->state = SSH_CONN_STATE_KEX_DH_GEX_REQUEST;
+      }
+      else
+#endif
+#if (SSH_ECDH_KEX_SUPPORT == ENABLED)
       //ECDH key exchange algorithm?
       if(sshIsEcdhKexAlgo(connection->kexAlgo))
       {
          //The client sends an SSH_MSG_KEX_ECDH_INIT message
          connection->state = SSH_CONN_STATE_KEX_ECDH_INIT;
+      }
+      else
+#endif
+#if (SSH_HBR_KEX_SUPPORT == ENABLED)
+      //Post-quantum hybrid key exchange algorithm?
+      if(sshIsHbrKexAlgo(connection->kexAlgo))
+      {
+         //The client sends an SSH_MSG_HBR_INIT message
+         connection->state = SSH_CONN_STATE_KEX_HBR_INIT;
       }
       else
 #endif
@@ -1038,7 +1095,16 @@ error_t sshParseKexMessage(SshConnection *connection, uint8_t type,
    }
    else
    {
-#if (SSH_DH_SUPPORT == ENABLED)
+#if (SSH_RSA_KEX_SUPPORT == ENABLED)
+      //RSA key exchange algorithm?
+      if(sshIsRsaKexAlgo(connection->kexAlgo))
+      {
+         //Parse RSA specific messages
+         error = sshParseKexRsaMessage(connection, type, message, length);
+      }
+      else
+#endif
+#if (SSH_DH_KEX_SUPPORT == ENABLED)
       //Diffie-Hellman key exchange algorithm?
       if(sshIsDhKexAlgo(connection->kexAlgo))
       {
@@ -1047,12 +1113,30 @@ error_t sshParseKexMessage(SshConnection *connection, uint8_t type,
       }
       else
 #endif
-#if (SSH_ECDH_SUPPORT == ENABLED)
+#if (SSH_DH_GEX_KEX_SUPPORT == ENABLED)
+      //DH GEX key exchange algorithm?
+      if(sshIsDhGexKexAlgo(connection->kexAlgo))
+      {
+         //Parse Diffie-Hellman Group Exchange specific messages
+         error = sshParseKexDhGexMessage(connection, type, message, length);
+      }
+      else
+#endif
+#if (SSH_ECDH_KEX_SUPPORT == ENABLED)
       //ECDH key exchange algorithm?
       if(sshIsEcdhKexAlgo(connection->kexAlgo))
       {
          //Parse ECDH specific messages
          error = sshParseKexEcdhMessage(connection, type, message, length);
+      }
+      else
+#endif
+#if (SSH_HBR_KEX_SUPPORT == ENABLED)
+      //Post-quantum hybrid key exchange algorithm?
+      if(sshIsHbrKexAlgo(connection->kexAlgo))
+      {
+         //Parse PQ-hybrid specific messages
+         error = sshParseHbrMessage(connection, type, message, length);
       }
       else
 #endif

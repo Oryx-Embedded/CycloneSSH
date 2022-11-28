@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.1.8
+ * @version 2.2.0
  **/
 
 //Switch to the appropriate trace level
@@ -51,29 +51,44 @@
 error_t sshInitExchangeHash(SshConnection *connection)
 {
    error_t error;
+   const char_t *kexAlgo;
    const HashAlgo *hashAlgo;
 
    //Initialize status code
    error = NO_ERROR;
 
+   //Get the chosen key exchange algorithm
+   kexAlgo = connection->kexAlgo;
+
 #if (SSH_SHA1_SUPPORT == ENABLED)
    //Key exchange with SHA-1 as hash?
-   if(sshCompareAlgo(connection->kexAlgo, "diffie-hellman-group1-sha1") ||
-      sshCompareAlgo(connection->kexAlgo, "diffie-hellman-group14-sha1") ||
-      sshCompareAlgo(connection->kexAlgo, "diffie-hellman-group-exchange-sha1"))
+   if(sshCompareAlgo(kexAlgo, "rsa1024-sha1") ||
+      sshCompareAlgo(kexAlgo, "diffie-hellman-group1-sha1") ||
+      sshCompareAlgo(kexAlgo, "diffie-hellman-group14-sha1") ||
+      sshCompareAlgo(kexAlgo, "diffie-hellman-group-exchange-sha1"))
    {
       //Select the relevant hash algorithm
       hashAlgo = SHA1_HASH_ALGO;
    }
    else
 #endif
+#if (SSH_SHA224_SUPPORT == ENABLED)
+   //Key exchange with SHA-224 as hash?
+   if(sshCompareAlgo(kexAlgo, "diffie-hellman-group-exchange-sha224@ssh.com"))
+   {
+      //Select the relevant hash algorithm
+      hashAlgo = SHA224_HASH_ALGO;
+   }
+   else
+#endif
 #if (SSH_SHA256_SUPPORT == ENABLED)
    //Key exchange with SHA-256 as hash?
-   if(sshCompareAlgo(connection->kexAlgo, "diffie-hellman-group14-sha256") ||
-      sshCompareAlgo(connection->kexAlgo, "diffie-hellman-group-exchange-sha256") ||
-      sshCompareAlgo(connection->kexAlgo, "ecdh-sha2-nistp256") ||
-      sshCompareAlgo(connection->kexAlgo, "curve25519-sha256") ||
-      sshCompareAlgo(connection->kexAlgo, "curve25519-sha256@libssh.org"))
+   if(sshCompareAlgo(kexAlgo, "rsa2048-sha256") ||
+      sshCompareAlgo(kexAlgo, "diffie-hellman-group14-sha256") ||
+      sshCompareAlgo(kexAlgo, "diffie-hellman-group-exchange-sha256") ||
+      sshCompareAlgo(kexAlgo, "ecdh-sha2-nistp256") ||
+      sshCompareAlgo(kexAlgo, "curve25519-sha256") ||
+      sshCompareAlgo(kexAlgo, "curve25519-sha256@libssh.org"))
    {
       //Select the relevant hash algorithm
       hashAlgo = SHA256_HASH_ALGO;
@@ -82,7 +97,8 @@ error_t sshInitExchangeHash(SshConnection *connection)
 #endif
 #if (SSH_SHA384_SUPPORT == ENABLED)
    //Key exchange with SHA-384 as hash?
-   if(sshCompareAlgo(connection->kexAlgo, "ecdh-sha2-nistp384"))
+   if(sshCompareAlgo(kexAlgo, "diffie-hellman-group-exchange-sha384@ssh.com") ||
+      sshCompareAlgo(kexAlgo, "ecdh-sha2-nistp384"))
    {
       //Select the relevant hash algorithm
       hashAlgo = SHA384_HASH_ALGO;
@@ -91,10 +107,14 @@ error_t sshInitExchangeHash(SshConnection *connection)
 #endif
 #if (SSH_SHA512_SUPPORT == ENABLED)
    //Key exchange with SHA-512 as hash?
-   if(sshCompareAlgo(connection->kexAlgo, "diffie-hellman-group15-sha512") ||
-      sshCompareAlgo(connection->kexAlgo, "diffie-hellman-group16-sha512") ||
-      sshCompareAlgo(connection->kexAlgo, "ecdh-sha2-nistp521") ||
-      sshCompareAlgo(connection->kexAlgo, "curve448-sha512"))
+   if(sshCompareAlgo(kexAlgo, "diffie-hellman-group15-sha512") ||
+      sshCompareAlgo(kexAlgo, "diffie-hellman-group16-sha512") ||
+      sshCompareAlgo(kexAlgo, "diffie-hellman-group17-sha512") ||
+      sshCompareAlgo(kexAlgo, "diffie-hellman-group18-sha512") ||
+      sshCompareAlgo(kexAlgo, "diffie-hellman-group-exchange-sha512@ssh.com") ||
+      sshCompareAlgo(kexAlgo, "ecdh-sha2-nistp521") ||
+      sshCompareAlgo(kexAlgo, "curve448-sha512") ||
+      sshCompareAlgo(kexAlgo, "sntrup761x25519-sha512@openssh.com"))
    {
       //Select the relevant hash algorithm
       hashAlgo = SHA512_HASH_ALGO;
@@ -153,6 +173,39 @@ error_t sshUpdateExchangeHash(SshConnection *connection, const void *data,
 
       //Digest the length field
       connection->hashAlgo->update(&connection->hashContext, temp, sizeof(temp));
+      //Digest the contents of the data block
+      connection->hashAlgo->update(&connection->hashContext, data, length);
+   }
+   else
+   {
+      //Report an error
+      error = ERROR_FAILURE;
+   }
+
+   //Return status code
+   return error;
+}
+
+
+/**
+ * @brief Update exchange hash calculation (raw data)
+ * @param[in] connection Pointer to the SSH connection
+ * @param[in] data Pointer to the data block to be hashed
+ * @param[in] length Length of the data block, in bytes
+ * @return Error code
+ **/
+
+error_t sshUpdateExchangeHashRaw(SshConnection *connection, const void *data,
+   size_t length)
+{
+   error_t error;
+
+   //Initialize status code
+   error = NO_ERROR;
+
+   //Valid hash algorithm?
+   if(connection->hashAlgo != NULL)
+   {
       //Digest the contents of the data block
       connection->hashAlgo->update(&connection->hashContext, data, length);
    }

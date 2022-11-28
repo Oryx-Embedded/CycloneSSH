@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.1.8
+ * @version 2.2.0
  **/
 
 //Switch to the appropriate trace level
@@ -60,13 +60,13 @@ error_t sshInitEncryptionEngine(SshConnection *connection,
 
    //Select the relevant cipher algorithm
    error = sshSelectCipherAlgo(encryptionEngine, encAlgo);
-   //Any error?
+   //Any error to report?
    if(error)
       return error;
 
    //Select the relevant hash algorithm
    error = sshSelectHashAlgo(encryptionEngine, encAlgo, macAlgo);
-   //Any error?
+   //Any error to report?
    if(error)
       return error;
 
@@ -77,21 +77,21 @@ error_t sshInitEncryptionEngine(SshConnection *connection,
       //Compute encryption key
       error = sshDeriveKey(connection, x + 2, encryptionEngine->encKey,
          encryptionEngine->encKeyLen);
-      //Any error?
+      //Any error to report?
       if(error)
          return error;
 
       //Compute integrity key
       error = sshDeriveKey(connection, x + 4, encryptionEngine->macKey,
          encryptionEngine->hashAlgo->digestSize);
-      //Any error?
+      //Any error to report?
       if(error)
          return error;
 
       //Initialize stream cipher context
       error = encryptionEngine->cipherAlgo->init(&encryptionEngine->cipherContext,
          encryptionEngine->encKey, encryptionEngine->encKeyLen);
-      //Any error?
+      //Any error to report?
       if(error)
          return error;
 
@@ -114,28 +114,28 @@ error_t sshInitEncryptionEngine(SshConnection *connection,
       //Compute initial IV
       error = sshDeriveKey(connection, x, encryptionEngine->iv,
          encryptionEngine->cipherAlgo->blockSize);
-      //Any error?
+      //Any error to report?
       if(error)
          return error;
 
       //Compute encryption key
       error = sshDeriveKey(connection, x + 2, encryptionEngine->encKey,
          encryptionEngine->encKeyLen);
-      //Any error?
+      //Any error to report?
       if(error)
          return error;
 
       //Compute integrity key
       error = sshDeriveKey(connection, x + 4, encryptionEngine->macKey,
          encryptionEngine->hashAlgo->digestSize);
-      //Any error?
+      //Any error to report?
       if(error)
          return error;
 
       //Initialize block cipher context
       error = encryptionEngine->cipherAlgo->init(&encryptionEngine->cipherContext,
          encryptionEngine->encKey, encryptionEngine->encKeyLen);
-      //Any error?
+      //Any error to report?
       if(error)
          return error;
 
@@ -150,14 +150,14 @@ error_t sshInitEncryptionEngine(SshConnection *connection,
    {
       //AES-GCM requires a 12-octet initial IV
       error = sshDeriveKey(connection, x, encryptionEngine->iv, 12);
-      //Any error?
+      //Any error to report?
       if(error)
          return error;
 
       //AES-GCM requires a encryption key of either 16 or 32 octets
       error = sshDeriveKey(connection, x + 2, encryptionEngine->encKey,
          encryptionEngine->encKeyLen);
-      //Any error?
+      //Any error to report?
       if(error)
          return error;
 
@@ -166,14 +166,14 @@ error_t sshInitEncryptionEngine(SshConnection *connection,
       //not used with AES-GCM (refer to RFC 5647, section 5.1)
       error = encryptionEngine->cipherAlgo->init(&encryptionEngine->cipherContext,
          encryptionEngine->encKey, encryptionEngine->encKeyLen);
-      //Any error?
+      //Any error to report?
       if(error)
          return error;
 
       //Initialize GCM context
       error = gcmInit(&encryptionEngine->gcmContext, encryptionEngine->cipherAlgo,
          &encryptionEngine->cipherContext);
-      //Any error?
+      //Any error to report?
       if(error)
          return error;
    }
@@ -188,7 +188,7 @@ error_t sshInitEncryptionEngine(SshConnection *connection,
       //separate instances of ChaCha20
       error = sshDeriveKey(connection, x + 2, encryptionEngine->encKey,
          encryptionEngine->encKeyLen);
-      //Any error?
+      //Any error to report?
       if(error)
          return error;
    }
@@ -840,7 +840,7 @@ error_t sshSelectHashAlgo(SshEncryptionEngine *encryptionEngine,
    }
    else
 #endif
-#if (SSH_MD5_SUPPORT == ENABLED)
+#if (SSH_HMAC_SUPPORT == ENABLED && SSH_MD5_SUPPORT == ENABLED)
    //HMAC with MD5 integrity algorithm?
    if(sshCompareAlgo(macAlgo, "hmac-md5"))
    {
@@ -851,7 +851,8 @@ error_t sshSelectHashAlgo(SshEncryptionEngine *encryptionEngine,
    }
    else
 #endif
-#if (SSH_MD5_SUPPORT == ENABLED && SSH_ETM_SUPPORT == ENABLED)
+#if (SSH_HMAC_SUPPORT == ENABLED && SSH_MD5_SUPPORT == ENABLED && \
+   SSH_ETM_SUPPORT == ENABLED)
    //HMAC with MD5 integrity algorithm (EtM mode)?
    if(sshCompareAlgo(macAlgo, "hmac-md5-etm@openssh.com"))
    {
@@ -862,7 +863,7 @@ error_t sshSelectHashAlgo(SshEncryptionEngine *encryptionEngine,
    }
    else
 #endif
-#if (SSH_MD5_96_SUPPORT == ENABLED)
+#if (SSH_HMAC_SUPPORT == ENABLED && SSH_MD5_96_SUPPORT == ENABLED)
    //HMAC with MD5/96 integrity algorithm?
    if(sshCompareAlgo(macAlgo, "hmac-md5-96"))
    {
@@ -873,7 +874,8 @@ error_t sshSelectHashAlgo(SshEncryptionEngine *encryptionEngine,
    }
    else
 #endif
-#if (SSH_MD5_96_SUPPORT == ENABLED && SSH_ETM_SUPPORT == ENABLED)
+#if (SSH_HMAC_SUPPORT == ENABLED && SSH_MD5_96_SUPPORT == ENABLED && \
+   SSH_ETM_SUPPORT == ENABLED)
    //HMAC with MD5/96 integrity algorithm (EtM mode)?
    if(sshCompareAlgo(macAlgo, "hmac-md5-96-etm@openssh.com"))
    {
@@ -884,9 +886,10 @@ error_t sshSelectHashAlgo(SshEncryptionEngine *encryptionEngine,
    }
    else
 #endif
-#if (SSH_RIPEMD160_SUPPORT == ENABLED)
+#if (SSH_HMAC_SUPPORT == ENABLED && SSH_RIPEMD160_SUPPORT == ENABLED)
    //HMAC with RIPEMD-160 integrity algorithm?
-   if(sshCompareAlgo(macAlgo, "hmac-ripemd160@openssh.com"))
+   if(sshCompareAlgo(macAlgo, "hmac-ripemd160") ||
+      sshCompareAlgo(macAlgo, "hmac-ripemd160@openssh.com"))
    {
       //Select MAC-then-encrypt mode
       encryptionEngine->hashAlgo = RIPEMD160_HASH_ALGO;
@@ -895,7 +898,8 @@ error_t sshSelectHashAlgo(SshEncryptionEngine *encryptionEngine,
    }
    else
 #endif
-#if (SSH_RIPEMD160_SUPPORT == ENABLED && SSH_ETM_SUPPORT == ENABLED)
+#if (SSH_HMAC_SUPPORT == ENABLED && SSH_RIPEMD160_SUPPORT == ENABLED && \
+   SSH_ETM_SUPPORT == ENABLED)
    //HMAC with RIPEMD-160 integrity algorithm (EtM mode)?
    if(sshCompareAlgo(macAlgo, "hmac-ripemd160-etm@openssh.com"))
    {
@@ -906,7 +910,7 @@ error_t sshSelectHashAlgo(SshEncryptionEngine *encryptionEngine,
    }
    else
 #endif
-#if (SSH_SHA1_SUPPORT == ENABLED)
+#if (SSH_HMAC_SUPPORT == ENABLED && SSH_SHA1_SUPPORT == ENABLED)
    //HMAC with SHA-1 integrity algorithm?
    if(sshCompareAlgo(macAlgo, "hmac-sha1"))
    {
@@ -917,7 +921,8 @@ error_t sshSelectHashAlgo(SshEncryptionEngine *encryptionEngine,
    }
    else
 #endif
-#if (SSH_SHA1_SUPPORT == ENABLED && SSH_ETM_SUPPORT == ENABLED)
+#if (SSH_HMAC_SUPPORT == ENABLED && SSH_SHA1_SUPPORT == ENABLED && \
+   SSH_ETM_SUPPORT == ENABLED)
    //HMAC with SHA-1 integrity algorithm (EtM mode)?
    if(sshCompareAlgo(macAlgo, "hmac-sha1-etm@openssh.com"))
    {
@@ -928,7 +933,7 @@ error_t sshSelectHashAlgo(SshEncryptionEngine *encryptionEngine,
    }
    else
 #endif
-#if (SSH_SHA1_96_SUPPORT == ENABLED)
+#if (SSH_HMAC_SUPPORT == ENABLED && SSH_SHA1_96_SUPPORT == ENABLED)
    //HMAC with SHA-1/96 integrity algorithm?
    if(sshCompareAlgo(macAlgo, "hmac-sha1-96"))
    {
@@ -939,7 +944,8 @@ error_t sshSelectHashAlgo(SshEncryptionEngine *encryptionEngine,
    }
    else
 #endif
-#if (SSH_SHA1_96_SUPPORT == ENABLED && SSH_ETM_SUPPORT == ENABLED)
+#if (SSH_HMAC_SUPPORT == ENABLED && SSH_SHA1_96_SUPPORT == ENABLED && \
+   SSH_ETM_SUPPORT == ENABLED)
    //HMAC with SHA-1/96 integrity algorithm (EtM mode)?
    if(sshCompareAlgo(macAlgo, "hmac-sha1-96-etm@openssh.com"))
    {
@@ -950,7 +956,7 @@ error_t sshSelectHashAlgo(SshEncryptionEngine *encryptionEngine,
    }
    else
 #endif
-#if (SSH_SHA256_SUPPORT == ENABLED)
+#if (SSH_HMAC_SUPPORT == ENABLED && SSH_SHA256_SUPPORT == ENABLED)
    //HMAC with SHA-256 integrity algorithm?
    if(sshCompareAlgo(macAlgo, "hmac-sha2-256"))
    {
@@ -961,7 +967,8 @@ error_t sshSelectHashAlgo(SshEncryptionEngine *encryptionEngine,
    }
    else
 #endif
-#if (SSH_SHA256_SUPPORT == ENABLED && SSH_ETM_SUPPORT == ENABLED)
+#if (SSH_HMAC_SUPPORT == ENABLED && SSH_SHA256_SUPPORT == ENABLED && \
+   SSH_ETM_SUPPORT == ENABLED)
    //HMAC with SHA-256 integrity algorithm (EtM mode)?
    if(sshCompareAlgo(macAlgo, "hmac-sha2-256-etm@openssh.com"))
    {
@@ -972,7 +979,7 @@ error_t sshSelectHashAlgo(SshEncryptionEngine *encryptionEngine,
    }
    else
 #endif
-#if (SSH_SHA512_SUPPORT == ENABLED)
+#if (SSH_HMAC_SUPPORT == ENABLED && SSH_SHA512_SUPPORT == ENABLED)
    //HMAC with SHA-512 integrity algorithm?
    if(sshCompareAlgo(macAlgo, "hmac-sha2-512"))
    {
@@ -983,7 +990,8 @@ error_t sshSelectHashAlgo(SshEncryptionEngine *encryptionEngine,
    }
    else
 #endif
-#if (SSH_SHA512_SUPPORT == ENABLED && SSH_ETM_SUPPORT == ENABLED)
+#if (SSH_HMAC_SUPPORT == ENABLED && SSH_SHA512_SUPPORT == ENABLED && \
+   SSH_ETM_SUPPORT == ENABLED)
    //HMAC with SHA-512 integrity algorithm (EtM mode)?
    if(sshCompareAlgo(macAlgo, "hmac-sha2-512-etm@openssh.com"))
    {
@@ -1020,7 +1028,6 @@ error_t sshDeriveKey(SshConnection *connection, uint8_t x, uint8_t *output,
    error_t error;
    size_t i;
    size_t n;
-   uint8_t kLen[4];
    const HashAlgo *hashAlgo;
    HashContext *hashContext;
 
@@ -1038,12 +1045,8 @@ error_t sshDeriveKey(SshConnection *connection, uint8_t x, uint8_t *output,
       //Successful memory allocation?
       if(hashContext != NULL)
       {
-         //The length of K is represented as a uint32
-         STORE32BE(connection->kLen, kLen);
-
          //Compute K(1) = HASH(K || H || X || session_id)
          hashAlgo->init(hashContext);
-         hashAlgo->update(hashContext, kLen, sizeof(kLen));
          hashAlgo->update(hashContext, connection->k, connection->kLen);
          hashAlgo->update(hashContext, connection->h, connection->hLen);
          hashAlgo->update(hashContext, &x, sizeof(x));
@@ -1063,7 +1066,6 @@ error_t sshDeriveKey(SshConnection *connection, uint8_t x, uint8_t *output,
          {
             //Compute K(n + 1) = HASH(K || H || K(1) || ... || K(n))
             hashAlgo->init(hashContext);
-            hashAlgo->update(hashContext, kLen, sizeof(kLen));
             hashAlgo->update(hashContext, connection->k, connection->kLen);
             hashAlgo->update(hashContext, connection->h, connection->hLen);
             hashAlgo->update(hashContext, output, n);

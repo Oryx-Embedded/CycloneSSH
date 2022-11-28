@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.1.8
+ * @version 2.2.0
  **/
 
 #ifndef _SSH_SERVER_H
@@ -159,6 +159,17 @@ error_t sshServerRegisterConnectionCloseCallback(SshServerContext *context,
 
 error_t sshServerUnregisterConnectionCloseCallback(SshServerContext *context,
    SshConnectionCloseCallback callback);
+
+error_t sshServerLoadRsaKey(SshServerContext *context, uint_t index,
+   const char_t *publicKey, size_t publicKeyLen,
+   const char_t *privateKey, size_t privateKeyLen);
+
+error_t sshServerUnloadRsaKey(SshServerContext *context, uint_t index);
+
+error_t sshServerLoadDhGexGroup(SshServerContext *context, uint_t index,
+   const char_t *dhParams, size_t dhParamsLen);
+
+error_t sshServerUnloadDhGexGroup(SshServerContext *context, uint_t index);
 
 error_t sshServerLoadHostKey(SshServerContext *context, uint_t index,
    const char_t *publicKey, size_t publicKeyLen,

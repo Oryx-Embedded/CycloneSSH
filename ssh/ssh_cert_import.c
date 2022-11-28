@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.1.8
+ * @version 2.2.0
  **/
 
 //Switch to the appropriate trace level
@@ -52,22 +52,22 @@
 
 static const char_t *const sshCertTypes[] =
 {
-#if (SSH_RSA_SUPPORT == ENABLED)
+#if (SSH_RSA_SIGN_SUPPORT == ENABLED)
    "ssh-rsa-cert-v01@openssh.com",
 #endif
-#if (SSH_DSA_SUPPORT == ENABLED)
+#if (SSH_DSA_SIGN_SUPPORT == ENABLED)
    "ssh-dss-cert-v01@openssh.com",
 #endif
-#if (SSH_ECDSA_SUPPORT == ENABLED && SSH_NISTP256_SUPPORT == ENABLED)
+#if (SSH_ECDSA_SIGN_SUPPORT == ENABLED && SSH_NISTP256_SUPPORT == ENABLED)
    "ecdsa-sha2-nistp256-cert-v01@openssh.com",
 #endif
-#if (SSH_ECDSA_SUPPORT == ENABLED && SSH_NISTP384_SUPPORT == ENABLED)
+#if (SSH_ECDSA_SIGN_SUPPORT == ENABLED && SSH_NISTP384_SUPPORT == ENABLED)
    "ecdsa-sha2-nistp384-cert-v01@openssh.com",
 #endif
-#if (SSH_ECDSA_SUPPORT == ENABLED && SSH_NISTP521_SUPPORT == ENABLED)
+#if (SSH_ECDSA_SIGN_SUPPORT == ENABLED && SSH_NISTP521_SUPPORT == ENABLED)
    "ecdsa-sha2-nistp521-cert-v01@openssh.com",
 #endif
-#if (SSH_ED25519_SUPPORT == ENABLED)
+#if (SSH_ED25519_SIGN_SUPPORT == ENABLED)
    "ssh-ed25519-cert-v01@openssh.com",
 #endif
 };
@@ -143,7 +143,7 @@ error_t sshImportCertificate(const char_t *input, size_t inputLen,
 error_t sshImportRsaCertPublicKey(const SshCertificate *cert,
    RsaPublicKey *publicKey)
 {
-#if (SSH_RSA_SUPPORT == ENABLED)
+#if (SSH_RSA_SIGN_SUPPORT == ENABLED)
    error_t error;
    uint_t k;
 
@@ -191,7 +191,7 @@ error_t sshImportRsaCertPublicKey(const SshCertificate *cert,
 error_t sshImportDsaCertPublicKey(const SshCertificate *cert,
    DsaPublicKey *publicKey)
 {
-#if (SSH_DSA_SUPPORT == ENABLED)
+#if (SSH_DSA_SIGN_SUPPORT == ENABLED)
    error_t error;
    size_t k;
 
@@ -254,7 +254,7 @@ error_t sshImportDsaCertPublicKey(const SshCertificate *cert,
 error_t sshImportEcdsaCertPublicKey(const SshCertificate *cert,
    EcDomainParameters *params, EcPublicKey *publicKey)
 {
-#if (SSH_ECDSA_SUPPORT == ENABLED)
+#if (SSH_ECDSA_SIGN_SUPPORT == ENABLED)
    error_t error;
    const EcCurveInfo *curveInfo;
 
@@ -313,7 +313,7 @@ error_t sshImportEcdsaCertPublicKey(const SshCertificate *cert,
 error_t sshImportEd25519CertPublicKey(const SshCertificate *cert,
    EddsaPublicKey *publicKey)
 {
-#if (SSH_ED25519_SUPPORT == ENABLED)
+#if (SSH_ED25519_SIGN_SUPPORT == ENABLED)
    error_t error;
 
    //Check key format identifier

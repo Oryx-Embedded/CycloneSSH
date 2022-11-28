@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.1.8
+ * @version 2.2.0
  **/
 
 //Switch to the appropriate trace level
@@ -37,7 +37,9 @@
 #include "ssh/ssh_extensions.h"
 #include "ssh/ssh_transport.h"
 #include "ssh/ssh_kex.h"
+#include "ssh/ssh_kex_rsa.h"
 #include "ssh/ssh_kex_dh.h"
+#include "ssh/ssh_kex_dh_gex.h"
 #include "ssh/ssh_kex_ecdh.h"
 #include "ssh/ssh_auth.h"
 #include "ssh/ssh_channel.h"
@@ -116,11 +118,11 @@ SshConnection *sshOpenConnection(SshContext *context, Socket *socket)
       //Check status code
       if(!error)
       {
-#if (SSH_DH_SUPPORT == ENABLED)
+#if (SSH_DH_KEX_SUPPORT == ENABLED || SSH_DH_GEX_KEX_SUPPORT == ENABLED)
          //Initialize Diffie-Hellman context
          dhInit(&connection->dhContext);
 #endif
-#if (SSH_ECDH_SUPPORT == ENABLED)
+#if (SSH_ECDH_KEX_SUPPORT == ENABLED || SSH_HBR_KEX_SUPPORT == ENABLED)
          //Initialize ECDH context
          ecdhInit(&connection->ecdhContext);
 #endif
@@ -215,11 +217,21 @@ void sshCloseConnection(SshConnection *connection)
    //Deselect the host key
    connection->hostKeyIndex = -1;
 
-#if (SSH_DH_SUPPORT == ENABLED)
+#if (SSH_RSA_KEX_SUPPORT == ENABLED)
+   //Release server's host key
+   if(connection->serverHostKey != NULL)
+   {
+      sshFreeMem(connection->serverHostKey);
+      connection->serverHostKey = NULL;
+      connection->serverHostKeyLen = 0;
+   }
+#endif
+
+#if (SSH_DH_KEX_SUPPORT == ENABLED || SSH_DH_GEX_KEX_SUPPORT == ENABLED)
    //Release Diffie-Hellman context
    dhFree(&connection->dhContext);
 #endif
-#if (SSH_ECDH_SUPPORT == ENABLED)
+#if (SSH_ECDH_KEX_SUPPORT == ENABLED || SSH_HBR_KEX_SUPPORT == ENABLED)
    //Release ECDH context
    ecdhFree(&connection->ecdhContext);
 #endif
@@ -284,7 +296,9 @@ void sshRegisterConnectionEvents(SshContext *context, SshConnection *connection,
       if(connection->state == SSH_CONN_STATE_CLIENT_ID ||
          connection->state == SSH_CONN_STATE_CLIENT_KEX_INIT ||
          connection->state == SSH_CONN_STATE_KEX_DH_INIT ||
+         connection->state == SSH_CONN_STATE_KEX_DH_GEX_REQUEST ||
          connection->state == SSH_CONN_STATE_KEX_ECDH_INIT ||
+         connection->state == SSH_CONN_STATE_KEX_HBR_INIT ||
          connection->state == SSH_CONN_STATE_CLIENT_NEW_KEYS ||
          connection->state == SSH_CONN_STATE_CLIENT_EXT_INFO ||
          connection->state == SSH_CONN_STATE_SERVICE_REQUEST ||
@@ -299,6 +313,7 @@ void sshRegisterConnectionEvents(SshContext *context, SshConnection *connection,
       }
       else if(connection->state == SSH_CONN_STATE_SERVER_ID ||
          connection->state == SSH_CONN_STATE_SERVER_KEX_INIT ||
+         connection->state == SSH_CONN_STATE_KEX_RSA_PUB_KEY ||
          connection->state == SSH_CONN_STATE_SERVER_NEW_KEYS ||
          connection->state == SSH_CONN_STATE_SERVER_EXT_INFO_1 ||
          connection->state == SSH_CONN_STATE_SERVER_EXT_INFO_2 ||
@@ -422,18 +437,32 @@ error_t sshProcessConnectionEvents(SshContext *context,
                //Send SSH_MSG_KEXINIT message
                error = sshSendKexInit(connection);
             }
-#if (SSH_DH_SUPPORT == ENABLED)
+#if (SSH_DH_KEX_SUPPORT == ENABLED)
             else if(connection->state == SSH_CONN_STATE_KEX_DH_INIT)
             {
                //Send SSH_MSG_KEX_DH_INIT message
                error = sshSendKexDhInit(connection);
             }
 #endif
-#if (SSH_ECDH_SUPPORT == ENABLED)
+#if (SSH_DH_GEX_KEX_SUPPORT == ENABLED)
+            else if(connection->state == SSH_CONN_STATE_KEX_DH_GEX_REQUEST)
+            {
+               //Send SSH_MSG_KEY_DH_GEX_REQUEST message
+               error = sshSendKexDhGexRequest(connection);
+            }
+#endif
+#if (SSH_ECDH_KEX_SUPPORT == ENABLED)
             else if(connection->state == SSH_CONN_STATE_KEX_ECDH_INIT)
             {
                //Send SSH_MSG_KEX_ECDH_INIT message
                error = sshSendKexEcdhInit(connection);
+            }
+#endif
+#if (SSH_HBR_KEX_SUPPORT == ENABLED)
+            else if(connection->state == SSH_CONN_STATE_KEX_HBR_INIT)
+            {
+               //Send SSH_MSG_HBR_INIT message
+               error = sshSendHbrInit(connection);
             }
 #endif
 #if (SSH_EXT_INFO_SUPPORT == ENABLED)
@@ -455,8 +484,13 @@ error_t sshProcessConnectionEvents(SshContext *context,
             }
             else if(connection->state == SSH_CONN_STATE_SERVER_ID ||
                connection->state == SSH_CONN_STATE_SERVER_KEX_INIT ||
+               connection->state == SSH_CONN_STATE_KEX_RSA_PUB_KEY ||
+               connection->state == SSH_CONN_STATE_KEX_RSA_DONE ||
                connection->state == SSH_CONN_STATE_KEX_DH_REPLY ||
+               connection->state == SSH_CONN_STATE_KEX_DH_GEX_GROUP ||
+               connection->state == SSH_CONN_STATE_KEX_DH_GEX_REPLY ||
                connection->state == SSH_CONN_STATE_KEX_ECDH_REPLY ||
+               connection->state == SSH_CONN_STATE_KEX_HBR_REPLY ||
                connection->state == SSH_CONN_STATE_SERVER_NEW_KEYS ||
                connection->state == SSH_CONN_STATE_SERVER_EXT_INFO_1 ||
                connection->state == SSH_CONN_STATE_SERVER_EXT_INFO_2 ||
@@ -497,6 +531,13 @@ error_t sshProcessConnectionEvents(SshContext *context,
                //Send SSH_MSG_KEXINIT message
                error = sshSendKexInit(connection);
             }
+#if (SSH_RSA_KEX_SUPPORT == ENABLED)
+            else if(connection->state == SSH_CONN_STATE_KEX_RSA_PUB_KEY)
+            {
+               //Send SSH_MSG_KEXRSA_PUBKEY message
+               error = sshSendKexRsaPubKey(connection);
+            }
+#endif
             else if(connection->state == SSH_CONN_STATE_SERVER_NEW_KEYS)
             {
                //Send SSH_MSG_NEWKEYS message
@@ -517,8 +558,12 @@ error_t sshProcessConnectionEvents(SshContext *context,
             }
             else if(connection->state == SSH_CONN_STATE_CLIENT_ID ||
                connection->state == SSH_CONN_STATE_CLIENT_KEX_INIT ||
+               connection->state == SSH_CONN_STATE_KEX_RSA_SECRET ||
                connection->state == SSH_CONN_STATE_KEX_DH_INIT ||
+               connection->state == SSH_CONN_STATE_KEX_DH_GEX_REQUEST ||
+               connection->state == SSH_CONN_STATE_KEX_DH_GEX_INIT ||
                connection->state == SSH_CONN_STATE_KEX_ECDH_INIT ||
+               connection->state == SSH_CONN_STATE_KEX_HBR_INIT ||
                connection->state == SSH_CONN_STATE_CLIENT_NEW_KEYS ||
                connection->state == SSH_CONN_STATE_CLIENT_EXT_INFO ||
                connection->state == SSH_CONN_STATE_SERVICE_REQUEST ||
@@ -818,7 +863,7 @@ error_t sshFormatHostKey(SshConnection *connection, uint8_t *p,
    //Valid host key?
    if(hostKey != NULL)
    {
-#if (SSH_RSA_SUPPORT == ENABLED)
+#if (SSH_RSA_SIGN_SUPPORT == ENABLED)
       //RSA host key?
       if(sshCompareAlgo(hostKey->keyFormatId, "ssh-rsa"))
       {
@@ -843,7 +888,7 @@ error_t sshFormatHostKey(SshConnection *connection, uint8_t *p,
       }
       else
 #endif
-#if (SSH_RSA_SUPPORT == ENABLED && SSH_CERT_SUPPORT == ENABLED)
+#if (SSH_RSA_SIGN_SUPPORT == ENABLED && SSH_CERT_SUPPORT == ENABLED)
       //RSA certificate?
       if(sshCompareAlgo(hostKey->keyFormatId, "ssh-rsa-cert-v01@openssh.com"))
       {
@@ -853,7 +898,7 @@ error_t sshFormatHostKey(SshConnection *connection, uint8_t *p,
       }
       else
 #endif
-#if (SSH_DSA_SUPPORT == ENABLED)
+#if (SSH_DSA_SIGN_SUPPORT == ENABLED)
       //DSA host key?
       if(sshCompareAlgo(hostKey->keyFormatId, "ssh-dss"))
       {
@@ -878,7 +923,7 @@ error_t sshFormatHostKey(SshConnection *connection, uint8_t *p,
       }
       else
 #endif
-#if (SSH_DSA_SUPPORT == ENABLED && SSH_CERT_SUPPORT == ENABLED)
+#if (SSH_DSA_SIGN_SUPPORT == ENABLED && SSH_CERT_SUPPORT == ENABLED)
       //DSA certificate?
       if(sshCompareAlgo(hostKey->keyFormatId, "ssh-dss-cert-v01@openssh.com"))
       {
@@ -888,7 +933,7 @@ error_t sshFormatHostKey(SshConnection *connection, uint8_t *p,
       }
       else
 #endif
-#if (SSH_ECDSA_SUPPORT == ENABLED)
+#if (SSH_ECDSA_SIGN_SUPPORT == ENABLED)
       //ECDSA host key?
       if(sshCompareAlgo(hostKey->keyFormatId, "ecdsa-sha2-nistp256") ||
          sshCompareAlgo(hostKey->keyFormatId, "ecdsa-sha2-nistp384") ||
@@ -920,7 +965,7 @@ error_t sshFormatHostKey(SshConnection *connection, uint8_t *p,
       }
       else
 #endif
-#if (SSH_ECDSA_SUPPORT == ENABLED && SSH_CERT_SUPPORT == ENABLED)
+#if (SSH_ECDSA_SIGN_SUPPORT == ENABLED && SSH_CERT_SUPPORT == ENABLED)
       //ECDSA certificate?
       if(sshCompareAlgo(hostKey->keyFormatId, "ecdsa-sha2-nistp256-cert-v01@openssh.com") ||
          sshCompareAlgo(hostKey->keyFormatId, "ecdsa-sha2-nistp384-cert-v01@openssh.com") ||
@@ -932,7 +977,7 @@ error_t sshFormatHostKey(SshConnection *connection, uint8_t *p,
       }
       else
 #endif
-#if (SSH_ED25519_SUPPORT == ENABLED)
+#if (SSH_ED25519_SIGN_SUPPORT == ENABLED)
       //Ed25519 host key?
       if(sshCompareAlgo(hostKey->keyFormatId, "ssh-ed25519"))
       {
@@ -957,7 +1002,7 @@ error_t sshFormatHostKey(SshConnection *connection, uint8_t *p,
       }
       else
 #endif
-#if (SSH_ED25519_SUPPORT == ENABLED && SSH_CERT_SUPPORT == ENABLED)
+#if (SSH_ED25519_SIGN_SUPPORT == ENABLED && SSH_CERT_SUPPORT == ENABLED)
       //Ed25519 certificate?
       if(sshCompareAlgo(hostKey->keyFormatId, "ssh-ed25519-cert-v01@openssh.com"))
       {
@@ -967,7 +1012,7 @@ error_t sshFormatHostKey(SshConnection *connection, uint8_t *p,
       }
       else
 #endif
-#if (SSH_ED448_SUPPORT == ENABLED)
+#if (SSH_ED448_SIGN_SUPPORT == ENABLED)
       //Ed448 host key?
       if(sshCompareAlgo(hostKey->keyFormatId, "ssh-ed448"))
       {
@@ -1477,31 +1522,34 @@ error_t sshConvertArrayToMpint(const uint8_t *value, size_t length, uint8_t *p,
 {
    size_t n;
 
-   //Skip leading zeroes
+   //Unnecessary leading bytes with the value 0 must not be included. The value
+   //zero must be stored as a string with zero bytes of data (refer to RFC 4251,
+   //section 5)
    while(length > 0 && value[0] == 0)
    {
       value++;
       length--;
    }
 
-   //The value zero must be stored as a string with zero bytes of data (refer
-   //to RFC 4251, section 5)
-   n = 0;
+   //Check whether the most significant bit is set
+   if(length > 0 && (value[0] & 0x80) != 0)
+   {
+      n = 1;
+   }
+   else
+   {
+      n = 0;
+   }
+
+   //The value of the multiple precision integer is encoded MSB first
+   osMemmove(p + 4 + n, value, length);
 
    //If the most significant bit would be set for a positive number, the
    //number must be preceded by a zero byte
-   if((value[0] & 0x80) != 0)
+   if(n != 0)
    {
-      //The number is preceded by a zero byte
-      p[4 + n] = 0;
-
-      //Update the length of the data
-      n++;
+      p[4] = 0;
    }
-
-   //The value of the multiple precision integer is encoded MSB first.
-   //Unnecessary leading bytes with the value 0 must not be included
-   osMemcpy(p + 4 + n, value, length);
 
    //Update the length of the data
    n += length;

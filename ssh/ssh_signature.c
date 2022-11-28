@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.1.8
+ * @version 2.2.0
  **/
 
 //Switch to the appropriate trace level
@@ -114,7 +114,7 @@ error_t sshGenerateSignature(SshConnection *connection,
          if(error == ERROR_UNSUPPORTED_SIGNATURE_ALGO ||
             error == ERROR_UNKOWN_KEY)
          {
-#if (SSH_RSA_SUPPORT == ENABLED)
+#if (SSH_RSA_SIGN_SUPPORT == ENABLED)
             //RSA signature algorithm?
             if(sshCompareAlgo(signFormatId, "ssh-rsa") ||
                sshCompareAlgo(signFormatId, "rsa-sha2-256") ||
@@ -126,7 +126,7 @@ error_t sshGenerateSignature(SshConnection *connection,
             }
             else
 #endif
-#if (SSH_DSA_SUPPORT == ENABLED)
+#if (SSH_DSA_SIGN_SUPPORT == ENABLED)
             //DSA signature algorithm?
             if(sshCompareAlgo(signFormatId, "ssh-dss"))
             {
@@ -136,7 +136,7 @@ error_t sshGenerateSignature(SshConnection *connection,
             }
             else
 #endif
-#if (SSH_ECDSA_SUPPORT == ENABLED)
+#if (SSH_ECDSA_SIGN_SUPPORT == ENABLED)
             //ECDSA signature algorithm?
             if(sshCompareAlgo(signFormatId, "ecdsa-sha2-nistp256") ||
                sshCompareAlgo(signFormatId, "ecdsa-sha2-nistp384") ||
@@ -148,7 +148,7 @@ error_t sshGenerateSignature(SshConnection *connection,
             }
             else
 #endif
-#if (SSH_ED25519_SUPPORT == ENABLED)
+#if (SSH_ED25519_SIGN_SUPPORT == ENABLED)
             //Ed22519 signature algorithm?
             if(sshCompareAlgo(signFormatId, "ssh-ed25519"))
             {
@@ -158,7 +158,7 @@ error_t sshGenerateSignature(SshConnection *connection,
             }
             else
 #endif
-#if (SSH_ED448_SUPPORT == ENABLED)
+#if (SSH_ED448_SIGN_SUPPORT == ENABLED)
             //Ed448 signature algorithm?
             if(sshCompareAlgo(signFormatId, "ssh-ed448"))
             {
@@ -211,7 +211,7 @@ error_t sshGenerateRsaSignature(SshConnection *connection,
    const SshBinaryString *sessionId, const SshBinaryString *message,
    uint8_t *p, size_t *written)
 {
-#if (SSH_RSA_SUPPORT == ENABLED)
+#if (SSH_RSA_SIGN_SUPPORT == ENABLED)
    error_t error;
    size_t n;
    const HashAlgo *hashAlgo;
@@ -336,7 +336,7 @@ error_t sshGenerateDsaSignature(SshConnection *connection,
    const SshBinaryString *sessionId, const SshBinaryString *message,
    uint8_t *p, size_t *written)
 {
-#if (SSH_DSA_SUPPORT == ENABLED)
+#if (SSH_DSA_SIGN_SUPPORT == ENABLED)
    error_t error;
    size_t n;
    SshContext *context;
@@ -446,7 +446,7 @@ error_t sshGenerateEcdsaSignature(SshConnection *connection,
    const SshBinaryString *sessionId, const SshBinaryString *message,
    uint8_t *p, size_t *written)
 {
-#if (SSH_ECDSA_SUPPORT == ENABLED)
+#if (SSH_ECDSA_SIGN_SUPPORT == ENABLED)
    error_t error;
    size_t rLen;
    size_t sLen;
@@ -611,7 +611,7 @@ error_t sshGenerateEd25519Signature(SshConnection *connection,
    const SshBinaryString *sessionId, const SshBinaryString *message,
    uint8_t *p, size_t *written)
 {
-#if (SSH_ED25519_SUPPORT == ENABLED)
+#if (SSH_ED25519_SIGN_SUPPORT == ENABLED)
    error_t error;
    size_t n;
    EddsaPrivateKey eddsaPrivateKey;
@@ -710,7 +710,7 @@ error_t sshGenerateEd448Signature(SshConnection *connection,
    const SshBinaryString *sessionId, const SshBinaryString *message,
    uint8_t *p, size_t *written)
 {
-#if (SSH_ED448_SUPPORT == ENABLED)
+#if (SSH_ED448_SIGN_SUPPORT == ENABLED)
    error_t error;
    size_t n;
    EddsaPrivateKey eddsaPrivateKey;
@@ -886,7 +886,7 @@ error_t sshVerifySignature(SshConnection *connection,
    //Check status code
    if(error == ERROR_UNSUPPORTED_SIGNATURE_ALGO)
    {
-#if (SSH_RSA_SUPPORT == ENABLED)
+#if (SSH_RSA_SIGN_SUPPORT == ENABLED)
       //RSA signature algorithm?
       if(sshCompareString(&signFormatId, "ssh-rsa") ||
          sshCompareString(&signFormatId, "rsa-sha2-256") ||
@@ -898,7 +898,7 @@ error_t sshVerifySignature(SshConnection *connection,
       }
       else
 #endif
-#if (SSH_DSA_SUPPORT == ENABLED)
+#if (SSH_DSA_SIGN_SUPPORT == ENABLED)
       //DSA signature algorithm?
       if(sshCompareString(&signFormatId, "ssh-dss"))
       {
@@ -908,7 +908,7 @@ error_t sshVerifySignature(SshConnection *connection,
       }
       else
 #endif
-#if (SSH_ECDSA_SUPPORT == ENABLED)
+#if (SSH_ECDSA_SIGN_SUPPORT == ENABLED)
       //ECDSA signature algorithm?
       if(sshCompareString(&signFormatId, "ecdsa-sha2-nistp256") ||
          sshCompareString(&signFormatId, "ecdsa-sha2-nistp384") ||
@@ -920,7 +920,7 @@ error_t sshVerifySignature(SshConnection *connection,
       }
       else
 #endif
-#if (SSH_ED25519_SUPPORT == ENABLED)
+#if (SSH_ED25519_SIGN_SUPPORT == ENABLED)
       //Ed22519 signature algorithm?
       if(sshCompareString(&signFormatId, "ssh-ed25519"))
       {
@@ -930,7 +930,7 @@ error_t sshVerifySignature(SshConnection *connection,
       }
       else
 #endif
-#if (SSH_ED448_SUPPORT == ENABLED)
+#if (SSH_ED448_SIGN_SUPPORT == ENABLED)
       //Ed448 signature algorithm?
       if(sshCompareString(&signFormatId, "ssh-ed448"))
       {
@@ -966,7 +966,7 @@ error_t sshVerifyRsaSignature(const SshString *publicKeyAlgo,
    const SshBinaryString *publicKeyBlob, const SshBinaryString *sessionId,
    const SshBinaryString *message, const SshBinaryString *signatureBlob)
 {
-#if (SSH_RSA_SUPPORT == ENABLED)
+#if (SSH_RSA_SIGN_SUPPORT == ENABLED)
    error_t error;
    const HashAlgo *hashAlgo;
    HashContext hashContext;
@@ -1112,7 +1112,7 @@ error_t sshVerifyDsaSignature(const SshString *publicKeyAlgo,
    const SshBinaryString *publicKeyBlob, const SshBinaryString *sessionId,
    const SshBinaryString *message, const SshBinaryString *signatureBlob)
 {
-#if (SSH_DSA_SUPPORT == ENABLED)
+#if (SSH_DSA_SIGN_SUPPORT == ENABLED)
    error_t error;
    DsaPublicKey dsaPublicKey;
    DsaSignature dsaSignature;
@@ -1236,7 +1236,7 @@ error_t sshVerifyEcdsaSignature(const SshString *publicKeyAlgo,
    const SshBinaryString *publicKeyBlob, const SshBinaryString *sessionId,
    const SshBinaryString *message, const SshBinaryString *signatureBlob)
 {
-#if (SSH_ECDSA_SUPPORT == ENABLED)
+#if (SSH_ECDSA_SIGN_SUPPORT == ENABLED)
    error_t error;
    SshEcdsaSignature signature;
    const HashAlgo *hashAlgo;
@@ -1415,7 +1415,7 @@ error_t sshVerifyEd25519Signature(const SshString *publicKeyAlgo,
    const SshBinaryString *publicKeyBlob, const SshBinaryString *sessionId,
    const SshBinaryString *message, const SshBinaryString *signatureBlob)
 {
-#if (SSH_ED25519_SUPPORT == ENABLED)
+#if (SSH_ED25519_SIGN_SUPPORT == ENABLED)
    error_t error;
    const uint8_t *ed25519PublicKey;
    EddsaMessageChunk messageChunks[4];
@@ -1518,7 +1518,7 @@ error_t sshVerifyEd448Signature(const SshString *publicKeyAlgo,
    const SshBinaryString *publicKeyBlob, const SshBinaryString *sessionId,
    const SshBinaryString *message, const SshBinaryString *signatureBlob)
 {
-#if (SSH_ED448_SUPPORT == ENABLED)
+#if (SSH_ED448_SIGN_SUPPORT == ENABLED)
    error_t error;
    SshEddsaHostKey hostKey;
    EddsaMessageChunk messageChunks[4];
@@ -1587,7 +1587,7 @@ error_t sshVerifyEd448Signature(const SshString *publicKeyAlgo,
 error_t sshFormatEcdsaSignature(const SshEcdsaSignature *signature,
    uint8_t *p, size_t *written)
 {
-#if (SSH_ECDSA_SUPPORT == ENABLED)
+#if (SSH_ECDSA_SIGN_SUPPORT == ENABLED)
    error_t error;
    size_t rLen;
    size_t sLen;
@@ -1633,7 +1633,7 @@ error_t sshFormatEcdsaSignature(const SshEcdsaSignature *signature,
 error_t sshParseEcdsaSignature(const uint8_t *data, size_t length,
    SshEcdsaSignature *signature)
 {
-#if (SSH_ECDSA_SUPPORT == ENABLED)
+#if (SSH_ECDSA_SIGN_SUPPORT == ENABLED)
    error_t error;
 
    //Decode integer R

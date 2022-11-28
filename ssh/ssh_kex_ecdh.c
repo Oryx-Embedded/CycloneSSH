@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.1.8
+ * @version 2.2.0
  **/
 
 //Switch to the appropriate trace level
@@ -45,7 +45,7 @@
 #include "debug.h"
 
 //Check SSH stack configuration
-#if (SSH_SUPPORT == ENABLED && SSH_ECDH_SUPPORT == ENABLED)
+#if (SSH_SUPPORT == ENABLED && SSH_ECDH_KEX_SUPPORT == ENABLED)
 
 
 /**
@@ -56,6 +56,7 @@
 
 error_t sshSendKexEcdhInit(SshConnection *connection)
 {
+#if (SSH_CLIENT_SUPPORT == ENABLED)
    error_t error;
    size_t length;
    uint8_t *message;
@@ -64,8 +65,8 @@ error_t sshSendKexEcdhInit(SshConnection *connection)
    message = connection->buffer + SSH_PACKET_HEADER_SIZE;
 
    //Load ECDH domain parameters
-   error = sshLoadKexEcdhParams(connection->kexAlgo,
-      &connection->ecdhContext.params);
+   error = sshLoadKexEcdhParams(&connection->ecdhContext.params,
+      connection->kexAlgo);
 
    //Check status code
    if(!error)
@@ -101,6 +102,10 @@ error_t sshSendKexEcdhInit(SshConnection *connection)
 
    //Return status code
    return error;
+#else
+   //Client operation mode is not implemented
+   return ERROR_NOT_IMPLEMENTED;
+#endif
 }
 
 
@@ -112,6 +117,7 @@ error_t sshSendKexEcdhInit(SshConnection *connection)
 
 error_t sshSendKexEcdhReply(SshConnection *connection)
 {
+#if (SSH_SERVER_SUPPORT == ENABLED)
    error_t error;
    size_t length;
    uint8_t *message;
@@ -149,6 +155,10 @@ error_t sshSendKexEcdhReply(SshConnection *connection)
 
    //Return status code
    return error;
+#else
+   //Server operation mode is not implemented
+   return ERROR_NOT_IMPLEMENTED;
+#endif
 }
 
 
@@ -177,7 +187,7 @@ error_t sshFormatKexEcdhInit(SshConnection *connection, uint8_t *p,
    p += sizeof(uint8_t);
    *length += sizeof(uint8_t);
 
-   //Format client's ephemeral public key
+   //Format client's ephemeral public key (Q_C)
    error = ecExport(&connection->ecdhContext.params,
       &connection->ecdhContext.qa.q, p + sizeof(uint32_t), &n);
    //Any error to report?
@@ -224,7 +234,7 @@ error_t sshFormatKexEcdhReply(SshConnection *connection, uint8_t *p,
    p += sizeof(uint8_t);
    *length += sizeof(uint8_t);
 
-   //Format K_S (server's public host key)
+   //Format server's public host key (K_S)
    error = sshFormatHostKey(connection, p + sizeof(uint32_t), &n);
    //Any error to report?
    if(error)
@@ -237,7 +247,7 @@ error_t sshFormatKexEcdhReply(SshConnection *connection, uint8_t *p,
    p += sizeof(uint32_t) + n;
    *length += sizeof(uint32_t) + n;
 
-   //Format server's ephemeral public key
+   //Format server's ephemeral public key (Q_S)
    error = ecExport(&connection->ecdhContext.params,
       &connection->ecdhContext.qa.q, p + sizeof(uint32_t), &n);
    //Any error to report?
@@ -264,7 +274,8 @@ error_t sshFormatKexEcdhReply(SshConnection *connection, uint8_t *p,
       return error;
 
    //Update exchange hash H with K (shared secret)
-   error = sshUpdateExchangeHash(connection, connection->k, connection->kLen);
+   error = sshUpdateExchangeHashRaw(connection, connection->k,
+      connection->kLen);
    //Any error to report?
    if(error)
       return error;
@@ -354,8 +365,8 @@ error_t sshParseKexEcdhInit(SshConnection *connection, const uint8_t *message,
       return error;
 
    //Load ECDH domain parameters
-   error = sshLoadKexEcdhParams(connection->kexAlgo,
-      &connection->ecdhContext.params);
+   error = sshLoadKexEcdhParams(&connection->ecdhContext.params,
+      connection->kexAlgo);
    //Any error to report?
    if(error)
       return error;
@@ -437,7 +448,7 @@ error_t sshParseKexEcdhReply(SshConnection *connection, const uint8_t *message,
    p += sizeof(uint32_t) + hostKey.length;
    length -= sizeof(uint32_t) + hostKey.length;
 
-   //Decode server's ephemeral public key
+   //Decode server's ephemeral public key (Q_S)
    error = sshParseBinaryString(p, length, &publicKey);
    //Any error to report?
    if(error)
@@ -526,7 +537,8 @@ error_t sshParseKexEcdhReply(SshConnection *connection, const uint8_t *message,
       return error;
 
    //Update exchange hash H with K (shared secret)
-   error = sshUpdateExchangeHash(connection, connection->k, connection->kLen);
+   error = sshUpdateExchangeHashRaw(connection, connection->k,
+      connection->kLen);
    //Any error to report?
    if(error)
       return error;
@@ -614,12 +626,12 @@ error_t sshParseKexEcdhMessage(SshConnection *connection, uint8_t type,
 
 /**
  * @brief Load the EC parameters that match specified key exchange algorithm
+ * @param[in,out] params Elliptic curve domain parameters
  * @param[in] kexAlgo Key exchange algorithm name
- * @param[out] params Elliptic curve domain parameters
  * @return Error code
  **/
 
-error_t sshLoadKexEcdhParams(const char_t *kexAlgo, EcDomainParameters *params)
+error_t sshLoadKexEcdhParams(EcDomainParameters *params, const char_t *kexAlgo)
 {
    error_t error;
    const EcCurveInfo *curveInfo;
@@ -641,7 +653,7 @@ error_t sshLoadKexEcdhParams(const char_t *kexAlgo, EcDomainParameters *params)
    else
 #endif
 #if (SSH_NISTP521_SUPPORT == ENABLED)
-   //NIST P-512 elliptic curve?
+   //NIST P-521 elliptic curve?
    if(sshCompareAlgo(kexAlgo, "ecdh-sha2-nistp521"))
    {
       curveInfo = SECP521R1_CURVE;
@@ -760,32 +772,15 @@ error_t sshComputeEcdhSharedSecret(SshConnection *connection)
    {
       //Compute the shared secret K
       error = ecdhComputeSharedSecret(&connection->ecdhContext, connection->k,
-         SSH_MAX_SHARED_SECRET_LEN, &connection->kLen);
+         SSH_MAX_SHARED_SECRET_LEN - SSH_MAX_MPINT_OVERHEAD, &connection->kLen);
    }
 
    //Check status code
    if(!error)
    {
-      //Unnecessary leading bytes with the value 0 must not be included
-      while(connection->kLen > 0 && connection->k[0] == 0)
-      {
-         //Adjust the length of the shared secret
-         connection->kLen--;
-         //Strip leading byte
-         osMemmove(connection->k, connection->k + 1, connection->kLen);
-      }
-
-      //If the most significant bit would be set for a positive number, the
-      //number must be preceded by a zero byte
-      if((connection->k[0] & 0x80) != 0)
-      {
-         //Make room for the leading byte
-         osMemmove(connection->k + 1, connection->k, connection->kLen);
-         //The number is preceded by a zero byte
-         connection->k[0] = 0;
-         //Adjust the length of the shared secret
-         connection->kLen++;
-      }
+      //Convert the shared secret K to mpint representation
+      error = sshConvertArrayToMpint(connection->k, connection->kLen,
+         connection->k, &connection->kLen);
    }
 
    //Return status code

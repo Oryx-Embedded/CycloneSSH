@@ -1,6 +1,6 @@
 /**
- * @file scp_server_file.h
- * @brief File operations
+ * @file ssh_kex_hbr.h
+ * @brief Post-quantum hybrid key exchange
  *
  * @section License
  *
@@ -28,25 +28,43 @@
  * @version 2.2.0
  **/
 
-#ifndef _SCP_SERVER_FILE_H
-#define _SCP_SERVER_FILE_H
+#ifndef _SSH_KEX_HBR_H
+#define _SSH_KEX_HBR_H
 
 //Dependencies
-#include "scp/scp_server.h"
+#include "ssh/ssh.h"
 
 //C++ guard
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-//SCP server related functions
-error_t scpServerOpenFileForWriting(ScpServerSession *session,
-   const char_t *filename, uint32_t mode, uint64_t size);
+//SSH related functions
+error_t sshSendHbrInit(SshConnection *connection);
+error_t sshSendHbrReply(SshConnection *connection);
 
-error_t scpServerOpenFileForReading(ScpServerSession *session);
+error_t sshFormatHbrReply(SshConnection *connection, uint8_t *p,
+   size_t *length);
 
-error_t scpServerWriteData(ScpServerSession *session);
-error_t scpServerReadData(ScpServerSession *session);
+error_t sshFormatHbrInit(SshConnection *connection, uint8_t *p,
+   size_t *length);
+
+error_t sshParseHbrInit(SshConnection *connection, const uint8_t *message,
+   size_t length);
+
+error_t sshParseHbrReply(SshConnection *connection, const uint8_t *message,
+   size_t length);
+
+error_t sshParseHbrMessage(SshConnection *connection, uint8_t type,
+   const uint8_t *message, size_t length);
+
+error_t sshSelectKemAlgo(SshConnection *connection);
+
+error_t sshLoadKexClassicalEcdhParams(const char_t *kexAlgo, EcDomainParameters *params);
+error_t sshGenerateClassicalEcdhKeyPair(SshConnection *connection);
+error_t sshComputeClassicalEcdhSharedSecret(SshConnection *connection);
+
+error_t sshDigestClientInit(SshConnection *connection);
 
 //C++ guard
 #ifdef __cplusplus

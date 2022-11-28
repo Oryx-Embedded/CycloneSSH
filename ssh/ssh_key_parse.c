@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.1.8
+ * @version 2.2.0
  **/
 
 //Switch to the appropriate trace level
@@ -61,7 +61,7 @@ error_t sshParseHostKey(const uint8_t *data, size_t length,
    //Check status code
    if(!error)
    {
-#if (SSH_RSA_SUPPORT == ENABLED)
+#if (SSH_RSA_SIGN_SUPPORT == ENABLED)
       //RSA public key?
       if(sshCompareString(keyFormatId, "ssh-rsa"))
       {
@@ -72,7 +72,7 @@ error_t sshParseHostKey(const uint8_t *data, size_t length,
       }
       else
 #endif
-#if (SSH_DSA_SUPPORT == ENABLED)
+#if (SSH_DSA_SIGN_SUPPORT == ENABLED)
       //DSA public key?
       if(sshCompareString(keyFormatId, "ssh-dss"))
       {
@@ -83,7 +83,7 @@ error_t sshParseHostKey(const uint8_t *data, size_t length,
       }
       else
 #endif
-#if (SSH_ECDSA_SUPPORT == ENABLED)
+#if (SSH_ECDSA_SIGN_SUPPORT == ENABLED)
       //ECDSA public key?
       if(sshCompareString(keyFormatId, "ecdsa-sha2-nistp256") ||
          sshCompareString(keyFormatId, "ecdsa-sha2-nistp384") ||
@@ -96,7 +96,7 @@ error_t sshParseHostKey(const uint8_t *data, size_t length,
       }
       else
 #endif
-#if (SSH_ED25519_SUPPORT == ENABLED)
+#if (SSH_ED25519_SIGN_SUPPORT == ENABLED)
       //Ed22519 public key?
       if(sshCompareString(keyFormatId, "ssh-ed25519"))
       {
@@ -107,7 +107,7 @@ error_t sshParseHostKey(const uint8_t *data, size_t length,
       }
       else
 #endif
-#if (SSH_ED448_SUPPORT == ENABLED)
+#if (SSH_ED448_SIGN_SUPPORT == ENABLED)
       //Ed448 public key?
       if(sshCompareString(keyFormatId, "ssh-ed448"))
       {
@@ -141,7 +141,7 @@ error_t sshParseHostKey(const uint8_t *data, size_t length,
 error_t sshParseRsaHostKey(const uint8_t *data, size_t length,
    SshRsaHostKey *hostKey)
 {
-#if (SSH_RSA_SUPPORT == ENABLED)
+#if (SSH_RSA_SIGN_SUPPORT == ENABLED)
    error_t error;
 
    //Decode key format identifier
@@ -202,7 +202,7 @@ error_t sshParseRsaHostKey(const uint8_t *data, size_t length,
 error_t sshParseDsaHostKey(const uint8_t *data, size_t length,
    SshDsaHostKey *hostKey)
 {
-#if (SSH_DSA_SUPPORT == ENABLED)
+#if (SSH_DSA_SIGN_SUPPORT == ENABLED)
    error_t error;
 
    //Decode key format identifier
@@ -283,7 +283,7 @@ error_t sshParseDsaHostKey(const uint8_t *data, size_t length,
 error_t sshParseEcdsaHostKey(const uint8_t *data, size_t length,
    SshEcdsaHostKey *hostKey)
 {
-#if (SSH_ECDSA_SUPPORT == ENABLED)
+#if (SSH_ECDSA_SIGN_SUPPORT == ENABLED)
    error_t error;
 
    //Decode key format identifier
@@ -348,7 +348,7 @@ error_t sshParseEcdsaHostKey(const uint8_t *data, size_t length,
 error_t sshParseEd25519HostKey(const uint8_t *data, size_t length,
    SshEddsaHostKey *hostKey)
 {
-#if (SSH_ED25519_SUPPORT == ENABLED)
+#if (SSH_ED25519_SIGN_SUPPORT == ENABLED)
    error_t error;
 
    //Decode key format identifier
@@ -403,7 +403,7 @@ error_t sshParseEd25519HostKey(const uint8_t *data, size_t length,
 error_t sshParseEd448HostKey(const uint8_t *data, size_t length,
    SshEddsaHostKey *hostKey)
 {
-#if (SSH_ED448_SUPPORT == ENABLED)
+#if (SSH_ED448_SIGN_SUPPORT == ENABLED)
    error_t error;
 
    //Decode key format identifier
@@ -569,7 +569,7 @@ error_t sshParseOpenSshPrivateKeyHeader(const uint8_t *data, size_t length,
 error_t sshParseOpenSshRsaPrivateKey(const uint8_t *data, size_t length,
    SshRsaPrivateKey *privateKey)
 {
-#if (SSH_RSA_SUPPORT == ENABLED)
+#if (SSH_RSA_SIGN_SUPPORT == ENABLED)
    error_t error;
 
    //Malformed private key blob?
@@ -694,7 +694,7 @@ error_t sshParseOpenSshRsaPrivateKey(const uint8_t *data, size_t length,
 error_t sshParseOpenSshDsaPrivateKey(const uint8_t *data, size_t length,
    SshDsaPrivateKey *privateKey)
 {
-#if (SSH_DSA_SUPPORT == ENABLED)
+#if (SSH_DSA_SIGN_SUPPORT == ENABLED)
    error_t error;
 
    //Malformed private key blob?
@@ -809,7 +809,7 @@ error_t sshParseOpenSshDsaPrivateKey(const uint8_t *data, size_t length,
 error_t sshParseOpenSshEcdsaPrivateKey(const uint8_t *data, size_t length,
    SshEcdsaPrivateKey *privateKey)
 {
-#if (SSH_ECDSA_SUPPORT == ENABLED)
+#if (SSH_ECDSA_SIGN_SUPPORT == ENABLED)
    error_t error;
 
    //Malformed private key blob?
@@ -908,7 +908,7 @@ error_t sshParseOpenSshEcdsaPrivateKey(const uint8_t *data, size_t length,
 error_t sshParseOpenSshEd25519PrivateKey(const uint8_t *data, size_t length,
    SshEddsaPrivateKey *privateKey)
 {
-#if (SSH_ED25519_SUPPORT == ENABLED)
+#if (SSH_ED25519_SIGN_SUPPORT == ENABLED)
    error_t error;
 
    //Malformed private key blob?
@@ -1001,7 +1001,7 @@ error_t sshParseOpenSshEd25519PrivateKey(const uint8_t *data, size_t length,
 error_t sshParseOpenSshEd448PrivateKey(const uint8_t *data, size_t length,
    SshEddsaPrivateKey *privateKey)
 {
-#if (SSH_ED448_SUPPORT == ENABLED)
+#if (SSH_ED448_SIGN_SUPPORT == ENABLED)
    error_t error;
 
    //Malformed private key blob?

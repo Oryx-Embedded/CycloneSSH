@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.1.8
+ * @version 2.2.0
  **/
 
 //Switch to the appropriate trace level
@@ -50,25 +50,25 @@
 
 static const SshKeyType sshKeyTypes[] =
 {
-#if (SSH_RSA_SUPPORT == ENABLED)
+#if (SSH_RSA_SIGN_SUPPORT == ENABLED)
    {"ssh-rsa", X509_KEY_TYPE_RSA, NULL},
 #endif
-#if (SSH_DSA_SUPPORT == ENABLED)
+#if (SSH_DSA_SIGN_SUPPORT == ENABLED)
    {"ssh-dss", X509_KEY_TYPE_DSA, NULL},
 #endif
-#if (SSH_ECDSA_SUPPORT == ENABLED && SSH_NISTP256_SUPPORT == ENABLED)
+#if (SSH_ECDSA_SIGN_SUPPORT == ENABLED && SSH_NISTP256_SUPPORT == ENABLED)
    {"ecdsa-sha2-nistp256", X509_KEY_TYPE_EC, "secp256r1"},
 #endif
-#if (SSH_ECDSA_SUPPORT == ENABLED && SSH_NISTP384_SUPPORT == ENABLED)
+#if (SSH_ECDSA_SIGN_SUPPORT == ENABLED && SSH_NISTP384_SUPPORT == ENABLED)
    {"ecdsa-sha2-nistp384", X509_KEY_TYPE_EC, "secp384r1"},
 #endif
-#if (SSH_ECDSA_SUPPORT == ENABLED && SSH_NISTP521_SUPPORT == ENABLED)
+#if (SSH_ECDSA_SIGN_SUPPORT == ENABLED && SSH_NISTP521_SUPPORT == ENABLED)
    {"ecdsa-sha2-nistp521", X509_KEY_TYPE_EC, "secp521r1"},
 #endif
-#if (SSH_ED25519_SUPPORT == ENABLED)
+#if (SSH_ED25519_SIGN_SUPPORT == ENABLED)
    {"ssh-ed25519", X509_KEY_TYPE_ED25519, NULL},
 #endif
-#if (SSH_ED448_SUPPORT == ENABLED)
+#if (SSH_ED448_SIGN_SUPPORT == ENABLED)
    {"ssh-ed448", X509_KEY_TYPE_ED448, NULL},
 #endif
 };
@@ -85,7 +85,7 @@ static const SshKeyType sshKeyTypes[] =
 error_t sshImportRsaPublicKey(const char_t *input, size_t length,
    RsaPublicKey *publicKey)
 {
-#if (SSH_RSA_SUPPORT == ENABLED)
+#if (SSH_RSA_SIGN_SUPPORT == ENABLED)
    error_t error;
    size_t n;
    uint8_t *buffer;
@@ -168,7 +168,7 @@ error_t sshImportRsaPublicKey(const char_t *input, size_t length,
 error_t sshImportDsaPublicKey(const char_t *input, size_t length,
    DsaPublicKey *publicKey)
 {
-#if (SSH_DSA_SUPPORT == ENABLED)
+#if (SSH_DSA_SIGN_SUPPORT == ENABLED)
    error_t error;
    size_t n;
    uint8_t *buffer;
@@ -252,7 +252,7 @@ error_t sshImportDsaPublicKey(const char_t *input, size_t length,
 error_t sshImportEcdsaPublicKey(const char_t *input, size_t length,
    EcDomainParameters *params, EcPublicKey *publicKey)
 {
-#if (SSH_ECDSA_SUPPORT == ENABLED)
+#if (SSH_ECDSA_SIGN_SUPPORT == ENABLED)
    error_t error;
    size_t n;
    uint8_t *buffer;
@@ -343,7 +343,7 @@ error_t sshImportEcdsaPublicKey(const char_t *input, size_t length,
 error_t sshImportEd25519PublicKey(const char_t *input, size_t length,
    EddsaPublicKey *publicKey)
 {
-#if (SSH_ED25519_SUPPORT == ENABLED)
+#if (SSH_ED25519_SIGN_SUPPORT == ENABLED)
    error_t error;
    size_t n;
    uint8_t *buffer;
@@ -425,7 +425,7 @@ error_t sshImportEd25519PublicKey(const char_t *input, size_t length,
 error_t sshImportEd448PublicKey(const char_t *input, size_t length,
    EddsaPublicKey *publicKey)
 {
-#if (SSH_ED448_SUPPORT == ENABLED)
+#if (SSH_ED448_SIGN_SUPPORT == ENABLED)
    error_t error;
    size_t n;
    uint8_t *buffer;
@@ -508,7 +508,7 @@ error_t sshImportEd448PublicKey(const char_t *input, size_t length,
 error_t sshImportRsaPrivateKey(const char_t *input, size_t length,
    RsaPrivateKey *privateKey)
 {
-#if (SSH_RSA_SUPPORT == ENABLED)
+#if (SSH_RSA_SIGN_SUPPORT == ENABLED)
    error_t error;
    size_t n;
    uint8_t *buffer;
@@ -675,7 +675,7 @@ error_t sshImportRsaPrivateKey(const char_t *input, size_t length,
 error_t sshImportDsaPrivateKey(const char_t *input, size_t length,
    DsaPrivateKey *privateKey)
 {
-#if (SSH_DSA_SUPPORT == ENABLED)
+#if (SSH_DSA_SIGN_SUPPORT == ENABLED)
    error_t error;
    size_t n;
    uint8_t *buffer;
@@ -792,7 +792,7 @@ error_t sshImportDsaPrivateKey(const char_t *input, size_t length,
 error_t sshImportEcdsaPrivateKey(const char_t *input, size_t length,
    EcPrivateKey *privateKey)
 {
-#if (SSH_ECDSA_SUPPORT == ENABLED)
+#if (SSH_ECDSA_SIGN_SUPPORT == ENABLED)
    error_t error;
    size_t n;
    uint8_t *buffer;
@@ -885,7 +885,7 @@ error_t sshImportEcdsaPrivateKey(const char_t *input, size_t length,
 error_t sshImportEd25519PrivateKey(const char_t *input, size_t length,
    EddsaPrivateKey *privateKey)
 {
-#if (SSH_ED25519_SUPPORT == ENABLED)
+#if (SSH_ED25519_SIGN_SUPPORT == ENABLED)
    error_t error;
    size_t n;
    uint8_t *buffer;
@@ -978,7 +978,7 @@ error_t sshImportEd25519PrivateKey(const char_t *input, size_t length,
 error_t sshImportEd448PrivateKey(const char_t *input, size_t length,
    EddsaPrivateKey *privateKey)
 {
-#if (SSH_ED448_SUPPORT == ENABLED)
+#if (SSH_ED448_SIGN_SUPPORT == ENABLED)
    error_t error;
    size_t n;
    uint8_t *buffer;
@@ -1070,7 +1070,7 @@ error_t sshImportEd448PrivateKey(const char_t *input, size_t length,
 error_t sshImportRsaHostKey(const SshRsaHostKey *hostKey,
    RsaPublicKey *publicKey)
 {
-#if (SSH_RSA_SUPPORT == ENABLED)
+#if (SSH_RSA_SIGN_SUPPORT == ENABLED)
    error_t error;
    uint_t k;
 
@@ -1114,7 +1114,7 @@ error_t sshImportRsaHostKey(const SshRsaHostKey *hostKey,
 error_t sshImportDsaHostKey(const SshDsaHostKey *hostKey,
    DsaPublicKey *publicKey)
 {
-#if (SSH_DSA_SUPPORT == ENABLED)
+#if (SSH_DSA_SIGN_SUPPORT == ENABLED)
    error_t error;
    size_t k;
 
@@ -1173,7 +1173,7 @@ error_t sshImportDsaHostKey(const SshDsaHostKey *hostKey,
 error_t sshImportEcdsaHostKey(const SshEcdsaHostKey *hostKey,
    EcDomainParameters *params, EcPublicKey *publicKey)
 {
-#if (SSH_ECDSA_SUPPORT == ENABLED)
+#if (SSH_ECDSA_SIGN_SUPPORT == ENABLED)
    error_t error;
    const EcCurveInfo *curveInfo;
 
@@ -1220,7 +1220,7 @@ error_t sshImportEcdsaHostKey(const SshEcdsaHostKey *hostKey,
 error_t sshImportEd25519HostKey(const SshEddsaHostKey *hostKey,
    EddsaPublicKey *publicKey)
 {
-#if (SSH_ED25519_SUPPORT == ENABLED)
+#if (SSH_ED25519_SIGN_SUPPORT == ENABLED)
    error_t error;
 
    //Import Ed25519 public key
@@ -1246,7 +1246,7 @@ error_t sshImportEd25519HostKey(const SshEddsaHostKey *hostKey,
 error_t sshImportEd448HostKey(const SshEddsaHostKey *hostKey,
    EddsaPublicKey *publicKey)
 {
-#if (SSH_ED448_SUPPORT == ENABLED)
+#if (SSH_ED448_SIGN_SUPPORT == ENABLED)
    error_t error;
 
    //Import Ed448 public key

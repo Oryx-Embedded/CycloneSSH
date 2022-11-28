@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.1.8
+ * @version 2.2.0
  **/
 
 #ifndef _SSH_H
@@ -39,7 +39,7 @@
 #include "core/net.h"
 #include "core/crypto.h"
 #include "cipher/cipher_algorithms.h"
-#include "cipher_mode/cipher_modes.h"
+#include "cipher_modes/cipher_modes.h"
 #include "hash/hash_algorithms.h"
 #include "mac/mac_algorithms.h"
 #include "aead/aead_algorithms.h"
@@ -74,13 +74,13 @@
 #endif
 
 //Version string
-#define CYCLONE_SSH_VERSION_STRING "2.1.8"
+#define CYCLONE_SSH_VERSION_STRING "2.2.0"
 //Major version
 #define CYCLONE_SSH_MAJOR_VERSION 2
 //Minor version
-#define CYCLONE_SSH_MINOR_VERSION 1
+#define CYCLONE_SSH_MINOR_VERSION 2
 //Revision number
-#define CYCLONE_SSH_REV_NUMBER 8
+#define CYCLONE_SSH_REV_NUMBER 0
 
 //SSH support
 #ifndef SSH_SUPPORT
@@ -474,6 +474,13 @@
    #error SSH_SHA1_96_SUPPORT parameter is not valid
 #endif
 
+//SHA-224 hash support (weak)
+#ifndef SSH_SHA224_SUPPORT
+   #define SSH_SHA224_SUPPORT DISABLED
+#elif (SSH_SHA224_SUPPORT != ENABLED && SSH_SHA224_SUPPORT != DISABLED)
+   #error SSH_SHA224_SUPPORT parameter is not valid
+#endif
+
 //SHA-256 hash support
 #ifndef SSH_SHA256_SUPPORT
    #define SSH_SHA256_SUPPORT ENABLED
@@ -495,53 +502,74 @@
    #error SSH_SHA512_SUPPORT parameter is not valid
 #endif
 
+//RSA key exchange support
+#ifndef SSH_RSA_KEX_SUPPORT
+   #define SSH_RSA_KEX_SUPPORT DISABLED
+#elif (SSH_RSA_KEX_SUPPORT != ENABLED && SSH_RSA_KEX_SUPPORT != DISABLED)
+   #error SSH_RSA_KEX_SUPPORT parameter is not valid
+#endif
+
 //Diffie-Hellman key exchange support
-#ifndef SSH_DH_SUPPORT
-   #define SSH_DH_SUPPORT ENABLED
-#elif (SSH_DH_SUPPORT != ENABLED && SSH_DH_SUPPORT != DISABLED)
-   #error SSH_DH_SUPPORT parameter is not valid
+#ifndef SSH_DH_KEX_SUPPORT
+   #define SSH_DH_KEX_SUPPORT ENABLED
+#elif (SSH_DH_KEX_SUPPORT != ENABLED && SSH_DH_KEX_SUPPORT != DISABLED)
+   #error SSH_DH_KEX_SUPPORT parameter is not valid
+#endif
+
+//DH GEX key exchange support
+#ifndef SSH_DH_GEX_KEX_SUPPORT
+   #define SSH_DH_GEX_KEX_SUPPORT DISABLED
+#elif (SSH_DH_GEX_KEX_SUPPORT != ENABLED && SSH_DH_GEX_KEX_SUPPORT != DISABLED)
+   #error SSH_DH_GEX_KEX_SUPPORT parameter is not valid
 #endif
 
 //ECDH key exchange support
-#ifndef SSH_ECDH_SUPPORT
-   #define SSH_ECDH_SUPPORT ENABLED
-#elif (SSH_ECDH_SUPPORT != ENABLED && SSH_ECDH_SUPPORT != DISABLED)
-   #error SSH_ECDH_SUPPORT parameter is not valid
+#ifndef SSH_ECDH_KEX_SUPPORT
+   #define SSH_ECDH_KEX_SUPPORT ENABLED
+#elif (SSH_ECDH_KEX_SUPPORT != ENABLED && SSH_ECDH_KEX_SUPPORT != DISABLED)
+   #error SSH_ECDH_KEX_SUPPORT parameter is not valid
+#endif
+
+//Post-quantum hybrid key exchange support
+#ifndef SSH_HBR_KEX_SUPPORT
+   #define SSH_HBR_KEX_SUPPORT DISABLED
+#elif (SSH_HBR_KEX_SUPPORT != ENABLED && SSH_HBR_KEX_SUPPORT != DISABLED)
+   #error SSH_HBR_KEX_SUPPORT parameter is not valid
 #endif
 
 //RSA signature support
-#ifndef SSH_RSA_SUPPORT
-   #define SSH_RSA_SUPPORT ENABLED
-#elif (SSH_RSA_SUPPORT != ENABLED && SSH_RSA_SUPPORT != DISABLED)
-   #error SSH_RSA_SUPPORT parameter is not valid
+#ifndef SSH_RSA_SIGN_SUPPORT
+   #define SSH_RSA_SIGN_SUPPORT ENABLED
+#elif (SSH_RSA_SIGN_SUPPORT != ENABLED && SSH_RSA_SIGN_SUPPORT != DISABLED)
+   #error SSH_RSA_SIGN_SUPPORT parameter is not valid
 #endif
 
 //DSA signature support
-#ifndef SSH_DSA_SUPPORT
-   #define SSH_DSA_SUPPORT ENABLED
-#elif (SSH_DSA_SUPPORT != ENABLED && SSH_DSA_SUPPORT != DISABLED)
-   #error SSH_DSA_SUPPORT parameter is not valid
+#ifndef SSH_DSA_SIGN_SUPPORT
+   #define SSH_DSA_SIGN_SUPPORT ENABLED
+#elif (SSH_DSA_SIGN_SUPPORT != ENABLED && SSH_DSA_SIGN_SUPPORT != DISABLED)
+   #error SSH_DSA_SIGN_SUPPORT parameter is not valid
 #endif
 
 //ECDSA signature support
-#ifndef SSH_ECDSA_SUPPORT
-   #define SSH_ECDSA_SUPPORT ENABLED
-#elif (SSH_ECDSA_SUPPORT != ENABLED && SSH_ECDSA_SUPPORT != DISABLED)
-   #error SSH_ECDSA_SUPPORT parameter is not valid
+#ifndef SSH_ECDSA_SIGN_SUPPORT
+   #define SSH_ECDSA_SIGN_SUPPORT ENABLED
+#elif (SSH_ECDSA_SIGN_SUPPORT != ENABLED && SSH_ECDSA_SIGN_SUPPORT != DISABLED)
+   #error SSH_ECDSA_SIGN_SUPPORT parameter is not valid
 #endif
 
 //Ed25519 signature support
-#ifndef SSH_ED25519_SUPPORT
-   #define SSH_ED25519_SUPPORT ENABLED
-#elif (SSH_ED25519_SUPPORT != ENABLED && SSH_ED25519_SUPPORT != DISABLED)
-   #error SSH_ED25519_SUPPORT parameter is not valid
+#ifndef SSH_ED25519_SIGN_SUPPORT
+   #define SSH_ED25519_SIGN_SUPPORT ENABLED
+#elif (SSH_ED25519_SIGN_SUPPORT != ENABLED && SSH_ED25519_SIGN_SUPPORT != DISABLED)
+   #error SSH_ED25519_SIGN_SUPPORT parameter is not valid
 #endif
 
 //Ed448 signature support
-#ifndef SSH_ED448_SUPPORT
-   #define SSH_ED448_SUPPORT DISABLED
-#elif (SSH_ED448_SUPPORT != ENABLED && SSH_ED448_SUPPORT != DISABLED)
-   #error SSH_ED448_SUPPORT parameter is not valid
+#ifndef SSH_ED448_SIGN_SUPPORT
+   #define SSH_ED448_SIGN_SUPPORT DISABLED
+#elif (SSH_ED448_SIGN_SUPPORT != ENABLED && SSH_ED448_SIGN_SUPPORT != DISABLED)
+   #error SSH_ED448_SIGN_SUPPORT parameter is not valid
 #endif
 
 //NIST P-256 elliptic curve support
@@ -579,6 +607,27 @@
    #error SSH_CURVE448_SUPPORT parameter is not valid
 #endif
 
+//Streamlined NTRU Prime support
+#ifndef SSH_SNTRUP761_SUPPORT
+   #define SSH_SNTRUP761_SUPPORT DISABLED
+#elif (SSH_SNTRUP761_SUPPORT != ENABLED && SSH_SNTRUP761_SUPPORT != DISABLED)
+   #error SSH_SNTRUP761_SUPPORT parameter is not valid
+#endif
+
+//Maximum number of transient RSA keys that can be loaded
+#ifndef SSH_MAX_RSA_KEYS
+   #define SSH_MAX_RSA_KEYS 2
+#elif (SSH_MAX_RSA_KEYS < 1)
+   #error SSH_MAX_RSA_KEYS parameter is not valid
+#endif
+
+//Maximum number of Diffie-Hellman groups that can be loaded
+#ifndef SSH_MAX_DH_GEX_GROUPS
+   #define SSH_MAX_DH_GEX_GROUPS 2
+#elif (SSH_MAX_DH_GEX_GROUPS < 1)
+   #error SSH_MAX_DH_GEX_GROUPS parameter is not valid
+#endif
+
 //Minimum acceptable size for Diffie-Hellman prime modulus
 #ifndef SSH_MIN_DH_MODULUS_SIZE
    #define SSH_MIN_DH_MODULUS_SIZE 1024
@@ -586,10 +635,17 @@
    #error SSH_MIN_DH_MODULUS_SIZE parameter is not valid
 #endif
 
+//Preferred size for Diffie-Hellman prime modulus
+#ifndef SSH_PREFERRED_DH_MODULUS_SIZE
+   #define SSH_PREFERRED_DH_MODULUS_SIZE 2048
+#elif (SSH_PREFERRED_DH_MODULUS_SIZE < SSH_MIN_DH_MODULUS_SIZE)
+   #error SSH_PREFERRED_DH_MODULUS_SIZE parameter is not valid
+#endif
+
 //Maximum acceptable size for Diffie-Hellman prime modulus
 #ifndef SSH_MAX_DH_MODULUS_SIZE
-   #define SSH_MAX_DH_MODULUS_SIZE 2048
-#elif (SSH_MAX_DH_MODULUS_SIZE < SSH_MIN_DH_MODULUS_SIZE)
+   #define SSH_MAX_DH_MODULUS_SIZE 3072
+#elif (SSH_MAX_DH_MODULUS_SIZE < SSH_PREFERRED_DH_MODULUS_SIZE)
    #error SSH_MAX_DH_MODULUS_SIZE parameter is not valid
 #endif
 
@@ -701,29 +757,67 @@
    #define SSH_MAX_HASH_DIGEST_SIZE MD5_DIGEST_SIZE
 #endif
 
-//Maximum shared secret length
-#if (SSH_DH_SUPPORT == ENABLED)
-   #define SSH_MAX_SHARED_SECRET_LEN ((SSH_MAX_DH_MODULUS_SIZE + 7) / 8)
-#elif (SSH_ECDH_SUPPORT == ENABLED && SSH_NISTP521_SUPPORT == ENABLED)
-   #define SSH_MAX_SHARED_SECRET_LEN 66
-#elif (SSH_ECDH_SUPPORT == ENABLED && SSH_CURVE448_SUPPORT == ENABLED)
-   #define SSH_MAX_SHARED_SECRET_LEN 56
-#elif (SSH_ECDH_SUPPORT == ENABLED && SSH_NISTP384_SUPPORT == ENABLED)
-   #define SSH_MAX_SHARED_SECRET_LEN 48
+//Maximum shared secret length (RSA key exchange)
+#if (SSH_RSA_KEX_SUPPORT == ENABLED)
+   #define SSH_MAX_RSA_SHARED_SECRET_LEN ((SSH_MAX_RSA_MODULUS_SIZE + 47) / 8)
 #else
-   #define SSH_MAX_SHARED_SECRET_LEN 32
+   #define SSH_MAX_RSA_SHARED_SECRET_LEN 0
 #endif
 
-//Data overhead caused by packet encryption
-#define SSH_MAX_PACKET_OVERHEAD 128
-//Size of buffer used for input/output operations
-#define SSH_BUFFER_SIZE (SSH_MAX_PACKET_SIZE + SSH_MAX_PACKET_OVERHEAD)
+//Maximum shared secret length (Diffie-Hellman key exchange)
+#if (SSH_DH_KEX_SUPPORT == ENABLED || SSH_DH_GEX_KEX_SUPPORT == ENABLED)
+   #define SSH_MAX_DH_SHARED_SECRET_LEN ((SSH_MAX_DH_MODULUS_SIZE + 47) / 8)
+#else
+   #define SSH_MAX_DH_SHARED_SECRET_LEN 0
+#endif
+
+//Maximum shared secret length (ECDH key exchange)
+#if (SSH_ECDH_KEX_SUPPORT == ENABLED && SSH_NISTP521_SUPPORT == ENABLED)
+   #define SSH_MAX_ECDH_SHARED_SECRET_LEN 71
+#elif (SSH_ECDH_KEX_SUPPORT == ENABLED && SSH_CURVE448_SUPPORT == ENABLED)
+   #define SSH_MAX_ECDH_SHARED_SECRET_LEN 61
+#elif (SSH_ECDH_KEX_SUPPORT == ENABLED && SSH_NISTP384_SUPPORT == ENABLED)
+   #define SSH_MAX_ECDH_SHARED_SECRET_LEN 53
+#else
+   #define SSH_MAX_ECDH_SHARED_SECRET_LEN 37
+#endif
+
+//Maximum shared secret length (PQ-hybrid key exchange)
+#if (SSH_HBR_KEX_SUPPORT == ENABLED)
+   #define SSH_MAX_HBR_SHARED_SECRET_LEN 68
+#else
+   #define SSH_MAX_HBR_SHARED_SECRET_LEN 0
+#endif
+
+//Maximum shared secret length
+#if (SSH_MAX_RSA_SHARED_SECRET_LEN >= SSH_MAX_DH_SHARED_SECRET_LEN && \
+   SSH_MAX_RSA_SHARED_SECRET_LEN >= SSH_MAX_ECDH_SHARED_SECRET_LEN && \
+   SSH_MAX_RSA_SHARED_SECRET_LEN >= SSH_MAX_HBR_SHARED_SECRET_LEN)
+   #define SSH_MAX_SHARED_SECRET_LEN SSH_MAX_RSA_SHARED_SECRET_LEN
+#elif (SSH_MAX_DH_SHARED_SECRET_LEN >= SSH_MAX_RSA_SHARED_SECRET_LEN && \
+   SSH_MAX_DH_SHARED_SECRET_LEN >= SSH_MAX_ECDH_SHARED_SECRET_LEN && \
+   SSH_MAX_DH_SHARED_SECRET_LEN >= SSH_MAX_HBR_SHARED_SECRET_LEN)
+   #define SSH_MAX_SHARED_SECRET_LEN SSH_MAX_DH_SHARED_SECRET_LEN
+#elif (SSH_MAX_ECDH_SHARED_SECRET_LEN >= SSH_MAX_RSA_SHARED_SECRET_LEN && \
+   SSH_MAX_ECDH_SHARED_SECRET_LEN >= SSH_MAX_DH_SHARED_SECRET_LEN && \
+   SSH_MAX_ECDH_SHARED_SECRET_LEN >= SSH_MAX_HBR_SHARED_SECRET_LEN)
+   #define SSH_MAX_SHARED_SECRET_LEN SSH_MAX_ECDH_SHARED_SECRET_LEN
+#else
+   #define SSH_MAX_SHARED_SECRET_LEN SSH_MAX_HBR_SHARED_SECRET_LEN
+#endif
 
 //SSH port number
 #define SSH_PORT 22
 
 //Cookie size
 #define SSH_COOKIE_SIZE 16
+//Data overhead caused by mpint encoding
+#define SSH_MAX_MPINT_OVERHEAD 5
+//Data overhead caused by packet encryption
+#define SSH_MAX_PACKET_OVERHEAD 128
+
+//Size of buffer used for input/output operations
+#define SSH_BUFFER_SIZE (SSH_MAX_PACKET_SIZE + SSH_MAX_PACKET_OVERHEAD)
 
 //Forward declaration of SshContext structure
 struct _SshContext;
@@ -804,6 +898,9 @@ typedef enum
    SSH_MSG_NEWKEYS                   = 21,
    SSH_MSG_KEX_MIN                   = 30,
    SSH_MSG_KEX_MAX                   = 49,
+   SSH_MSG_KEXRSA_PUBKEY             = 30,
+   SSH_MSG_KEXRSA_SECRET             = 31,
+   SSH_MSG_KEXRSA_DONE               = 32,
    SSH_MSG_KEX_DH_INIT               = 30,
    SSH_MSG_KEX_DH_REPLY              = 31,
    SSH_MSG_KEX_DH_GEX_REQUEST_OLD    = 30,
@@ -813,9 +910,8 @@ typedef enum
    SSH_MSG_KEX_DH_GEX_REPLY          = 33,
    SSH_MSG_KEX_ECDH_INIT             = 30,
    SSH_MSG_KEX_ECDH_REPLY            = 31,
-   SSH_MSG_KEXRSA_PUBKEY             = 30,
-   SSH_MSG_KEXRSA_SECRET             = 31,
-   SSH_MSG_KEXRSA_DONE               = 32,
+   SSH_MSG_HBR_INIT                  = 30,
+   SSH_MSG_HBR_REPLY                 = 31,
    SSH_MSG_USERAUTH_REQUEST          = 50,
    SSH_MSG_USERAUTH_FAILURE          = 51,
    SSH_MSG_USERAUTH_SUCCESS          = 52,
@@ -886,28 +982,37 @@ typedef enum
 
 typedef enum
 {
-   SSH_CONN_STATE_CLOSED            = 0,
-   SSH_CONN_STATE_CLIENT_ID         = 1,
-   SSH_CONN_STATE_SERVER_ID         = 2,
-   SSH_CONN_STATE_CLIENT_KEX_INIT   = 3,
-   SSH_CONN_STATE_SERVER_KEX_INIT   = 4,
-   SSH_CONN_STATE_KEX_DH_INIT       = 5,
-   SSH_CONN_STATE_KEX_DH_REPLY      = 6,
-   SSH_CONN_STATE_KEX_ECDH_INIT     = 7,
-   SSH_CONN_STATE_KEX_ECDH_REPLY    = 8,
-   SSH_CONN_STATE_CLIENT_NEW_KEYS   = 9,
-   SSH_CONN_STATE_SERVER_NEW_KEYS   = 10,
-   SSH_CONN_STATE_CLIENT_EXT_INFO   = 11,
-   SSH_CONN_STATE_SERVER_EXT_INFO_1 = 12,
-   SSH_CONN_STATE_SERVER_EXT_INFO_2 = 13,
-   SSH_CONN_STATE_SERVICE_REQUEST   = 14,
-   SSH_CONN_STATE_SERVICE_ACCEPT    = 15,
-   SSH_CONN_STATE_USER_AUTH_BANNER  = 16,
-   SSH_CONN_STATE_USER_AUTH_REQUEST = 17,
-   SSH_CONN_STATE_USER_AUTH_REPLY   = 18,
-   SSH_CONN_STATE_USER_AUTH_SUCCESS = 19,
-   SSH_CONN_STATE_OPEN              = 20,
-   SSH_CONN_STATE_DISCONNECT        = 21
+   SSH_CONN_STATE_CLOSED             = 0,
+   SSH_CONN_STATE_CLIENT_ID          = 1,
+   SSH_CONN_STATE_SERVER_ID          = 2,
+   SSH_CONN_STATE_CLIENT_KEX_INIT    = 3,
+   SSH_CONN_STATE_SERVER_KEX_INIT    = 4,
+   SSH_CONN_STATE_KEX_RSA_PUB_KEY    = 5,
+   SSH_CONN_STATE_KEX_RSA_SECRET     = 6,
+   SSH_CONN_STATE_KEX_RSA_DONE       = 7,
+   SSH_CONN_STATE_KEX_DH_INIT        = 8,
+   SSH_CONN_STATE_KEX_DH_REPLY       = 9,
+   SSH_CONN_STATE_KEX_DH_GEX_REQUEST = 10,
+   SSH_CONN_STATE_KEX_DH_GEX_GROUP   = 11,
+   SSH_CONN_STATE_KEX_DH_GEX_INIT    = 12,
+   SSH_CONN_STATE_KEX_DH_GEX_REPLY   = 13,
+   SSH_CONN_STATE_KEX_ECDH_INIT      = 14,
+   SSH_CONN_STATE_KEX_ECDH_REPLY     = 15,
+   SSH_CONN_STATE_KEX_HBR_INIT       = 16,
+   SSH_CONN_STATE_KEX_HBR_REPLY      = 17,
+   SSH_CONN_STATE_CLIENT_NEW_KEYS    = 18,
+   SSH_CONN_STATE_SERVER_NEW_KEYS    = 19,
+   SSH_CONN_STATE_CLIENT_EXT_INFO    = 20,
+   SSH_CONN_STATE_SERVER_EXT_INFO_1  = 21,
+   SSH_CONN_STATE_SERVER_EXT_INFO_2  = 22,
+   SSH_CONN_STATE_SERVICE_REQUEST    = 23,
+   SSH_CONN_STATE_SERVICE_ACCEPT     = 24,
+   SSH_CONN_STATE_USER_AUTH_BANNER   = 25,
+   SSH_CONN_STATE_USER_AUTH_REQUEST  = 26,
+   SSH_CONN_STATE_USER_AUTH_REPLY    = 27,
+   SSH_CONN_STATE_USER_AUTH_SUCCESS  = 28,
+   SSH_CONN_STATE_OPEN               = 29,
+   SSH_CONN_STATE_DISCONNECT         = 30
 } SshConnectionState;
 
 
@@ -956,15 +1061,41 @@ typedef enum
 
 
 /**
+ * @brief Transient RSA key (for RSA key exchange)
+ **/
+
+typedef struct
+{
+   uint_t modulusSize;       ///<Length of the modulus, in bits
+   const char_t *publicKey;  ///<RSA public key (PEM, SSH2 or OpenSSH format)
+   size_t publicKeyLen;      ///<Length of the RSA public key
+   const char_t *privateKey; ///<RSA private key (PEM or OpenSSH format)
+   size_t privateKeyLen;     ///<Length of the RSA private key
+} SshRsaKey;
+
+
+/**
+ * @brief Diffie-Hellman group
+ **/
+
+typedef struct
+{
+   uint_t dhModulusSize;   ///<Length of the prime modulus, in bits
+   const char_t *dhParams; ///<Diffie-Hellman parameters (PEM format)
+   size_t dhParamsLen;     ///<Length of the Diffie-Hellman parameters
+} SshDhGexGroup;
+
+
+/**
  * @brief Host key
  **/
 
 typedef struct
 {
    const char_t *keyFormatId;   ///<Key format identifier
-   const char_t *publicKey;     ///<Public key (textual representation)
+   const char_t *publicKey;     ///<Public key (PEM, SSH2 or OpenSSH format)
    size_t publicKeyLen;         ///<Length of the public key
-   const char_t *privateKey;    ///<Private key (textual representation)
+   const char_t *privateKey;    ///<Private key (PEM or OpenSSH format)
    size_t privateKeyLen;        ///<Length of the private key
 #if (SSH_CLIENT_SUPPORT == ENABLED)
    const char_t *publicKeyAlgo; ///<Public key algorithm to use during user authentication
@@ -1223,12 +1354,20 @@ struct _SshConnection
    const char_t *clientCompressAlgo;            ///<Selected client's encryption algorithm name
    const char_t *serverCompressAlgo;            ///<Selected server's encryption algorithm name
    int_t hostKeyIndex;                          ///<Index of the selected host key
+#if (SSH_RSA_KEX_SUPPORT == ENABLED)
+   int_t rsaKeyIndex;                           ///<Index of the transient RSA key to use
+   uint8_t *serverHostKey;                      ///<Server's host key
+   size_t serverHostKeyLen;                     ///<Length of the server's host key, in bytes
+#endif
+#if (SSH_DH_GEX_KEX_SUPPORT == ENABLED)
+   int_t dhGexGroupIndex;                       ///<Index of the selected Diffie-Hellman group
+#endif
 
    uint8_t sessionId[SSH_MAX_HASH_DIGEST_SIZE]; ///<Session identifier
    size_t sessionIdLen;                         ///<Length of the session identifier, in bytes
    uint8_t h[SSH_MAX_HASH_DIGEST_SIZE];         ///<Exchange hash H
    size_t hLen;                                 ///<Length of the exchange hash, in bytes
-   uint8_t k[SSH_MAX_SHARED_SECRET_LEN + 1];    ///<Shared secret K
+   uint8_t k[SSH_MAX_SHARED_SECRET_LEN];        ///<Shared secret K
    size_t kLen;                                 ///<Length of the shared secret, in bytes
 
    const HashAlgo *hashAlgo;                    ///<Exchange hash algorithm
@@ -1236,10 +1375,10 @@ struct _SshConnection
 #if (SSH_HMAC_SUPPORT == ENABLED)
    HmacContext hmacContext;                     ///<HMAC context
 #endif
-#if (SSH_DH_SUPPORT == ENABLED)
+#if (SSH_DH_KEX_SUPPORT == ENABLED || SSH_DH_GEX_KEX_SUPPORT == ENABLED)
    DhContext dhContext;                         ///<Diffie-Hellman context
 #endif
-#if (SSH_ECDH_SUPPORT == ENABLED)
+#if (SSH_ECDH_KEX_SUPPORT == ENABLED || SSH_HBR_KEX_SUPPORT == ENABLED)
    EcdhContext ecdhContext;                     ///<ECDH context
 #endif
 
@@ -1288,6 +1427,13 @@ struct _SshContext
 #if (SSH_CLIENT_SUPPORT == ENABLED)
    char_t username[SSH_MAX_USERNAME_LEN + 1];                    ///<User name
    char_t password[SSH_MAX_PASSWORD_LEN + 1];                    ///<Password
+#endif
+
+#if (SSH_SERVER_SUPPORT == ENABLED && SSH_RSA_KEX_SUPPORT == ENABLED)
+   SshRsaKey rsaKeys[SSH_MAX_RSA_KEYS];                         ///<Transient RSA keys (for RSA key exchange)
+#endif
+#if (SSH_SERVER_SUPPORT == ENABLED && SSH_DH_GEX_KEX_SUPPORT == ENABLED)
+   SshDhGexGroup dhGexGroups[SSH_MAX_DH_GEX_GROUPS];            ///<Diffie-Hellman groups
 #endif
 
    SshHostKeyVerifyCallback hostKeyVerifyCallback;               ///<Host key verification callback
@@ -1416,6 +1562,17 @@ error_t sshRegisterConnectionCloseCallback(SshContext *context,
 
 error_t sshUnregisterConnectionCloseCallback(SshContext *context,
    SshConnectionCloseCallback callback);
+
+error_t sshLoadRsaKey(SshContext *context, uint_t index,
+   const char_t *publicKey, size_t publicKeyLen,
+   const char_t *privateKey, size_t privateKeyLen);
+
+error_t sshUnloadRsaKey(SshContext *context, uint_t index);
+
+error_t sshLoadDhGexGroup(SshContext *context, uint_t index,
+   const char_t *dhParams, size_t dhParamsLen);
+
+error_t sshUnloadDhGexGroup(SshContext *context, uint_t index);
 
 error_t sshLoadHostKey(SshContext *context, uint_t index,
    const char_t *publicKey, size_t publicKeyLen,

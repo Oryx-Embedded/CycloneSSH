@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.1.8
+ * @version 2.2.0
  **/
 
 //Switch to the appropriate trace level
@@ -78,7 +78,7 @@ error_t sshParseCertificate(const uint8_t *data, size_t length,
    data += sizeof(uint32_t) + cert->nonce.length;
    length -= sizeof(uint32_t) + cert->nonce.length;
 
-#if (SSH_RSA_SUPPORT == ENABLED)
+#if (SSH_RSA_SIGN_SUPPORT == ENABLED)
    //RSA certificate?
    if(sshCompareString(&cert->keyFormatId, "ssh-rsa-cert-v01@openssh.com"))
    {
@@ -88,7 +88,7 @@ error_t sshParseCertificate(const uint8_t *data, size_t length,
    }
    else
 #endif
-#if (SSH_DSA_SUPPORT == ENABLED)
+#if (SSH_DSA_SIGN_SUPPORT == ENABLED)
    //DSA certificate?
    if(sshCompareString(&cert->keyFormatId, "ssh-dss-cert-v01@openssh.com"))
    {
@@ -98,7 +98,7 @@ error_t sshParseCertificate(const uint8_t *data, size_t length,
    }
    else
 #endif
-#if (SSH_ECDSA_SUPPORT == ENABLED)
+#if (SSH_ECDSA_SIGN_SUPPORT == ENABLED)
    //ECDSA certificate?
    if(sshCompareString(&cert->keyFormatId, "ecdsa-sha2-nistp256-cert-v01@openssh.com") ||
       sshCompareString(&cert->keyFormatId, "ecdsa-sha2-nistp384-cert-v01@openssh.com") ||
@@ -110,7 +110,7 @@ error_t sshParseCertificate(const uint8_t *data, size_t length,
    }
    else
 #endif
-#if (SSH_ED25519_SUPPORT == ENABLED)
+#if (SSH_ED25519_SIGN_SUPPORT == ENABLED)
    //Ed25519 certificate?
    if(sshCompareString(&cert->keyFormatId, "ssh-ed25519-cert-v01@openssh.com"))
    {
@@ -272,7 +272,7 @@ error_t sshParseCertificate(const uint8_t *data, size_t length,
 error_t sshParseRsaCertPublicKey(const uint8_t *data, size_t length,
    size_t *consumed, SshRsaCertPublicKey *publicKey)
 {
-#if (SSH_RSA_SUPPORT == ENABLED)
+#if (SSH_RSA_SIGN_SUPPORT == ENABLED)
    error_t error;
 
    //Total number of bytes that have been consumed
@@ -321,7 +321,7 @@ error_t sshParseRsaCertPublicKey(const uint8_t *data, size_t length,
 error_t sshParseDsaCertPublicKey(const uint8_t *data, size_t length,
    size_t *consumed, SshDsaCertPublicKey *publicKey)
 {
-#if (SSH_DSA_SUPPORT == ENABLED)
+#if (SSH_DSA_SIGN_SUPPORT == ENABLED)
    error_t error;
 
    //Total number of bytes that have been consumed
@@ -392,7 +392,7 @@ error_t sshParseDsaCertPublicKey(const uint8_t *data, size_t length,
 error_t sshParseEcdsaCertPublicKey(const uint8_t *data, size_t length,
    size_t *consumed, SshEcdsaCertPublicKey *publicKey)
 {
-#if (SSH_ECDSA_SUPPORT == ENABLED)
+#if (SSH_ECDSA_SIGN_SUPPORT == ENABLED)
    error_t error;
 
    //Total number of bytes that have been consumed
@@ -441,7 +441,7 @@ error_t sshParseEcdsaCertPublicKey(const uint8_t *data, size_t length,
 error_t sshParseEd25519CertPublicKey(const uint8_t *data, size_t length,
    size_t *consumed, SshEd25519CertPublicKey *publicKey)
 {
-#if (SSH_ED25519_SUPPORT == ENABLED)
+#if (SSH_ED25519_SIGN_SUPPORT == ENABLED)
    error_t error;
 
    //Total number of bytes that have been consumed
