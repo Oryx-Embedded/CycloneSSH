@@ -6,7 +6,7 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later
  *
- * Copyright (C) 2019-2022 Oryx Embedded SARL. All rights reserved.
+ * Copyright (C) 2019-2023 Oryx Embedded SARL. All rights reserved.
  *
  * This file is part of CycloneSSH Open.
  *
@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.2.0
+ * @version 2.2.2
  **/
 
 #ifndef _SSH_KEY_IMPORT_H
@@ -75,19 +75,19 @@ error_t sshImportEd448PublicKey(const char_t *input, size_t length,
    EddsaPublicKey *publicKey);
 
 error_t sshImportRsaPrivateKey(const char_t *input, size_t length,
-   RsaPrivateKey *privateKey);
+   const char_t *password, RsaPrivateKey *privateKey);
 
 error_t sshImportDsaPrivateKey(const char_t *input, size_t length,
-   DsaPrivateKey *privateKey);
+   const char_t *password, DsaPrivateKey *privateKey);
 
 error_t sshImportEcdsaPrivateKey(const char_t *input, size_t length,
-   EcPrivateKey *privateKey);
+   const char_t *password, EcPrivateKey *privateKey);
 
 error_t sshImportEd25519PrivateKey(const char_t *input, size_t length,
-   EddsaPrivateKey *privateKey);
+   const char_t *password, EddsaPrivateKey *privateKey);
 
 error_t sshImportEd448PrivateKey(const char_t *input, size_t length,
-   EddsaPrivateKey *privateKey);
+   const char_t *password, EddsaPrivateKey *privateKey);
 
 error_t sshImportRsaHostKey(const SshRsaHostKey *hostKey,
    RsaPublicKey *publicKey);

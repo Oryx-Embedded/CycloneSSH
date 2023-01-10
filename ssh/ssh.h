@@ -6,7 +6,7 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later
  *
- * Copyright (C) 2019-2022 Oryx Embedded SARL. All rights reserved.
+ * Copyright (C) 2019-2023 Oryx Embedded SARL. All rights reserved.
  *
  * This file is part of CycloneSSH Open.
  *
@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.2.0
+ * @version 2.2.2
  **/
 
 #ifndef _SSH_H
@@ -74,13 +74,13 @@
 #endif
 
 //Version string
-#define CYCLONE_SSH_VERSION_STRING "2.2.0"
+#define CYCLONE_SSH_VERSION_STRING "2.2.2"
 //Major version
 #define CYCLONE_SSH_MAJOR_VERSION 2
 //Minor version
 #define CYCLONE_SSH_MINOR_VERSION 2
 //Revision number
-#define CYCLONE_SSH_REV_NUMBER 0
+#define CYCLONE_SSH_REV_NUMBER 2
 
 //SSH support
 #ifndef SSH_SUPPORT
@@ -115,6 +115,13 @@
    #define SSH_PASSWORD_AUTH_SUPPORT ENABLED
 #elif (SSH_PASSWORD_AUTH_SUPPORT != ENABLED && SSH_PASSWORD_AUTH_SUPPORT != DISABLED)
    #error SSH_PASSWORD_AUTH_SUPPORT parameter is not valid
+#endif
+
+//Encrypted private key support (OpenSSH format)
+#ifndef SSH_ENCRYPTED_KEY_SUPPORT
+   #define SSH_ENCRYPTED_KEY_SUPPORT DISABLED
+#elif (SSH_ENCRYPTED_KEY_SUPPORT != ENABLED && SSH_ENCRYPTED_KEY_SUPPORT != DISABLED)
+   #error SSH_ENCRYPTED_KEY_SUPPORT parameter is not valid
 #endif
 
 //Certificate support (OpenSSH format)
@@ -236,14 +243,14 @@
    #error SSH_MAX_ID_LEN parameter is not valid
 #endif
 
-//Maximum length of the user name
+//Maximum length of user name
 #ifndef SSH_MAX_USERNAME_LEN
    #define SSH_MAX_USERNAME_LEN 32
 #elif (SSH_MAX_USERNAME_LEN < 0)
    #error SSH_MAX_USERNAME_LEN parameter is not valid
 #endif
 
-//Maximum length of the password
+//Maximum length of password
 #ifndef SSH_MAX_PASSWORD_LEN
    #define SSH_MAX_PASSWORD_LEN 32
 #elif (SSH_MAX_PASSWORD_LEN < 0)
@@ -1066,11 +1073,12 @@ typedef enum
 
 typedef struct
 {
-   uint_t modulusSize;       ///<Length of the modulus, in bits
-   const char_t *publicKey;  ///<RSA public key (PEM, SSH2 or OpenSSH format)
-   size_t publicKeyLen;      ///<Length of the RSA public key
-   const char_t *privateKey; ///<RSA private key (PEM or OpenSSH format)
-   size_t privateKeyLen;     ///<Length of the RSA private key
+   uint_t modulusSize;                        ///<Length of the modulus, in bits
+   const char_t *publicKey;                   ///<RSA public key (PEM, SSH2 or OpenSSH format)
+   size_t publicKeyLen;                       ///<Length of the RSA public key
+   const char_t *privateKey;                  ///<RSA private key (PEM or OpenSSH format)
+   size_t privateKeyLen;                      ///<Length of the RSA private key
+   char_t password[SSH_MAX_PASSWORD_LEN + 1]; ///<Password used to decrypt the private key
 } SshRsaKey;
 
 
@@ -1092,13 +1100,14 @@ typedef struct
 
 typedef struct
 {
-   const char_t *keyFormatId;   ///<Key format identifier
-   const char_t *publicKey;     ///<Public key (PEM, SSH2 or OpenSSH format)
-   size_t publicKeyLen;         ///<Length of the public key
-   const char_t *privateKey;    ///<Private key (PEM or OpenSSH format)
-   size_t privateKeyLen;        ///<Length of the private key
+   const char_t *keyFormatId;                 ///<Key format identifier
+   const char_t *publicKey;                   ///<Public key (PEM, SSH2 or OpenSSH format)
+   size_t publicKeyLen;                       ///<Length of the public key
+   const char_t *privateKey;                  ///<Private key (PEM or OpenSSH format)
+   size_t privateKeyLen;                      ///<Length of the private key
+   char_t password[SSH_MAX_PASSWORD_LEN + 1]; ///<Password used to decrypt the private key
 #if (SSH_CLIENT_SUPPORT == ENABLED)
-   const char_t *publicKeyAlgo; ///<Public key algorithm to use during user authentication
+   const char_t *publicKeyAlgo;               ///<Public key algorithm to use during user authentication
 #endif
 } SshHostKey;
 
@@ -1564,8 +1573,8 @@ error_t sshUnregisterConnectionCloseCallback(SshContext *context,
    SshConnectionCloseCallback callback);
 
 error_t sshLoadRsaKey(SshContext *context, uint_t index,
-   const char_t *publicKey, size_t publicKeyLen,
-   const char_t *privateKey, size_t privateKeyLen);
+   const char_t *publicKey, size_t publicKeyLen, const char_t *privateKey,
+   size_t privateKeyLen, const char_t *password);
 
 error_t sshUnloadRsaKey(SshContext *context, uint_t index);
 
@@ -1575,14 +1584,14 @@ error_t sshLoadDhGexGroup(SshContext *context, uint_t index,
 error_t sshUnloadDhGexGroup(SshContext *context, uint_t index);
 
 error_t sshLoadHostKey(SshContext *context, uint_t index,
-   const char_t *publicKey, size_t publicKeyLen,
-   const char_t *privateKey, size_t privateKeyLen);
+   const char_t *publicKey, size_t publicKeyLen, const char_t *privateKey,
+   size_t privateKeyLen, const char_t *password);
 
 error_t sshUnloadHostKey(SshContext *context, uint_t index);
 
 error_t sshLoadCertificate(SshContext *context, uint_t index,
    const char_t *cert, size_t certLen, const char_t *privateKey,
-   size_t privateKeyLen);
+   size_t privateKeyLen, const char_t *password);
 
 error_t sshUnloadCertificate(SshContext *context, uint_t index);
 

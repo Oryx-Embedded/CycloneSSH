@@ -6,7 +6,7 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later
  *
- * Copyright (C) 2019-2022 Oryx Embedded SARL. All rights reserved.
+ * Copyright (C) 2019-2023 Oryx Embedded SARL. All rights reserved.
  *
  * This file is part of CycloneSSH Open.
  *
@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.2.0
+ * @version 2.2.2
  **/
 
 //Switch to the appropriate trace level
@@ -1051,13 +1051,15 @@ error_t sshUnregisterConnectionCloseCallback(SshContext *context,
  * @param[in] publicKeyLen Length of the RSA public key
  * @param[in] privateKey RSA private key (PEM or OpenSSH format). This
  *   parameter is taken as reference
+ * @param[in] password NULL-terminated string containing the password. This
+ *   parameter is required if the private key is encrypted
  * @param[in] privateKeyLen Length of the RSA private key
  * @return Error code
  **/
 
 error_t sshLoadRsaKey(SshContext *context, uint_t index,
-   const char_t *publicKey, size_t publicKeyLen,
-   const char_t *privateKey, size_t privateKeyLen)
+   const char_t *publicKey, size_t publicKeyLen, const char_t *privateKey,
+   size_t privateKeyLen, const char_t *password)
 {
 #if (SSH_SERVER_SUPPORT == ENABLED && SSH_RSA_KEX_SUPPORT == ENABLED)
    error_t error;
@@ -1081,6 +1083,10 @@ error_t sshLoadRsaKey(SshContext *context, uint_t index,
    if(privateKey == NULL || publicKeyLen == 0)
       return ERROR_INVALID_PARAMETER;
 
+   //The password if required only for encrypted private keys
+   if(password != NULL && osStrlen(password) > SSH_MAX_PASSWORD_LEN)
+      return ERROR_INVALID_PASSWORD;
+
    //Initialize RSA public and private keys
    rsaInitPublicKey(&rsaPublicKey);
    rsaInitPrivateKey(&rsaPrivateKey);
@@ -1093,7 +1099,7 @@ error_t sshLoadRsaKey(SshContext *context, uint_t index,
    {
       //Check whether the RSA private key is valid
       error = sshImportRsaPrivateKey(privateKey, privateKeyLen,
-         &rsaPrivateKey);
+         password, &rsaPrivateKey);
    }
 
    //Check status code
@@ -1130,6 +1136,16 @@ error_t sshLoadRsaKey(SshContext *context, uint_t index,
       //Save private key (PEM or OpenSSH format)
       context->rsaKeys[index].privateKey = privateKey;
       context->rsaKeys[index].privateKeyLen = privateKeyLen;
+
+      //The password if required only for encrypted private keys
+      if(password != NULL)
+      {
+         osStrcpy(context->rsaKeys[index].password, password);
+      }
+      else
+      {
+         osStrcpy(context->rsaKeys[index].password, "");
+      }
 
       //Release exclusive access to the SSH context
       osReleaseMutex(&context->mutex);
@@ -1302,12 +1318,14 @@ error_t sshUnloadDhGexGroup(SshContext *context, uint_t index)
  * @param[in] privateKey Private key (PEM or OpenSSH format). This parameter is
  *   taken as reference
  * @param[in] privateKeyLen Length of the private key
+ * @param[in] password NULL-terminated string containing the password. This
+ *   parameter is required if the private key is encrypted
  * @return Error code
  **/
 
 error_t sshLoadHostKey(SshContext *context, uint_t index,
-   const char_t *publicKey, size_t publicKeyLen,
-   const char_t *privateKey, size_t privateKeyLen)
+   const char_t *publicKey, size_t publicKeyLen, const char_t *privateKey,
+   size_t privateKeyLen, const char_t *password)
 {
    error_t error;
    SshHostKey *hostKey;
@@ -1328,6 +1346,10 @@ error_t sshLoadHostKey(SshContext *context, uint_t index,
    //The private key is optional
    if(privateKey == NULL && privateKeyLen != 0)
       return ERROR_INVALID_PARAMETER;
+
+   //The password if required only for encrypted private keys
+   if(password != NULL && osStrlen(password) > SSH_MAX_PASSWORD_LEN)
+      return ERROR_INVALID_PASSWORD;
 
    //Initialize status code
    error = NO_ERROR;
@@ -1358,7 +1380,7 @@ error_t sshLoadHostKey(SshContext *context, uint_t index,
          {
             //Check whether the RSA private key is valid
             error = sshImportRsaPrivateKey(privateKey, privateKeyLen,
-               &rsaPrivateKey);
+               password, &rsaPrivateKey);
          }
       }
 
@@ -1391,7 +1413,7 @@ error_t sshLoadHostKey(SshContext *context, uint_t index,
          {
             //Check whether the DSA private key is valid
             error = sshImportDsaPrivateKey(privateKey, privateKeyLen,
-               &dsaPrivateKey);
+               password, &dsaPrivateKey);
          }
       }
 
@@ -1429,7 +1451,7 @@ error_t sshLoadHostKey(SshContext *context, uint_t index,
          {
             //Check whether the ECDSA private key is valid
             error = sshImportEcdsaPrivateKey(privateKey, privateKeyLen,
-               &ecPrivateKey);
+               password, &ecPrivateKey);
          }
       }
 
@@ -1464,7 +1486,7 @@ error_t sshLoadHostKey(SshContext *context, uint_t index,
          {
             //Check whether the EdDSA private key is valid
             error = sshImportEd25519PrivateKey(privateKey, privateKeyLen,
-               &eddsaPrivateKey);
+               password, &eddsaPrivateKey);
          }
       }
 
@@ -1498,7 +1520,7 @@ error_t sshLoadHostKey(SshContext *context, uint_t index,
          {
             //Check whether the EdDSA private key is valid
             error = sshImportEd448PrivateKey(privateKey, privateKeyLen,
-               &eddsaPrivateKey);
+               password, &eddsaPrivateKey);
          }
       }
 
@@ -1533,6 +1555,16 @@ error_t sshLoadHostKey(SshContext *context, uint_t index,
       //Save private key (PEM or OpenSSH format)
       hostKey->privateKey = privateKey;
       hostKey->privateKeyLen = privateKeyLen;
+
+      //The password if required only for encrypted private keys
+      if(password != NULL)
+      {
+         osStrcpy(hostKey->password, password);
+      }
+      else
+      {
+         osStrcpy(hostKey->password, "");
+      }
 
 #if (SSH_CLIENT_SUPPORT == ENABLED)
       //Select the default public key algorithm to use during user
@@ -1615,12 +1647,14 @@ error_t sshUnloadHostKey(SshContext *context, uint_t index)
  * @param[in] privateKey Private key (PEM or OpenSSH format). This parameter
  *   is taken as reference
  * @param[in] privateKeyLen Length of the private key
+ * @param[in] password NULL-terminated string containing the password. This
+ *   parameter is required if the private key is encrypted
  * @return Error code
  **/
 
 error_t sshLoadCertificate(SshContext *context, uint_t index,
    const char_t *cert, size_t certLen, const char_t *privateKey,
-   size_t privateKeyLen)
+   size_t privateKeyLen, const char_t *password)
 {
 #if (SSH_CERT_SUPPORT == ENABLED)
    error_t error;
@@ -1643,6 +1677,10 @@ error_t sshLoadCertificate(SshContext *context, uint_t index,
    if(privateKey == NULL && privateKeyLen != 0)
       return ERROR_INVALID_PARAMETER;
 
+   //The password if required only for encrypted private keys
+   if(password != NULL && osStrlen(password) > SSH_MAX_PASSWORD_LEN)
+      return ERROR_INVALID_PASSWORD;
+
    //Initialize status code
    error = NO_ERROR;
 
@@ -1664,7 +1702,7 @@ error_t sshLoadCertificate(SshContext *context, uint_t index,
       {
          //Check whether the RSA private key is valid
          error = sshImportRsaPrivateKey(privateKey, privateKeyLen,
-            &rsaPrivateKey);
+            password, &rsaPrivateKey);
       }
 
       //Release previously allocated memory
@@ -1687,7 +1725,7 @@ error_t sshLoadCertificate(SshContext *context, uint_t index,
       {
          //Check whether the DSA private key is valid
          error = sshImportDsaPrivateKey(privateKey, privateKeyLen,
-            &dsaPrivateKey);
+            password, &dsaPrivateKey);
       }
 
       //Release previously allocated memory
@@ -1712,7 +1750,7 @@ error_t sshLoadCertificate(SshContext *context, uint_t index,
       {
          //Check whether the EC private key is valid
          error = sshImportEcdsaPrivateKey(privateKey, privateKeyLen,
-            &ecPrivateKey);
+            password, &ecPrivateKey);
       }
 
       //Release previously allocated memory
@@ -1735,7 +1773,7 @@ error_t sshLoadCertificate(SshContext *context, uint_t index,
       {
          //Check whether the EdDSA private key is valid
          error = sshImportEd25519PrivateKey(privateKey, privateKeyLen,
-            &ed25519PrivateKey);
+            password, &ed25519PrivateKey);
       }
 
       //Release previously allocated memory
@@ -1768,6 +1806,16 @@ error_t sshLoadCertificate(SshContext *context, uint_t index,
       //Save private key (PEM or OpenSSH format)
       hostKey->privateKey = privateKey;
       hostKey->privateKeyLen = privateKeyLen;
+
+      //The password if required only for encrypted private keys
+      if(password != NULL)
+      {
+         osStrcpy(hostKey->password, password);
+      }
+      else
+      {
+         osStrcpy(hostKey->password, "");
+      }
 
 #if (SSH_CLIENT_SUPPORT == ENABLED)
       //Select the default public key algorithm to use during user

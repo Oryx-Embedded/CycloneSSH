@@ -6,7 +6,7 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later
  *
- * Copyright (C) 2019-2022 Oryx Embedded SARL. All rights reserved.
+ * Copyright (C) 2019-2023 Oryx Embedded SARL. All rights reserved.
  *
  * This file is part of CycloneSSH Open.
  *
@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.2.0
+ * @version 2.2.2
  **/
 
 //Switch to the appropriate trace level
@@ -282,7 +282,7 @@ error_t sshGenerateRsaSignature(SshConnection *connection,
 
       //Import RSA private key
       error = sshImportRsaPrivateKey(hostKey->privateKey,
-         hostKey->privateKeyLen, &rsaPrivateKey);
+         hostKey->privateKeyLen, hostKey->password, &rsaPrivateKey);
 
       //Check status code
       if(!error)
@@ -378,8 +378,8 @@ error_t sshGenerateDsaSignature(SshConnection *connection,
    sha1Final(&sha1Context, NULL);
 
    //Import DSA private key
-   error = sshImportDsaPrivateKey(hostKey->privateKey, hostKey->privateKeyLen,
-      &dsaPrivateKey);
+   error = sshImportDsaPrivateKey(hostKey->privateKey,
+      hostKey->privateKeyLen, hostKey->password, &dsaPrivateKey);
 
    //Check status code
    if(!error)
@@ -539,7 +539,7 @@ error_t sshGenerateEcdsaSignature(SshConnection *connection,
       {
          //Import ECDSA private key
          error = sshImportEcdsaPrivateKey(hostKey->privateKey,
-            hostKey->privateKeyLen, &ecPrivateKey);
+            hostKey->privateKeyLen, hostKey->password, &ecPrivateKey);
       }
 
       //Check status code
@@ -623,8 +623,8 @@ error_t sshGenerateEd25519Signature(SshConnection *connection,
    eddsaInitPrivateKey(&eddsaPrivateKey);
 
    //Import Ed25519 private key
-   error = sshImportEd25519PrivateKey(hostKey->privateKey, hostKey->privateKeyLen,
-      &eddsaPrivateKey);
+   error = sshImportEd25519PrivateKey(hostKey->privateKey,
+      hostKey->privateKeyLen, hostKey->password, &eddsaPrivateKey);
 
    //Check status code
    if(!error)
@@ -722,8 +722,8 @@ error_t sshGenerateEd448Signature(SshConnection *connection,
    eddsaInitPrivateKey(&eddsaPrivateKey);
 
    //Import Ed448 private key
-   error = sshImportEd448PrivateKey(hostKey->privateKey, hostKey->privateKeyLen,
-      &eddsaPrivateKey);
+   error = sshImportEd448PrivateKey(hostKey->privateKey,
+      hostKey->privateKeyLen, hostKey->password, &eddsaPrivateKey);
 
    //Check status code
    if(!error)

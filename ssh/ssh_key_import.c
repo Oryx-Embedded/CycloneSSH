@@ -6,7 +6,7 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later
  *
- * Copyright (C) 2019-2022 Oryx Embedded SARL. All rights reserved.
+ * Copyright (C) 2019-2023 Oryx Embedded SARL. All rights reserved.
  *
  * This file is part of CycloneSSH Open.
  *
@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.2.0
+ * @version 2.2.2
  **/
 
 //Switch to the appropriate trace level
@@ -35,6 +35,7 @@
 #include "ssh/ssh.h"
 #include "ssh/ssh_key_import.h"
 #include "ssh/ssh_key_parse.h"
+#include "ssh/ssh_key_decrypt.h"
 #include "ssh/ssh_misc.h"
 #include "encoding/base64.h"
 #include "pkix/pem_import.h"
@@ -501,16 +502,19 @@ error_t sshImportEd448PublicKey(const char_t *input, size_t length,
  * @brief Decode an SSH private key file containing an RSA private key
  * @param[in] input Pointer to the SSH private key file
  * @param[in] length Length of the SSH private key file
+ * @param[in] password NULL-terminated string containing the password. This
+ *   parameter is required if the private key is encrypted
  * @param[out] privateKey RSA private key resulting from the parsing process
  * @return Error code
  **/
 
 error_t sshImportRsaPrivateKey(const char_t *input, size_t length,
-   RsaPrivateKey *privateKey)
+   const char_t *password, RsaPrivateKey *privateKey)
 {
 #if (SSH_RSA_SIGN_SUPPORT == ENABLED)
    error_t error;
    size_t n;
+   uint8_t *data;
    uint8_t *buffer;
    Mpi t;
    SshPrivateKeyHeader privateKeyHeader;
@@ -544,15 +548,27 @@ error_t sshImportRsaPrivateKey(const char_t *input, size_t length,
          if(!error)
          {
             //Parse private key header
-            error = sshParseOpenSshPrivateKeyHeader(buffer, n, &privateKeyHeader);
+            error = sshParseOpenSshPrivateKeyHeader(buffer, n,
+               &privateKeyHeader);
+         }
+
+         //Check status code
+         if(!error)
+         {
+            //Point to the encrypted data
+            data = (uint8_t *) privateKeyHeader.encrypted.value;
+            n = privateKeyHeader.encrypted.length;
+
+            //Perform decryption operation
+            error = sshDecryptOpenSshPrivateKey(&privateKeyHeader, password,
+               data, data, n);
          }
 
          //Check status code
          if(!error)
          {
             //Parse RSA private key blob
-            error = sshParseOpenSshRsaPrivateKey(privateKeyHeader.encrypted.value,
-               privateKeyHeader.encrypted.length, &privateKeyInfo);
+            error = sshParseOpenSshRsaPrivateKey(data, n, &privateKeyInfo);
          }
 
          //Check status code
@@ -645,7 +661,7 @@ error_t sshImportRsaPrivateKey(const char_t *input, size_t length,
    else
    {
       //Decode the content of the private key file (PEM format)
-      error = pemImportRsaPrivateKey(input, length, privateKey);
+      error = pemImportRsaPrivateKey(input, length, password, privateKey);
    }
 
    //Any error to report?
@@ -668,16 +684,19 @@ error_t sshImportRsaPrivateKey(const char_t *input, size_t length,
  * @brief Decode an SSH private key file containing a DSA private key
  * @param[in] input Pointer to the SSH private key file
  * @param[in] length Length of the SSH private key file
+ * @param[in] password NULL-terminated string containing the password. This
+ *   parameter is required if the private key is encrypted
  * @param[out] privateKey DSA private key resulting from the parsing process
  * @return Error code
  **/
 
 error_t sshImportDsaPrivateKey(const char_t *input, size_t length,
-   DsaPrivateKey *privateKey)
+   const char_t *password, DsaPrivateKey *privateKey)
 {
 #if (SSH_DSA_SIGN_SUPPORT == ENABLED)
    error_t error;
    size_t n;
+   uint8_t *data;
    uint8_t *buffer;
    SshPrivateKeyHeader privateKeyHeader;
    SshDsaPrivateKey privateKeyInfo;
@@ -707,15 +726,27 @@ error_t sshImportDsaPrivateKey(const char_t *input, size_t length,
          if(!error)
          {
             //Parse private key header
-            error = sshParseOpenSshPrivateKeyHeader(buffer, n, &privateKeyHeader);
+            error = sshParseOpenSshPrivateKeyHeader(buffer, n,
+               &privateKeyHeader);
+         }
+
+         //Check status code
+         if(!error)
+         {
+            //Point to the encrypted data
+            data = (uint8_t *) privateKeyHeader.encrypted.value;
+            n = privateKeyHeader.encrypted.length;
+
+            //Perform decryption operation
+            error = sshDecryptOpenSshPrivateKey(&privateKeyHeader, password,
+               data, data, n);
          }
 
          //Check status code
          if(!error)
          {
             //Parse DSA private key blob
-            error = sshParseOpenSshDsaPrivateKey(privateKeyHeader.encrypted.value,
-               privateKeyHeader.encrypted.length, &privateKeyInfo);
+            error = sshParseOpenSshDsaPrivateKey(data, n, &privateKeyInfo);
          }
 
          //Check status code
@@ -762,7 +793,7 @@ error_t sshImportDsaPrivateKey(const char_t *input, size_t length,
    else
    {
       //Decode the content of the private key file (PEM format)
-      error = pemImportDsaPrivateKey(input, length, privateKey);
+      error = pemImportDsaPrivateKey(input, length, password, privateKey);
    }
 
    //Any error to report?
@@ -785,16 +816,19 @@ error_t sshImportDsaPrivateKey(const char_t *input, size_t length,
  * @brief Decode an SSH private key file containing an ECDSA private key
  * @param[in] input Pointer to the SSH private key file
  * @param[in] length Length of the SSH private key file
+ * @param[in] password NULL-terminated string containing the password. This
+ *   parameter is required if the private key is encrypted
  * @param[out] privateKey ECDSA private key resulting from the parsing process
  * @return Error code
  **/
 
 error_t sshImportEcdsaPrivateKey(const char_t *input, size_t length,
-   EcPrivateKey *privateKey)
+   const char_t *password, EcPrivateKey *privateKey)
 {
 #if (SSH_ECDSA_SIGN_SUPPORT == ENABLED)
    error_t error;
    size_t n;
+   uint8_t *data;
    uint8_t *buffer;
    SshPrivateKeyHeader privateKeyHeader;
    SshEcdsaPrivateKey privateKeyInfo;
@@ -824,15 +858,27 @@ error_t sshImportEcdsaPrivateKey(const char_t *input, size_t length,
          if(!error)
          {
             //Parse private key header
-            error = sshParseOpenSshPrivateKeyHeader(buffer, n, &privateKeyHeader);
+            error = sshParseOpenSshPrivateKeyHeader(buffer, n,
+               &privateKeyHeader);
+         }
+
+         //Check status code
+         if(!error)
+         {
+            //Point to the encrypted data
+            data = (uint8_t *) privateKeyHeader.encrypted.value;
+            n = privateKeyHeader.encrypted.length;
+
+            //Perform decryption operation
+            error = sshDecryptOpenSshPrivateKey(&privateKeyHeader, password,
+               data, data, n);
          }
 
          //Check status code
          if(!error)
          {
             //Parse ECDSA private key blob
-            error = sshParseOpenSshEcdsaPrivateKey(privateKeyHeader.encrypted.value,
-               privateKeyHeader.encrypted.length, &privateKeyInfo);
+            error = sshParseOpenSshEcdsaPrivateKey(data, n, &privateKeyInfo);
          }
 
          //Check status code
@@ -855,7 +901,7 @@ error_t sshImportEcdsaPrivateKey(const char_t *input, size_t length,
    else
    {
       //Decode the content of the private key file (PEM format)
-      error = pemImportEcPrivateKey(input, length, privateKey);
+      error = pemImportEcPrivateKey(input, length, password, privateKey);
    }
 
    //Any error to report?
@@ -878,16 +924,19 @@ error_t sshImportEcdsaPrivateKey(const char_t *input, size_t length,
  * @brief Decode an SSH private key file containing an Ed25519 private key
  * @param[in] input Pointer to the SSH private key file
  * @param[in] length Length of the SSH private key file
+ * @param[in] password NULL-terminated string containing the password. This
+ *   parameter is required if the private key is encrypted
  * @param[out] privateKey Ed25519 private key resulting from the parsing process
  * @return Error code
  **/
 
 error_t sshImportEd25519PrivateKey(const char_t *input, size_t length,
-   EddsaPrivateKey *privateKey)
+   const char_t *password, EddsaPrivateKey *privateKey)
 {
 #if (SSH_ED25519_SIGN_SUPPORT == ENABLED)
    error_t error;
    size_t n;
+   uint8_t *data;
    uint8_t *buffer;
    SshPrivateKeyHeader privateKeyHeader;
    SshEddsaPrivateKey privateKeyInfo;
@@ -917,15 +966,27 @@ error_t sshImportEd25519PrivateKey(const char_t *input, size_t length,
          if(!error)
          {
             //Parse private key header
-            error = sshParseOpenSshPrivateKeyHeader(buffer, n, &privateKeyHeader);
+            error = sshParseOpenSshPrivateKeyHeader(buffer, n,
+               &privateKeyHeader);
+         }
+
+         //Check status code
+         if(!error)
+         {
+            //Point to the encrypted data
+            data = (uint8_t *) privateKeyHeader.encrypted.value;
+            n = privateKeyHeader.encrypted.length;
+
+            //Perform decryption operation
+            error = sshDecryptOpenSshPrivateKey(&privateKeyHeader, password,
+               data, data, n);
          }
 
          //Check status code
          if(!error)
          {
             //Parse Ed25519 private key blob
-            error = sshParseOpenSshEd25519PrivateKey(privateKeyHeader.encrypted.value,
-               privateKeyHeader.encrypted.length, &privateKeyInfo);
+            error = sshParseOpenSshEd25519PrivateKey(data, n, &privateKeyInfo);
          }
 
          //Check status code
@@ -948,7 +1009,7 @@ error_t sshImportEd25519PrivateKey(const char_t *input, size_t length,
    else
    {
       //Decode the content of the private key file (PEM format)
-      error = pemImportEddsaPrivateKey(input, length, privateKey);
+      error = pemImportEddsaPrivateKey(input, length, password, privateKey);
    }
 
    //Any error to report?
@@ -971,16 +1032,19 @@ error_t sshImportEd25519PrivateKey(const char_t *input, size_t length,
  * @brief Decode an SSH private key file containing an Ed448 private key
  * @param[in] input Pointer to the SSH private key file
  * @param[in] length Length of the SSH private key file
+ * @param[in] password NULL-terminated string containing the password. This
+ *   parameter is required if the private key is encrypted
  * @param[out] privateKey Ed448 private key resulting from the parsing process
  * @return Error code
  **/
 
 error_t sshImportEd448PrivateKey(const char_t *input, size_t length,
-   EddsaPrivateKey *privateKey)
+   const char_t *password, EddsaPrivateKey *privateKey)
 {
 #if (SSH_ED448_SIGN_SUPPORT == ENABLED)
    error_t error;
    size_t n;
+   uint8_t *data;
    uint8_t *buffer;
    SshPrivateKeyHeader privateKeyHeader;
    SshEddsaPrivateKey privateKeyInfo;
@@ -1010,15 +1074,27 @@ error_t sshImportEd448PrivateKey(const char_t *input, size_t length,
          if(!error)
          {
             //Parse private key header
-            error = sshParseOpenSshPrivateKeyHeader(buffer, n, &privateKeyHeader);
+            error = sshParseOpenSshPrivateKeyHeader(buffer, n,
+               &privateKeyHeader);
+         }
+
+         //Check status code
+         if(!error)
+         {
+            //Point to the encrypted data
+            data = (uint8_t *) privateKeyHeader.encrypted.value;
+            n = privateKeyHeader.encrypted.length;
+
+            //Perform decryption operation
+            error = sshDecryptOpenSshPrivateKey(&privateKeyHeader, password,
+               data, data, n);
          }
 
          //Check status code
          if(!error)
          {
             //Parse Ed448 private key blob
-            error = sshParseOpenSshEd448PrivateKey(privateKeyHeader.encrypted.value,
-               privateKeyHeader.encrypted.length, &privateKeyInfo);
+            error = sshParseOpenSshEd448PrivateKey(data, n, &privateKeyInfo);
          }
 
          //Check status code
@@ -1041,7 +1117,7 @@ error_t sshImportEd448PrivateKey(const char_t *input, size_t length,
    else
    {
       //Decode the content of the private key file (PEM format)
-      error = pemImportEddsaPrivateKey(input, length, privateKey);
+      error = pemImportEddsaPrivateKey(input, length, password, privateKey);
    }
 
    //Any error to report?
@@ -1616,7 +1692,8 @@ error_t sshDecodeOpenSshPrivateKeyFile(const char_t *input, size_t inputLen,
    int_t n;
 
    //The first line of the private key file must be a begin marker
-   i = sshSearchMarker(input, inputLen, "-----BEGIN OPENSSH PRIVATE KEY-----", 35);
+   i = sshSearchMarker(input, inputLen,
+      "-----BEGIN OPENSSH PRIVATE KEY-----", 35);
    //Begin marker not found?
    if(i < 0)
       return ERROR_INVALID_SYNTAX;
@@ -1625,7 +1702,8 @@ error_t sshDecodeOpenSshPrivateKeyFile(const char_t *input, size_t inputLen,
    i += 35;
 
    //The last line of the private key file must be an end marker
-   n = sshSearchMarker(input + i, inputLen - i, "-----END OPENSSH PRIVATE KEY-----", 33);
+   n = sshSearchMarker(input + i, inputLen - i,
+      "-----END OPENSSH PRIVATE KEY-----", 33);
    //End marker not found?
    if(n < 0)
       return ERROR_INVALID_SYNTAX;

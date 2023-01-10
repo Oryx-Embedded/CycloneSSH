@@ -6,7 +6,7 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later
  *
- * Copyright (C) 2019-2022 Oryx Embedded SARL. All rights reserved.
+ * Copyright (C) 2019-2023 Oryx Embedded SARL. All rights reserved.
  *
  * This file is part of CycloneSSH Open.
  *
@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.2.0
+ * @version 2.2.2
  **/
 
 //Switch to the appropriate trace level
@@ -976,7 +976,8 @@ error_t sshDecryptSharedSecret(SshConnection *connection,
    {
       //Load the transient RSA private key
       error = pemImportRsaPrivateKey(context->rsaKeys[i].privateKey,
-         context->rsaKeys[i].privateKeyLen, &rsaPrivateKey);
+         context->rsaKeys[i].privateKeyLen, context->rsaKeys[i].password,
+         &rsaPrivateKey);
 
       //Check status code
       if(!error)

@@ -6,7 +6,7 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later
  *
- * Copyright (C) 2019-2022 Oryx Embedded SARL. All rights reserved.
+ * Copyright (C) 2019-2023 Oryx Embedded SARL. All rights reserved.
  *
  * This file is part of CycloneSSH Open.
  *
@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.2.0
+ * @version 2.2.2
  **/
 
 //Switch to the appropriate trace level
@@ -478,10 +478,6 @@ error_t sshParseOpenSshPrivateKeyHeader(const uint8_t *data, size_t length,
    if(error)
       return error;
 
-   //For unencrypted keys the cipher "none" is used
-   if(!sshCompareString(&privateKeyHeader->cipherName, "none"))
-      return ERROR_UNSUPPORTED_ALGO;
-
    //Point to the next field
    data += sizeof(uint32_t) + privateKeyHeader->cipherName.length;
    length -= sizeof(uint32_t) + privateKeyHeader->cipherName.length;
@@ -491,10 +487,6 @@ error_t sshParseOpenSshPrivateKeyHeader(const uint8_t *data, size_t length,
    //Any error to report?
    if(error)
       return error;
-
-   //For unencrypted keys the KDF "none" is used
-   if(!sshCompareString(&privateKeyHeader->kdfName, "none"))
-      return ERROR_UNSUPPORTED_ALGO;
 
    //Point to the next field
    data += sizeof(uint32_t) + privateKeyHeader->kdfName.length;
@@ -540,10 +532,6 @@ error_t sshParseOpenSshPrivateKeyHeader(const uint8_t *data, size_t length,
    //Any error to report?
    if(error)
       return error;
-
-   //The length of the 'encrypted' section must be a multiple of the block size
-   if((privateKeyHeader->encrypted.length % 8) != 0)
-      return ERROR_INVALID_SYNTAX;
 
    //Point to the next field
    data += sizeof(uint32_t) + privateKeyHeader->encrypted.length;
@@ -674,8 +662,8 @@ error_t sshParseOpenSshRsaPrivateKey(const uint8_t *data, size_t length,
    data += sizeof(uint32_t) + privateKey->comment.length;
    length -= sizeof(uint32_t) + privateKey->comment.length;
 
-   //Successful processing
-   return NO_ERROR;
+   //The serialized private key is padded to the cipher block size
+   return sshCheckPrivateKeyPadding(data, length);
 #else
    //Not implemented
    return ERROR_NOT_IMPLEMENTED;
@@ -789,8 +777,8 @@ error_t sshParseOpenSshDsaPrivateKey(const uint8_t *data, size_t length,
    data += sizeof(uint32_t) + privateKey->comment.length;
    length -= sizeof(uint32_t) + privateKey->comment.length;
 
-   //Successful processing
-   return NO_ERROR;
+   //The serialized private key is padded to the cipher block size
+   return sshCheckPrivateKeyPadding(data, length);
 #else
    //Not implemented
    return ERROR_NOT_IMPLEMENTED;
@@ -888,8 +876,8 @@ error_t sshParseOpenSshEcdsaPrivateKey(const uint8_t *data, size_t length,
    data += sizeof(uint32_t) + privateKey->comment.length;
    length -= sizeof(uint32_t) + privateKey->comment.length;
 
-   //Successful processing
-   return NO_ERROR;
+   //The serialized private key is padded to the cipher block size
+   return sshCheckPrivateKeyPadding(data, length);
 #else
    //Not implemented
    return ERROR_NOT_IMPLEMENTED;
@@ -981,8 +969,8 @@ error_t sshParseOpenSshEd25519PrivateKey(const uint8_t *data, size_t length,
    data += sizeof(uint32_t) + privateKey->comment.length;
    length -= sizeof(uint32_t) + privateKey->comment.length;
 
-   //Successful processing
-   return NO_ERROR;
+   //The serialized private key is padded to the cipher block size
+   return sshCheckPrivateKeyPadding(data, length);
 #else
    //Not implemented
    return ERROR_NOT_IMPLEMENTED;
@@ -1074,12 +1062,43 @@ error_t sshParseOpenSshEd448PrivateKey(const uint8_t *data, size_t length,
    data += sizeof(uint32_t) + privateKey->comment.length;
    length -= sizeof(uint32_t) + privateKey->comment.length;
 
-   //Successful processing
-   return NO_ERROR;
+   //The serialized private key is padded to the cipher block size
+   return sshCheckPrivateKeyPadding(data, length);
 #else
    //Not implemented
    return ERROR_NOT_IMPLEMENTED;
 #endif
+}
+
+
+/**
+ * @brief Check padding string
+ * @param[in] pad Pointer to the padding string
+ * @param[in] length Length of the padding string, in bytes
+ * @return Error code
+ **/
+
+error_t sshCheckPrivateKeyPadding(const uint8_t *pad, size_t length)
+{
+   error_t error;
+   size_t i;
+
+   //Initialize status code
+   error = NO_ERROR;
+
+   //The list of private key / comment pairs is padded with the bytes 1, 2,
+   //3, ... until the total length is a multiple of the cipher block size
+   for(i = 0; i < length && error == NO_ERROR; i++)
+   {
+      //Check the value of the current padding byte
+      if(pad[i] != ((i + 1) & 0xFF))
+      {
+         error = ERROR_INVALID_PADDING;
+      }
+   }
+
+   //Return status code
+   return error;
 }
 
 #endif

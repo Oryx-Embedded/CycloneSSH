@@ -6,7 +6,7 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later
  *
- * Copyright (C) 2019-2022 Oryx Embedded SARL. All rights reserved.
+ * Copyright (C) 2019-2023 Oryx Embedded SARL. All rights reserved.
  *
  * This file is part of CycloneSSH Open.
  *
@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.2.0
+ * @version 2.2.2
  **/
 
 #ifndef _SSH_KEY_PARSE_H
@@ -212,6 +212,8 @@ error_t sshParseOpenSshEd25519PrivateKey(const uint8_t *data, size_t length,
 
 error_t sshParseOpenSshEd448PrivateKey(const uint8_t *data, size_t length,
    SshEddsaPrivateKey *privateKey);
+
+error_t sshCheckPrivateKeyPadding(const uint8_t *pad, size_t length);
 
 //C++ guard
 #ifdef __cplusplus

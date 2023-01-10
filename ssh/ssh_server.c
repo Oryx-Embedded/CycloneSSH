@@ -6,7 +6,7 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later
  *
- * Copyright (C) 2019-2022 Oryx Embedded SARL. All rights reserved.
+ * Copyright (C) 2019-2023 Oryx Embedded SARL. All rights reserved.
  *
  * This file is part of CycloneSSH Open.
  *
@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.2.0
+ * @version 2.2.2
  **/
 
 //Switch to the appropriate trace level
@@ -456,17 +456,19 @@ error_t sshServerUnregisterConnectionCloseCallback(SshServerContext *context,
  * @param[in] publicKeyLen Length of the RSA public key
  * @param[in] privateKey RSA private key (PEM or OpenSSH format). This
  *   parameter is taken as reference
+ * @param[in] password NULL-terminated string containing the password. This
+ *   parameter is required if the private key is encrypted
  * @param[in] privateKeyLen Length of the RSA private key
  * @return Error code
  **/
 
 error_t sshServerLoadRsaKey(SshServerContext *context, uint_t index,
-   const char_t *publicKey, size_t publicKeyLen,
-   const char_t *privateKey, size_t privateKeyLen)
+   const char_t *publicKey, size_t publicKeyLen, const char_t *privateKey,
+   size_t privateKeyLen, const char_t *password)
 {
    //Load the specified transient RSA key
    return sshLoadRsaKey(&context->sshContext, index, publicKey,
-      publicKeyLen, privateKey, privateKeyLen);
+      publicKeyLen, privateKey, privateKeyLen, password);
 }
 
 
@@ -527,16 +529,18 @@ error_t sshServerUnloadDhGexGroup(SshServerContext *context, uint_t index)
  * @param[in] privateKey Private key (PEM or OpenSSH format). This parameter is
  *   taken as reference
  * @param[in] privateKeyLen Length of the private key
+ * @param[in] password NULL-terminated string containing the password. This
+ *   parameter is required if the private key is encrypted
  * @return Error code
  **/
 
 error_t sshServerLoadHostKey(SshServerContext *context, uint_t index,
-   const char_t *publicKey, size_t publicKeyLen,
-   const char_t *privateKey, size_t privateKeyLen)
+   const char_t *publicKey, size_t publicKeyLen, const char_t *privateKey,
+   size_t privateKeyLen, const char_t *password)
 {
    //Load the specified key pair
    return sshLoadHostKey(&context->sshContext, index, publicKey, publicKeyLen,
-      privateKey, privateKeyLen);
+      privateKey, privateKeyLen, password);
 }
 
 
@@ -564,17 +568,19 @@ error_t sshServerUnloadHostKey(SshServerContext *context, uint_t index)
  * @param[in] privateKey Private key (PEM or OpenSSH format). This parameter
  *   is taken as reference
  * @param[in] privateKeyLen Length of the private key
+ * @param[in] password NULL-terminated string containing the password. This
+ *   parameter is required if the private key is encrypted
  * @return Error code
  **/
 
 error_t sshServerLoadCertificate(SshServerContext *context, uint_t index,
    const char_t *cert, size_t certLen, const char_t *privateKey,
-   size_t privateKeyLen)
+   size_t privateKeyLen, const char_t *password)
 {
 #if (SSH_CERT_SUPPORT == ENABLED)
    //Load the specified certificate
    return sshLoadCertificate(&context->sshContext, index, cert, certLen,
-      privateKey, privateKeyLen);
+      privateKey, privateKeyLen, password);
 #else
    //Not implemented
    return ERROR_NOT_IMPLEMENTED;
@@ -805,7 +811,8 @@ void sshServerTask(SshServerContext *context)
          &sshContext->event, SSH_SERVER_TICK_INTERVAL);
 
       //Check status code
-      if(error == NO_ERROR || error == ERROR_TIMEOUT)
+      if(error == NO_ERROR || error == ERROR_TIMEOUT ||
+         error == ERROR_WAIT_CANCELED)
       {
          //Stop request?
          if(context->stop)

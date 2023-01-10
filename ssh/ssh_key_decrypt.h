@@ -1,6 +1,6 @@
 /**
- * @file scp_server_file.h
- * @brief File operations
+ * @file ssh_key_decrypt.h
+ * @brief SSH private key decryption
  *
  * @section License
  *
@@ -28,25 +28,45 @@
  * @version 2.2.2
  **/
 
-#ifndef _SCP_SERVER_FILE_H
-#define _SCP_SERVER_FILE_H
+#ifndef _SSH_KEY_DECRYPT_H
+#define _SSH_KEY_DECRYPT_H
 
 //Dependencies
-#include "scp/scp_server.h"
+#include "ssh.h"
+#include "ssh_key_parse.h"
 
 //C++ guard
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-//SCP server related functions
-error_t scpServerOpenFileForWriting(ScpServerSession *session,
-   const char_t *filename, uint32_t mode, uint64_t size);
 
-error_t scpServerOpenFileForReading(ScpServerSession *session);
+/**
+ * @brief KDF options
+ **/
 
-error_t scpServerWriteData(ScpServerSession *session);
-error_t scpServerReadData(ScpServerSession *session);
+typedef struct
+{
+   SshBinaryString salt;
+   uint32_t rounds;
+} SshKdfOptions;
+
+
+//SSH private key decryption related functions
+error_t sshDecryptPrivateKey(const char_t *input, size_t inputLen,
+   const char_t *password, char_t *output, size_t *outputLen);
+
+error_t sshDecryptOpenSshPrivateKey(const SshPrivateKeyHeader *privateKeyHeader,
+   const char_t *password, const uint8_t *ciphertext, uint8_t *plaintext,
+   size_t length);
+
+error_t sshParseKdfOptions(const uint8_t *data, size_t length,
+   SshKdfOptions *kdfOptions);
+
+error_t sshKdf(const char *password, size_t passwordLen, const uint8_t *salt,
+   size_t saltLen, uint_t rounds, uint8_t *key, size_t keyLen);
+
+error_t sshKdfHash(uint8_t *password, uint8_t *salt, uint8_t *output);
 
 //C++ guard
 #ifdef __cplusplus
