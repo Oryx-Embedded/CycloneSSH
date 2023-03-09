@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.2.2
+ * @version 2.2.4
  **/
 
 #ifndef _SSH_H
@@ -74,13 +74,13 @@
 #endif
 
 //Version string
-#define CYCLONE_SSH_VERSION_STRING "2.2.2"
+#define CYCLONE_SSH_VERSION_STRING "2.2.4"
 //Major version
 #define CYCLONE_SSH_MAJOR_VERSION 2
 //Minor version
 #define CYCLONE_SSH_MINOR_VERSION 2
 //Revision number
-#define CYCLONE_SSH_REV_NUMBER 2
+#define CYCLONE_SSH_REV_NUMBER 4
 
 //SSH support
 #ifndef SSH_SUPPORT
@@ -311,6 +311,13 @@
    #define SSH_CHACHA20_POLY1305_SUPPORT DISABLED
 #elif (SSH_CHACHA20_POLY1305_SUPPORT != ENABLED && SSH_CHACHA20_POLY1305_SUPPORT != DISABLED)
    #error SSH_CHACHA20_POLY1305_SUPPORT parameter is not valid
+#endif
+
+//Legacy RC4 cipher support (insecure)
+#ifndef SSH_RC4_SUPPORT
+   #define SSH_RC4_SUPPORT DISABLED
+#elif (SSH_RC4_SUPPORT != ENABLED && SSH_RC4_SUPPORT != DISABLED)
+   #error SSH_RC4_SUPPORT parameter is not valid
 #endif
 
 //RC4 128-bit cipher support (insecure)

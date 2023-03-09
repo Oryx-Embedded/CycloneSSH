@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.2.2
+ * @version 2.2.4
  **/
 
 //Switch to the appropriate trace level
@@ -398,6 +398,9 @@ static const char_t *const sshSupportedEncAlgos[] =
 #endif
 #if (SSH_RC4_128_SUPPORT == ENABLED && SSH_STREAM_CIPHER_SUPPORT == ENABLED)
    "arcfour128",
+#endif
+#if (SSH_RC4_SUPPORT == ENABLED && SSH_STREAM_CIPHER_SUPPORT == ENABLED)
+   "arcfour",
 #endif
 };
 
@@ -1472,14 +1475,39 @@ bool_t sshIsHbrKexAlgo(const char_t *kexAlgo)
 bool_t sshIsCertPublicKeyAlgo(const SshString *publicKeyAlgo)
 {
    //Check public key algorithm name
-   if(sshCompareString(publicKeyAlgo, "ssh-rsa-cert-v01@openssh.com") ||
+   if(sshCompareString(publicKeyAlgo, "ssh-dss-cert-v01@openssh.com") ||
+      sshCompareString(publicKeyAlgo, "ssh-rsa-cert-v01@openssh.com") ||
       sshCompareString(publicKeyAlgo, "rsa-sha2-256-cert-v01@openssh.com") ||
       sshCompareString(publicKeyAlgo, "rsa-sha2-512-cert-v01@openssh.com") ||
-      sshCompareString(publicKeyAlgo, "ssh-dss-cert-v01@openssh.com") ||
       sshCompareString(publicKeyAlgo, "ecdsa-sha2-nistp256-cert-v01@openssh.com") ||
       sshCompareString(publicKeyAlgo, "ecdsa-sha2-nistp384-cert-v01@openssh.com") ||
       sshCompareString(publicKeyAlgo, "ecdsa-sha2-nistp521-cert-v01@openssh.com") ||
       sshCompareString(publicKeyAlgo, "ssh-ed25519-cert-v01@openssh.com"))
+   {
+      return TRUE;
+   }
+   else
+   {
+      return FALSE;
+   }
+}
+
+
+/**
+ * @brief Test if the specified public key algorithm is using X.509 certificates
+ * @param[in] publicKeyAlgo Public key algorithm name
+ * @return TRUE if the public key algorithm is using X.509 certificates, else FALSE
+ **/
+
+bool_t sshIsX509CertPublicKeyAlgo(const SshString *publicKeyAlgo)
+{
+   //Check public key algorithm name
+   if(sshCompareString(publicKeyAlgo, "x509v3-ssh-dss") ||
+      sshCompareString(publicKeyAlgo, "x509v3-ssh-rsa") ||
+      sshCompareString(publicKeyAlgo, "x509v3-rsa2048-sha256") ||
+      sshCompareString(publicKeyAlgo, "x509v3-ecdsa-sha2-nistp256") ||
+      sshCompareString(publicKeyAlgo, "x509v3-ecdsa-sha2-nistp384") ||
+      sshCompareString(publicKeyAlgo, "x509v3-ecdsa-sha2-nistp521"))
    {
       return TRUE;
    }

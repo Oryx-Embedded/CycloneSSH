@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.2.2
+ * @version 2.2.4
  **/
 
 //Switch to the appropriate trace level
@@ -117,6 +117,7 @@ error_t sshVerifyHostKey(const uint8_t *hostKey, size_t hostKeyLen,
 error_t sshVerifyClientHostKey(SshConnection *connection,
    const SshString *publicKeyAlgo, const SshBinaryString *hostKey)
 {
+#if (SSH_PUBLIC_KEY_AUTH_SUPPORT == ENABLED)
    error_t error;
    SshString keyFormatId;
    SshContext *context;
@@ -147,12 +148,16 @@ error_t sshVerifyClientHostKey(SshConnection *connection,
    }
    else
    {
-      //The server's host key cannot be verified
+      //The client's host key cannot be verified
       error = ERROR_INVALID_KEY;
    }
 
    //Return status code
    return error;
+#else
+   //Public key authentication is not supported
+   return ERROR_INVALID_KEY;
+#endif
 }
 
 

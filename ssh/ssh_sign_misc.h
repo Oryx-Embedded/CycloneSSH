@@ -1,6 +1,6 @@
 /**
- * @file ssh_key_decrypt.h
- * @brief SSH private key decryption
+ * @file ssh_sign_misc.h
+ * @brief Helper functions for signature generation and verification
  *
  * @section License
  *
@@ -28,12 +28,11 @@
  * @version 2.2.4
  **/
 
-#ifndef _SSH_KEY_DECRYPT_H
-#define _SSH_KEY_DECRYPT_H
+#ifndef _SSH_SIGN_MISC_H
+#define _SSH_SIGN_MISC_H
 
 //Dependencies
-#include "ssh.h"
-#include "ssh_key_parse.h"
+#include "ssh/ssh.h"
 
 //C++ guard
 #ifdef __cplusplus
@@ -42,31 +41,22 @@ extern "C" {
 
 
 /**
- * @brief KDF options
+ * @brief ECDSA signature
  **/
 
 typedef struct
 {
-   SshBinaryString salt;
-   uint32_t rounds;
-} SshKdfOptions;
+   SshBinaryString r;
+   SshBinaryString s;
+} SshEcdsaSignature;
 
 
-//SSH private key decryption related functions
-error_t sshDecryptPrivateKey(const char_t *input, size_t inputLen,
-   const char_t *password, char_t *output, size_t *outputLen);
+//SSH related functions
+error_t sshFormatEcdsaSignature(const SshEcdsaSignature *signature,
+   uint8_t *p, size_t *written);
 
-error_t sshDecryptOpenSshPrivateKey(const SshPrivateKeyHeader *privateKeyHeader,
-   const char_t *password, const uint8_t *ciphertext, uint8_t *plaintext,
-   size_t length);
-
-error_t sshParseKdfOptions(const uint8_t *data, size_t length,
-   SshKdfOptions *kdfOptions);
-
-error_t sshKdf(const char *password, size_t passwordLen, const uint8_t *salt,
-   size_t saltLen, uint_t rounds, uint8_t *key, size_t keyLen);
-
-error_t sshKdfHash(uint8_t *password, uint8_t *salt, uint8_t *output);
+error_t sshParseEcdsaSignature(const uint8_t *data, size_t length,
+   SshEcdsaSignature *signature);
 
 //C++ guard
 #ifdef __cplusplus

@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.2.2
+ * @version 2.2.4
  **/
 
 //Switch to the appropriate trace level
@@ -38,11 +38,12 @@
 #include "ssh/ssh_auth.h"
 #include "ssh/ssh_auth_public_key.h"
 #include "ssh/ssh_packet.h"
-#include "ssh/ssh_signature.h"
 #include "ssh/ssh_key_parse.h"
 #include "ssh/ssh_key_verify.h"
 #include "ssh/ssh_cert_parse.h"
 #include "ssh/ssh_cert_verify.h"
+#include "ssh/ssh_sign_generate.h"
+#include "ssh/ssh_sign_verify.h"
 #include "ssh/ssh_misc.h"
 #include "debug.h"
 

@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.2.2
+ * @version 2.2.4
  **/
 
 //Switch to the appropriate trace level
@@ -113,17 +113,13 @@ error_t sshSendUserAuthRequest(SshConnection *connection)
    uint8_t *message;
 
 #if (SSH_PUBLIC_KEY_AUTH_SUPPORT == ENABLED)
-   //Public key authentication?
-   if(sshGetAuthMethod(connection) == SSH_AUTH_METHOD_PUBLIC_KEY)
+   //First authentication request?
+   if(connection->hostKeyIndex < 0)
    {
-      //First authentication request?
-      if(connection->hostKeyIndex < 0)
-      {
-         //Select the first host key to use
-         sshSelectNextHostKey(connection);
-         //The client first verifies whether the key is acceptable
-         connection->publicKeyOk = FALSE;
-      }
+      //Select the first host key to use
+      sshSelectNextHostKey(connection);
+      //The client first verifies whether the key is acceptable
+      connection->publicKeyOk = FALSE;
    }
 #endif
 
@@ -1158,7 +1154,8 @@ SshAuthMethod sshGetAuthMethod(SshConnection *connection)
    context = connection->context;
 
    //Public key or password authentication method?
-   if(connection->hostKeyIndex < SSH_MAX_HOST_KEYS)
+   if(connection->hostKeyIndex >= 0 &&
+      connection->hostKeyIndex < SSH_MAX_HOST_KEYS)
    {
       authMethod = SSH_AUTH_METHOD_PUBLIC_KEY;
    }

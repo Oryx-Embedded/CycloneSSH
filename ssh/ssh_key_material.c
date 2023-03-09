@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.2.2
+ * @version 2.2.4
  **/
 
 //Switch to the appropriate trace level
@@ -95,11 +95,16 @@ error_t sshInitEncryptionEngine(SshConnection *connection,
       if(error)
          return error;
 
-      //Discard the first 1536 bytes of keystream so as to ensure that the
-      //cipher's internal state is thoroughly mixed (refer to RFC 4345,
-      //section 1)
-      encryptionEngine->cipherAlgo->encryptStream(&encryptionEngine->cipherContext,
-         NULL, NULL, 1536);
+      //Improved RC4 mode?
+      if(sshCompareAlgo(encAlgo, "arcfour128") ||
+         sshCompareAlgo(encAlgo, "arcfour256"))
+      {
+         //Discard the first 1536 bytes of keystream so as to ensure that the
+         //cipher's internal state is thoroughly mixed (refer to RFC 4345,
+         //section 1)
+         encryptionEngine->cipherAlgo->encryptStream(
+            &encryptionEngine->cipherContext, NULL, NULL, 1536);
+      }
 
       //Initialize HMAC context
       encryptionEngine->hmacContext = &connection->hmacContext;
@@ -260,6 +265,17 @@ error_t sshSelectCipherAlgo(SshEncryptionEngine *encryptionEngine,
    //Initialize status code
    error = NO_ERROR;
 
+#if (SSH_RC4_SUPPORT == ENABLED && SSH_STREAM_CIPHER_SUPPORT == ENABLED)
+   //Legacy RC4 encryption algorithm?
+   if(sshCompareAlgo(encAlgo, "arcfour"))
+   {
+      //This cipher uses RC4 with a 128-bit key (refer to RFC 4253, section 6.3)
+      encryptionEngine->cipherMode = CIPHER_MODE_STREAM;
+      encryptionEngine->cipherAlgo = RC4_CIPHER_ALGO;
+      encryptionEngine->encKeyLen = 16;
+   }
+   else
+#endif
 #if (SSH_RC4_128_SUPPORT == ENABLED && SSH_STREAM_CIPHER_SUPPORT == ENABLED)
    //RC4 with 128-bit key encryption algorithm?
    if(sshCompareAlgo(encAlgo, "arcfour128"))
