@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.2.4
+ * @version 2.3.0
  **/
 
 //Switch to the appropriate trace level
@@ -786,7 +786,7 @@ int_t sshSelectTransientRsaKey(SshContext *context, const char_t *kexAlgo)
    return index;
 #else
    //Server operation mode is not implemented
-   return NULL;
+   return -1;
 #endif
 }
 
@@ -802,6 +802,7 @@ int_t sshSelectTransientRsaKey(SshContext *context, const char_t *kexAlgo)
 error_t sshFormatTransientRsaPublicKey(SshConnection *connection, uint8_t *p,
    size_t *written)
 {
+#if (SSH_SERVER_SUPPORT == ENABLED)
    error_t error;
    int_t i;
    SshContext *context;
@@ -844,6 +845,10 @@ error_t sshFormatTransientRsaPublicKey(SshConnection *connection, uint8_t *p,
 
    //Return status code
    return error;
+#else
+   //Server operation mode is not implemented
+   return ERROR_NOT_IMPLEMENTED;
+#endif
 }
 
 
@@ -861,6 +866,7 @@ error_t sshEncryptSharedSecret(SshConnection *connection,
    const SshBinaryString *transientRsaPublicKey, uint8_t *encryptedSecret,
    size_t *encryptedSecretLen)
 {
+#if (SSH_CLIENT_SUPPORT == ENABLED)
    error_t error;
    uint8_t n;
    uint_t kLen;
@@ -942,6 +948,10 @@ error_t sshEncryptSharedSecret(SshConnection *connection,
 
    //Return status code
    return error;
+#else
+   //Client operation mode is not implemented
+   return ERROR_NOT_IMPLEMENTED;
+#endif
 }
 
 
@@ -956,6 +966,7 @@ error_t sshEncryptSharedSecret(SshConnection *connection,
 error_t sshDecryptSharedSecret(SshConnection *connection,
    const uint8_t *encryptedSecret, size_t encryptedSecretLen)
 {
+#if (SSH_SERVER_SUPPORT == ENABLED)
    error_t error;
    int_t i;
    SshBinaryString k;
@@ -1017,6 +1028,10 @@ error_t sshDecryptSharedSecret(SshConnection *connection,
 
    //Return status code
    return error;
+#else
+   //Server operation mode is not implemented
+   return ERROR_NOT_IMPLEMENTED;
+#endif
 }
 
 #endif

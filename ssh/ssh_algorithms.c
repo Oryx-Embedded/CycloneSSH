@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.2.4
+ * @version 2.3.0
  **/
 
 //Switch to the appropriate trace level
@@ -49,9 +49,25 @@
 
 static const char_t *const sshSupportedKexAlgos[] =
 {
-#if (SSH_HBR_KEX_SUPPORT == ENABLED && SSH_SNTRUP761_SUPPORT == ENABLED && \
+#if (SSH_HYBRID_KEX_SUPPORT == ENABLED && SSH_SNTRUP761_SUPPORT == ENABLED && \
    SSH_CURVE25519_SUPPORT == ENABLED && SSH_SHA512_SUPPORT == ENABLED)
    "sntrup761x25519-sha512@openssh.com",
+#endif
+#if (SSH_HYBRID_KEX_SUPPORT == ENABLED && SSH_KYBER512_SUPPORT == ENABLED && \
+   SSH_CURVE25519_SUPPORT == ENABLED && SSH_SHA256_SUPPORT == ENABLED)
+   "x25519-kyber-512r3-sha256-d00@amazon.com",
+#endif
+#if (SSH_HYBRID_KEX_SUPPORT == ENABLED && SSH_KYBER512_SUPPORT == ENABLED && \
+   SSH_NISTP256_SUPPORT == ENABLED && SSH_SHA256_SUPPORT == ENABLED)
+   "ecdh-nistp256-kyber-512r3-sha256-d00@openquantumsafe.org",
+#endif
+#if (SSH_HYBRID_KEX_SUPPORT == ENABLED && SSH_KYBER768_SUPPORT == ENABLED && \
+   SSH_NISTP384_SUPPORT == ENABLED && SSH_SHA384_SUPPORT == ENABLED)
+   "ecdh-nistp384-kyber-768r3-sha384-d00@openquantumsafe.org",
+#endif
+#if (SSH_HYBRID_KEX_SUPPORT == ENABLED && SSH_KYBER1024_SUPPORT == ENABLED && \
+   SSH_NISTP521_SUPPORT == ENABLED && SSH_SHA512_SUPPORT == ENABLED)
+   "ecdh-nistp521-kyber-1024r3-sha512-d00@openquantumsafe.org",
 #endif
 #if (SSH_ECDH_KEX_SUPPORT == ENABLED && SSH_CURVE25519_SUPPORT == ENABLED && \
    SSH_SHA256_SUPPORT == ENABLED)
@@ -1452,10 +1468,14 @@ bool_t sshIsEcdhKexAlgo(const char_t *kexAlgo)
  * @return TRUE if PQ-hybrid key exchange algorithm, else FALSE
  **/
 
-bool_t sshIsHbrKexAlgo(const char_t *kexAlgo)
+bool_t sshIsHybridKexAlgo(const char_t *kexAlgo)
 {
    //Post-quantum hybrid key exchange algorithm?
-   if(sshCompareAlgo(kexAlgo, "sntrup761x25519-sha512@openssh.com"))
+   if(sshCompareAlgo(kexAlgo, "sntrup761x25519-sha512@openssh.com") ||
+      sshCompareAlgo(kexAlgo, "x25519-kyber-512r3-sha256-d00@amazon.com") ||
+      sshCompareAlgo(kexAlgo, "ecdh-nistp256-kyber-512r3-sha256-d00@openquantumsafe.org") ||
+      sshCompareAlgo(kexAlgo, "ecdh-nistp384-kyber-768r3-sha384-d00@openquantumsafe.org") ||
+      sshCompareAlgo(kexAlgo, "ecdh-nistp521-kyber-1024r3-sha512-d00@openquantumsafe.org")) 
    {
       return TRUE;
    }

@@ -1,5 +1,5 @@
 /**
- * @file ssh_kex_hbr.h
+ * @file ssh_kex_hybrid.h
  * @brief Post-quantum hybrid key exchange
  *
  * @section License
@@ -25,11 +25,11 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.2.4
+ * @version 2.3.0
  **/
 
-#ifndef _SSH_KEX_HBR_H
-#define _SSH_KEX_HBR_H
+#ifndef _SSH_KEX_HYBRID_H
+#define _SSH_KEX_HYBRID_H
 
 //Dependencies
 #include "ssh/ssh.h"
@@ -40,27 +40,29 @@ extern "C" {
 #endif
 
 //SSH related functions
-error_t sshSendHbrInit(SshConnection *connection);
-error_t sshSendHbrReply(SshConnection *connection);
+error_t sshSendKexHybridInit(SshConnection *connection);
+error_t sshSendKexHybridReply(SshConnection *connection);
 
-error_t sshFormatHbrReply(SshConnection *connection, uint8_t *p,
+error_t sshFormatKexHybridReply(SshConnection *connection, uint8_t *p,
    size_t *length);
 
-error_t sshFormatHbrInit(SshConnection *connection, uint8_t *p,
+error_t sshFormatKexHybridInit(SshConnection *connection, uint8_t *p,
    size_t *length);
 
-error_t sshParseHbrInit(SshConnection *connection, const uint8_t *message,
-   size_t length);
+error_t sshParseKexHybridInit(SshConnection *connection,
+   const uint8_t *message, size_t length);
 
-error_t sshParseHbrReply(SshConnection *connection, const uint8_t *message,
-   size_t length);
+error_t sshParseKexHybridReply(SshConnection *connection,
+   const uint8_t *message, size_t length);
 
-error_t sshParseHbrMessage(SshConnection *connection, uint8_t type,
+error_t sshParseKexHybridMessage(SshConnection *connection, uint8_t type,
    const uint8_t *message, size_t length);
 
 error_t sshSelectKemAlgo(SshConnection *connection);
 
-error_t sshLoadKexClassicalEcdhParams(const char_t *kexAlgo, EcDomainParameters *params);
+error_t sshLoadKexClassicalEcdhParams(const char_t *kexAlgo,
+   EcDomainParameters *params);
+
 error_t sshGenerateClassicalEcdhKeyPair(SshConnection *connection);
 error_t sshComputeClassicalEcdhSharedSecret(SshConnection *connection);
 

@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.2.4
+ * @version 2.3.0
  **/
 
 //Switch to the appropriate trace level
@@ -137,8 +137,16 @@ error_t sftpFormatLongFilename(const SshString *filename,
    if(attributes->flags != 0)
    {
       //Format links, owner, group and size fields
-      n = osSprintf(p, "----------   1 owner    group    %10" PRIu64,
-         attributes->size);
+      if(attributes->size <= (uint64_t) UINT32_MAX)
+      {
+         n = osSprintf(p, "----------   1 owner    group    %10" PRIu32,
+            (uint32_t) attributes->size);
+      }
+      else
+      {
+         n = osSprintf(p, "----------   1 owner    group    %10" PRIu64,
+            attributes->size);
+      }
 
       //Check whether the current entry is a directory
       if(attributes->type == SSH_FILEXFER_TYPE_DIRECTORY)

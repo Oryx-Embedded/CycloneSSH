@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.2.4
+ * @version 2.3.0
  **/
 
 //Switch to the appropriate trace level
@@ -118,14 +118,14 @@ error_t sshDecryptPrivateKey(const char_t *input, size_t inputLen,
             //Format private key header
             error = sshFormatOpenSshPrivateKeyHeader(p, &n);
          }
-         
+
          //Check status code
          if(!error)
          {
             //Point to the next field
             p += n;
             length += n;
-            
+
             //Format 'publickey' field
             error = sshFormatBinaryString(privateKeyHeader.publicKey.value,
                privateKeyHeader.publicKey.length, p, &n);
@@ -137,7 +137,7 @@ error_t sshDecryptPrivateKey(const char_t *input, size_t inputLen,
             //Point to the next field
             p += n;
             length += n;
-            
+
             //Format 'encrypted' field
             error = sshFormatBinaryString(privateKeyHeader.encrypted.value,
                privateKeyHeader.encrypted.length, p, &n);
@@ -272,7 +272,7 @@ error_t sshDecryptOpenSshPrivateKey(const SshPrivateKeyHeader *privateKeyHeader,
                error = ERROR_DECRYPTION_FAILED;
             }
          }
-   
+
          //Erase cipher context
          aesDeinit(aesContext);
          //Release previously allocated memory

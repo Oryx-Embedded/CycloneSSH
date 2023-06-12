@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.2.4
+ * @version 2.3.0
  **/
 
 #ifndef _SSH_H
@@ -45,6 +45,7 @@
 #include "aead/aead_algorithms.h"
 #include "pkc/dh.h"
 #include "ecc/ecdh.h"
+#include "pqc/kem.h"
 
 
 /*
@@ -74,13 +75,13 @@
 #endif
 
 //Version string
-#define CYCLONE_SSH_VERSION_STRING "2.2.4"
+#define CYCLONE_SSH_VERSION_STRING "2.3.0"
 //Major version
 #define CYCLONE_SSH_MAJOR_VERSION 2
 //Minor version
-#define CYCLONE_SSH_MINOR_VERSION 2
+#define CYCLONE_SSH_MINOR_VERSION 3
 //Revision number
-#define CYCLONE_SSH_REV_NUMBER 4
+#define CYCLONE_SSH_REV_NUMBER 0
 
 //SSH support
 #ifndef SSH_SUPPORT
@@ -545,10 +546,10 @@
 #endif
 
 //Post-quantum hybrid key exchange support
-#ifndef SSH_HBR_KEX_SUPPORT
-   #define SSH_HBR_KEX_SUPPORT DISABLED
-#elif (SSH_HBR_KEX_SUPPORT != ENABLED && SSH_HBR_KEX_SUPPORT != DISABLED)
-   #error SSH_HBR_KEX_SUPPORT parameter is not valid
+#ifndef SSH_HYBRID_KEX_SUPPORT
+   #define SSH_HYBRID_KEX_SUPPORT DISABLED
+#elif (SSH_HYBRID_KEX_SUPPORT != ENABLED && SSH_HYBRID_KEX_SUPPORT != DISABLED)
+   #error SSH_HYBRID_KEX_SUPPORT parameter is not valid
 #endif
 
 //RSA signature support
@@ -621,11 +622,32 @@
    #error SSH_CURVE448_SUPPORT parameter is not valid
 #endif
 
-//Streamlined NTRU Prime support
+//Streamlined NTRU Prime 761 KEM support
 #ifndef SSH_SNTRUP761_SUPPORT
    #define SSH_SNTRUP761_SUPPORT DISABLED
 #elif (SSH_SNTRUP761_SUPPORT != ENABLED && SSH_SNTRUP761_SUPPORT != DISABLED)
    #error SSH_SNTRUP761_SUPPORT parameter is not valid
+#endif
+
+//Kyber-512 KEM support
+#ifndef SSH_KYBER512_SUPPORT
+   #define SSH_KYBER512_SUPPORT DISABLED
+#elif (SSH_KYBER512_SUPPORT != ENABLED && SSH_KYBER512_SUPPORT != DISABLED)
+   #error SSH_KYBER512_SUPPORT parameter is not valid
+#endif
+
+//Kyber-768 KEM support
+#ifndef SSH_KYBER768_SUPPORT
+   #define SSH_KYBER768_SUPPORT DISABLED
+#elif (SSH_KYBER768_SUPPORT != ENABLED && SSH_KYBER768_SUPPORT != DISABLED)
+   #error SSH_KYBER768_SUPPORT parameter is not valid
+#endif
+
+//Kyber-1024 KEM support
+#ifndef SSH_KYBER1024_SUPPORT
+   #define SSH_KYBER1024_SUPPORT DISABLED
+#elif (SSH_KYBER1024_SUPPORT != ENABLED && SSH_KYBER1024_SUPPORT != DISABLED)
+   #error SSH_KYBER1024_SUPPORT parameter is not valid
 #endif
 
 //Maximum number of transient RSA keys that can be loaded
@@ -797,27 +819,33 @@
 #endif
 
 //Maximum shared secret length (PQ-hybrid key exchange)
-#if (SSH_HBR_KEX_SUPPORT == ENABLED)
-   #define SSH_MAX_HBR_SHARED_SECRET_LEN 68
+#if (SSH_HYBRID_KEX_SUPPORT == ENABLED && SSH_SNTRUP761_SUPPORT == ENABLED)
+   #define SSH_MAX_HYBRID_SHARED_SECRET_LEN 68
+#elif (SSH_HYBRID_KEX_SUPPORT == ENABLED && SSH_KYBER1024_SUPPORT == ENABLED)
+   #define SSH_MAX_HYBRID_SHARED_SECRET_LEN 68
+#elif (SSH_HYBRID_KEX_SUPPORT == ENABLED && SSH_KYBER768_SUPPORT == ENABLED)
+   #define SSH_MAX_HYBRID_SHARED_SECRET_LEN 52
+#elif (SSH_HYBRID_KEX_SUPPORT == ENABLED && SSH_KYBER512_SUPPORT == ENABLED)
+   #define SSH_MAX_HYBRID_SHARED_SECRET_LEN 36
 #else
-   #define SSH_MAX_HBR_SHARED_SECRET_LEN 0
+   #define SSH_MAX_HYBRID_SHARED_SECRET_LEN 0
 #endif
 
 //Maximum shared secret length
 #if (SSH_MAX_RSA_SHARED_SECRET_LEN >= SSH_MAX_DH_SHARED_SECRET_LEN && \
    SSH_MAX_RSA_SHARED_SECRET_LEN >= SSH_MAX_ECDH_SHARED_SECRET_LEN && \
-   SSH_MAX_RSA_SHARED_SECRET_LEN >= SSH_MAX_HBR_SHARED_SECRET_LEN)
+   SSH_MAX_RSA_SHARED_SECRET_LEN >= SSH_MAX_HYBRID_SHARED_SECRET_LEN)
    #define SSH_MAX_SHARED_SECRET_LEN SSH_MAX_RSA_SHARED_SECRET_LEN
 #elif (SSH_MAX_DH_SHARED_SECRET_LEN >= SSH_MAX_RSA_SHARED_SECRET_LEN && \
    SSH_MAX_DH_SHARED_SECRET_LEN >= SSH_MAX_ECDH_SHARED_SECRET_LEN && \
-   SSH_MAX_DH_SHARED_SECRET_LEN >= SSH_MAX_HBR_SHARED_SECRET_LEN)
+   SSH_MAX_DH_SHARED_SECRET_LEN >= SSH_MAX_HYBRID_SHARED_SECRET_LEN)
    #define SSH_MAX_SHARED_SECRET_LEN SSH_MAX_DH_SHARED_SECRET_LEN
 #elif (SSH_MAX_ECDH_SHARED_SECRET_LEN >= SSH_MAX_RSA_SHARED_SECRET_LEN && \
    SSH_MAX_ECDH_SHARED_SECRET_LEN >= SSH_MAX_DH_SHARED_SECRET_LEN && \
-   SSH_MAX_ECDH_SHARED_SECRET_LEN >= SSH_MAX_HBR_SHARED_SECRET_LEN)
+   SSH_MAX_ECDH_SHARED_SECRET_LEN >= SSH_MAX_HYBRID_SHARED_SECRET_LEN)
    #define SSH_MAX_SHARED_SECRET_LEN SSH_MAX_ECDH_SHARED_SECRET_LEN
 #else
-   #define SSH_MAX_SHARED_SECRET_LEN SSH_MAX_HBR_SHARED_SECRET_LEN
+   #define SSH_MAX_SHARED_SECRET_LEN SSH_MAX_HYBRID_SHARED_SECRET_LEN
 #endif
 
 //SSH port number
@@ -924,8 +952,8 @@ typedef enum
    SSH_MSG_KEX_DH_GEX_REPLY          = 33,
    SSH_MSG_KEX_ECDH_INIT             = 30,
    SSH_MSG_KEX_ECDH_REPLY            = 31,
-   SSH_MSG_HBR_INIT                  = 30,
-   SSH_MSG_HBR_REPLY                 = 31,
+   SSH_MSG_KEX_HYBRID_INIT           = 30,
+   SSH_MSG_KEX_HYBRID_REPLY          = 31,
    SSH_MSG_USERAUTH_REQUEST          = 50,
    SSH_MSG_USERAUTH_FAILURE          = 51,
    SSH_MSG_USERAUTH_SUCCESS          = 52,
@@ -1012,8 +1040,8 @@ typedef enum
    SSH_CONN_STATE_KEX_DH_GEX_REPLY   = 13,
    SSH_CONN_STATE_KEX_ECDH_INIT      = 14,
    SSH_CONN_STATE_KEX_ECDH_REPLY     = 15,
-   SSH_CONN_STATE_KEX_HBR_INIT       = 16,
-   SSH_CONN_STATE_KEX_HBR_REPLY      = 17,
+   SSH_CONN_STATE_KEX_HYBRID_INIT    = 16,
+   SSH_CONN_STATE_KEX_HYBRID_REPLY   = 17,
    SSH_CONN_STATE_CLIENT_NEW_KEYS    = 18,
    SSH_CONN_STATE_SERVER_NEW_KEYS    = 19,
    SSH_CONN_STATE_CLIENT_EXT_INFO    = 20,
@@ -1394,8 +1422,11 @@ struct _SshConnection
 #if (SSH_DH_KEX_SUPPORT == ENABLED || SSH_DH_GEX_KEX_SUPPORT == ENABLED)
    DhContext dhContext;                         ///<Diffie-Hellman context
 #endif
-#if (SSH_ECDH_KEX_SUPPORT == ENABLED || SSH_HBR_KEX_SUPPORT == ENABLED)
+#if (SSH_ECDH_KEX_SUPPORT == ENABLED || SSH_HYBRID_KEX_SUPPORT == ENABLED)
    EcdhContext ecdhContext;                     ///<ECDH context
+#endif
+#if (SSH_HYBRID_KEX_SUPPORT == ENABLED)
+   KemContext kemContext;                       ///<KEM context
 #endif
 
    SshEncryptionEngine encryptionEngine;        ///<Encryption engine

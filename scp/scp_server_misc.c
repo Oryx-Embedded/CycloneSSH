@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.2.4
+ * @version 2.3.0
  **/
 
 //Switch to the appropriate trace level
@@ -437,6 +437,7 @@ void scpServerRegisterSessionEvents(ScpServerSession *session,
       session->state == SCP_SERVER_SESSION_STATE_READ_STATUS ||
       session->state == SCP_SERVER_SESSION_STATE_ERROR)
    {
+      //Wait for the channel to be writable
       eventDesc->channel = session->channel;
       eventDesc->eventMask = SSH_CHANNEL_EVENT_TX_READY;
    }
@@ -446,35 +447,43 @@ void scpServerRegisterSessionEvents(ScpServerSession *session,
       session->state == SCP_SERVER_SESSION_STATE_READ_ACK ||
       session->state == SCP_SERVER_SESSION_STATE_READ_FIN)
    {
+      //Wait for the channel to be readable
       eventDesc->channel = session->channel;
       eventDesc->eventMask = SSH_CHANNEL_EVENT_RX_READY;
    }
    else if(session->state == SCP_SERVER_SESSION_STATE_WRITE_DATA)
    {
+      //Any data left to read?
       if(session->bufferPos < session->bufferLen)
       {
+         //Wait for the channel to be readable
          eventDesc->channel = session->channel;
          eventDesc->eventMask = SSH_CHANNEL_EVENT_RX_READY;
       }
       else
       {
+         //The read operation is complete
          eventDesc->eventFlags |= SSH_CHANNEL_EVENT_RX_READY;
       }
    }
    else if(session->state == SCP_SERVER_SESSION_STATE_READ_DATA)
    {
+      //Any data left to write?
       if(session->bufferPos < session->bufferLen)
       {
+         //Wait for the channel to be writable
          eventDesc->channel = session->channel;
          eventDesc->eventMask = SSH_CHANNEL_EVENT_TX_READY;
       }
       else
       {
+         //The write operation is complete
          eventDesc->eventFlags |= SSH_CHANNEL_EVENT_TX_READY;
       }
    }
    else if(session->state == SCP_SERVER_SESSION_STATE_CLOSING)
    {
+      //Close SCP session immediately
       eventDesc->eventFlags |= SSH_CHANNEL_EVENT_TX_READY;
    }
    else

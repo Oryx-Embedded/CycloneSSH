@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.2.4
+ * @version 2.3.0
  **/
 
 //Switch to the appropriate trace level
@@ -39,7 +39,7 @@
 #include "ssh/ssh_kex_dh.h"
 #include "ssh/ssh_kex_dh_gex.h"
 #include "ssh/ssh_kex_ecdh.h"
-#include "ssh/ssh_kex_hbr.h"
+#include "ssh/ssh_kex_hybrid.h"
 #include "ssh/ssh_packet.h"
 #include "ssh/ssh_key_material.h"
 #include "ssh/ssh_exchange_hash.h"
@@ -148,12 +148,12 @@ error_t sshSendKexInit(SshConnection *connection)
             }
             else
 #endif
-#if (SSH_HBR_KEX_SUPPORT == ENABLED)
+#if (SSH_HYBRID_KEX_SUPPORT == ENABLED)
             //Post-quantum hybrid key exchange algorithm?
-            if(sshIsHbrKexAlgo(connection->kexAlgo))
+            if(sshIsHybridKexAlgo(connection->kexAlgo))
             {
-               //The client sends an SSH_MSG_HBR_INIT message
-               connection->state = SSH_CONN_STATE_KEX_HBR_INIT;
+               //The client sends an SSH_MSG_KEX_HYBRID_INIT message
+               connection->state = SSH_CONN_STATE_KEX_HYBRID_INIT;
             }
             else
 #endif
@@ -954,12 +954,12 @@ error_t sshParseKexInit(SshConnection *connection, const uint8_t *message,
       }
       else
 #endif
-#if (SSH_HBR_KEX_SUPPORT == ENABLED)
+#if (SSH_HYBRID_KEX_SUPPORT == ENABLED)
       //Post-quantum hybrid key exchange algorithm?
-      if(sshIsHbrKexAlgo(connection->kexAlgo))
+      if(sshIsHybridKexAlgo(connection->kexAlgo))
       {
-         //The client sends an SSH_MSG_HBR_INIT message
-         connection->state = SSH_CONN_STATE_KEX_HBR_INIT;
+         //The client sends an SSH_MSG_KEX_HYBRID_INIT message
+         connection->state = SSH_CONN_STATE_KEX_HYBRID_INIT;
       }
       else
 #endif
@@ -1131,12 +1131,12 @@ error_t sshParseKexMessage(SshConnection *connection, uint8_t type,
       }
       else
 #endif
-#if (SSH_HBR_KEX_SUPPORT == ENABLED)
+#if (SSH_HYBRID_KEX_SUPPORT == ENABLED)
       //Post-quantum hybrid key exchange algorithm?
-      if(sshIsHbrKexAlgo(connection->kexAlgo))
+      if(sshIsHybridKexAlgo(connection->kexAlgo))
       {
          //Parse PQ-hybrid specific messages
-         error = sshParseHbrMessage(connection, type, message, length);
+         error = sshParseKexHybridMessage(connection, type, message, length);
       }
       else
 #endif

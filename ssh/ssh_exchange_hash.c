@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.2.4
+ * @version 2.3.0
  **/
 
 //Switch to the appropriate trace level
@@ -89,7 +89,9 @@ error_t sshInitExchangeHash(SshConnection *connection)
       sshCompareAlgo(kexAlgo, "diffie-hellman-group-exchange-sha256") ||
       sshCompareAlgo(kexAlgo, "ecdh-sha2-nistp256") ||
       sshCompareAlgo(kexAlgo, "curve25519-sha256") ||
-      sshCompareAlgo(kexAlgo, "curve25519-sha256@libssh.org"))
+      sshCompareAlgo(kexAlgo, "curve25519-sha256@libssh.org") ||
+      sshCompareAlgo(kexAlgo, "x25519-kyber-512r3-sha256-d00@amazon.com") ||
+      sshCompareAlgo(kexAlgo, "ecdh-nistp256-kyber-512r3-sha256-d00@openquantumsafe.org"))
    {
       //Select the relevant hash algorithm
       hashAlgo = SHA256_HASH_ALGO;
@@ -99,7 +101,8 @@ error_t sshInitExchangeHash(SshConnection *connection)
 #if (SSH_SHA384_SUPPORT == ENABLED)
    //Key exchange with SHA-384 as hash?
    if(sshCompareAlgo(kexAlgo, "diffie-hellman-group-exchange-sha384@ssh.com") ||
-      sshCompareAlgo(kexAlgo, "ecdh-sha2-nistp384"))
+      sshCompareAlgo(kexAlgo, "ecdh-sha2-nistp384") ||
+      sshCompareAlgo(kexAlgo, "ecdh-nistp384-kyber-768r3-sha384-d00@openquantumsafe.org"))
    {
       //Select the relevant hash algorithm
       hashAlgo = SHA384_HASH_ALGO;
@@ -115,7 +118,8 @@ error_t sshInitExchangeHash(SshConnection *connection)
       sshCompareAlgo(kexAlgo, "diffie-hellman-group-exchange-sha512@ssh.com") ||
       sshCompareAlgo(kexAlgo, "ecdh-sha2-nistp521") ||
       sshCompareAlgo(kexAlgo, "curve448-sha512") ||
-      sshCompareAlgo(kexAlgo, "sntrup761x25519-sha512@openssh.com"))
+      sshCompareAlgo(kexAlgo, "sntrup761x25519-sha512@openssh.com") ||
+      sshCompareAlgo(kexAlgo, "ecdh-nistp521-kyber-1024r3-sha512-d00@openquantumsafe.org"))
    {
       //Select the relevant hash algorithm
       hashAlgo = SHA512_HASH_ALGO;

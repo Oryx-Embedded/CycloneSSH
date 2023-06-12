@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.2.4
+ * @version 2.3.0
  **/
 
 #ifndef _SFTP_CLIENT_H
@@ -37,7 +37,7 @@
 
 //SFTP client support
 #ifndef SFTP_CLIENT_SUPPORT
-   #define SFTP_CLIENT_SUPPORT ENABLED
+   #define SFTP_CLIENT_SUPPORT DISABLED
 #elif (SFTP_CLIENT_SUPPORT != ENABLED && SFTP_CLIENT_SUPPORT != DISABLED)
    #error SFTP_CLIENT_SUPPORT parameter is not valid
 #endif

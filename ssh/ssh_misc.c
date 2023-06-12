@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.2.4
+ * @version 2.3.0
  **/
 
 //Switch to the appropriate trace level
@@ -41,6 +41,7 @@
 #include "ssh/ssh_kex_dh.h"
 #include "ssh/ssh_kex_dh_gex.h"
 #include "ssh/ssh_kex_ecdh.h"
+#include "ssh/ssh_kex_hybrid.h"
 #include "ssh/ssh_auth.h"
 #include "ssh/ssh_channel.h"
 #include "ssh/ssh_packet.h"
@@ -122,9 +123,13 @@ SshConnection *sshOpenConnection(SshContext *context, Socket *socket)
          //Initialize Diffie-Hellman context
          dhInit(&connection->dhContext);
 #endif
-#if (SSH_ECDH_KEX_SUPPORT == ENABLED || SSH_HBR_KEX_SUPPORT == ENABLED)
+#if (SSH_ECDH_KEX_SUPPORT == ENABLED || SSH_HYBRID_KEX_SUPPORT == ENABLED)
          //Initialize ECDH context
          ecdhInit(&connection->ecdhContext);
+#endif
+#if (SSH_HYBRID_KEX_SUPPORT == ENABLED)
+         //Initialize KEM context
+         kemInit(&connection->kemContext, NULL);
 #endif
          //The sequence number is initialized to zero for the first packet (refer
          //to RFC 4253, section 6.4)
@@ -231,9 +236,13 @@ void sshCloseConnection(SshConnection *connection)
    //Release Diffie-Hellman context
    dhFree(&connection->dhContext);
 #endif
-#if (SSH_ECDH_KEX_SUPPORT == ENABLED || SSH_HBR_KEX_SUPPORT == ENABLED)
+#if (SSH_ECDH_KEX_SUPPORT == ENABLED || SSH_HYBRID_KEX_SUPPORT == ENABLED)
    //Release ECDH context
    ecdhFree(&connection->ecdhContext);
+#endif
+#if (SSH_HYBRID_KEX_SUPPORT == ENABLED)
+    //Release KEM context
+    kemFree(&connection->kemContext);
 #endif
 
    //Release encryption engine
@@ -298,7 +307,7 @@ void sshRegisterConnectionEvents(SshContext *context, SshConnection *connection,
          connection->state == SSH_CONN_STATE_KEX_DH_INIT ||
          connection->state == SSH_CONN_STATE_KEX_DH_GEX_REQUEST ||
          connection->state == SSH_CONN_STATE_KEX_ECDH_INIT ||
-         connection->state == SSH_CONN_STATE_KEX_HBR_INIT ||
+         connection->state == SSH_CONN_STATE_KEX_HYBRID_INIT ||
          connection->state == SSH_CONN_STATE_CLIENT_NEW_KEYS ||
          connection->state == SSH_CONN_STATE_CLIENT_EXT_INFO ||
          connection->state == SSH_CONN_STATE_SERVICE_REQUEST ||
@@ -458,11 +467,11 @@ error_t sshProcessConnectionEvents(SshContext *context,
                error = sshSendKexEcdhInit(connection);
             }
 #endif
-#if (SSH_HBR_KEX_SUPPORT == ENABLED)
-            else if(connection->state == SSH_CONN_STATE_KEX_HBR_INIT)
+#if (SSH_HYBRID_KEX_SUPPORT == ENABLED)
+            else if(connection->state == SSH_CONN_STATE_KEX_HYBRID_INIT)
             {
-               //Send SSH_MSG_HBR_INIT message
-               error = sshSendHbrInit(connection);
+               //Send SSH_MSG_KEX_HYBRID_INIT message
+               error = sshSendKexHybridInit(connection);
             }
 #endif
 #if (SSH_EXT_INFO_SUPPORT == ENABLED)
@@ -490,7 +499,7 @@ error_t sshProcessConnectionEvents(SshContext *context,
                connection->state == SSH_CONN_STATE_KEX_DH_GEX_GROUP ||
                connection->state == SSH_CONN_STATE_KEX_DH_GEX_REPLY ||
                connection->state == SSH_CONN_STATE_KEX_ECDH_REPLY ||
-               connection->state == SSH_CONN_STATE_KEX_HBR_REPLY ||
+               connection->state == SSH_CONN_STATE_KEX_HYBRID_REPLY ||
                connection->state == SSH_CONN_STATE_SERVER_NEW_KEYS ||
                connection->state == SSH_CONN_STATE_SERVER_EXT_INFO_1 ||
                connection->state == SSH_CONN_STATE_SERVER_EXT_INFO_2 ||
@@ -563,7 +572,7 @@ error_t sshProcessConnectionEvents(SshContext *context,
                connection->state == SSH_CONN_STATE_KEX_DH_GEX_REQUEST ||
                connection->state == SSH_CONN_STATE_KEX_DH_GEX_INIT ||
                connection->state == SSH_CONN_STATE_KEX_ECDH_INIT ||
-               connection->state == SSH_CONN_STATE_KEX_HBR_INIT ||
+               connection->state == SSH_CONN_STATE_KEX_HYBRID_INIT ||
                connection->state == SSH_CONN_STATE_CLIENT_NEW_KEYS ||
                connection->state == SSH_CONN_STATE_CLIENT_EXT_INFO ||
                connection->state == SSH_CONN_STATE_SERVICE_REQUEST ||
@@ -1066,6 +1075,7 @@ const EcCurveInfo *sshGetCurveInfo(const SshString *keyFormatId,
 {
    const EcCurveInfo *curveInfo;
 
+#if (SSH_ECDSA_SIGN_SUPPORT == ENABLED)
 #if (SSH_NISTP256_SUPPORT == ENABLED)
    //NIST P-256 elliptic curve?
    if(sshCompareString(keyFormatId, "ecdsa-sha2-nistp256") &&
@@ -1119,6 +1129,7 @@ const EcCurveInfo *sshGetCurveInfo(const SshString *keyFormatId,
       curveInfo = SECP521R1_CURVE;
    }
    else
+#endif
 #endif
    //Unknow elliptic curve?
    {

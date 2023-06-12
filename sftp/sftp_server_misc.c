@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.2.4
+ * @version 2.3.0
  **/
 
 //Switch to the appropriate trace level
@@ -305,54 +305,67 @@ void sftpServerRegisterSessionEvents(SftpServerSession *session,
    //Check the state of the SFTP session
    if(session->state == SFTP_SERVER_SESSION_STATE_RECEIVING)
    {
+      //Any data left to read?
       if(session->bufferPos < sizeof(SftpPacketHeader))
       {
+         //Wait for the channel to be readable
          eventDesc->channel = session->channel;
          eventDesc->eventMask = SSH_CHANNEL_EVENT_RX_READY;
       }
       else if(session->bufferPos < session->bufferLen)
       {
+         //Wait for the channel to be readable
          eventDesc->channel = session->channel;
          eventDesc->eventMask = SSH_CHANNEL_EVENT_RX_READY;
       }
       else
       {
+         //The read operation is complete
          eventDesc->eventFlags |= SSH_CHANNEL_EVENT_RX_READY;
       }
    }
    else if(session->state == SFTP_SERVER_SESSION_STATE_SENDING)
    {
+      //Any data left to write?
       if(session->bufferPos < session->bufferLen)
       {
+         //Wait for the channel to be writable
          eventDesc->channel = session->channel;
          eventDesc->eventMask = SSH_CHANNEL_EVENT_TX_READY;
       }
       else
       {
+         //The write operation is complete
          eventDesc->eventFlags |= SSH_CHANNEL_EVENT_TX_READY;
       }
    }
    else if(session->state == SFTP_SERVER_SESSION_STATE_RECEIVING_DATA)
    {
+      //Any data left to read?
       if(session->bufferPos < session->bufferLen)
       {
+         //Wait for the channel to be readable
          eventDesc->channel = session->channel;
          eventDesc->eventMask = SSH_CHANNEL_EVENT_RX_READY;
       }
       else
       {
+         //The read operation is complete
          eventDesc->eventFlags |= SSH_CHANNEL_EVENT_RX_READY;
       }
    }
    else if(session->state == SFTP_SERVER_SESSION_STATE_SENDING_DATA)
    {
+      //Any data left to write?
       if(session->bufferPos < session->bufferLen)
       {
+         //Wait for the channel to be writable
          eventDesc->channel = session->channel;
          eventDesc->eventMask = SSH_CHANNEL_EVENT_TX_READY;
       }
       else
       {
+         //The write operation is complete
          eventDesc->eventFlags |= SSH_CHANNEL_EVENT_TX_READY;
       }
    }

@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.2.4
+ * @version 2.3.0
  **/
 
 //Switch to the appropriate trace level
@@ -75,8 +75,16 @@ size_t scpFormatDirective(const ScpDirective *directive, char_t *buffer)
    {
       //The 'C' directive indicates the next file to be transferred. The 'D'
       //directive indicates a directory change
-      n += osSprintf(buffer + n, "%04" PRIo32 " %" PRIu64 " %s\n",
-         directive->mode, directive->size, directive->filename);
+      if(directive->size <= (uint64_t) UINT32_MAX)
+      {
+         n += osSprintf(buffer + n, "%04" PRIo32 " %" PRIu32 " %s\n",
+            directive->mode, (uint32_t) directive->size, directive->filename);
+      }
+      else
+      {
+         n += osSprintf(buffer + n, "%04" PRIo32 " %" PRIu64 " %s\n",
+            directive->mode, directive->size, directive->filename);
+      }
 
       //Debug message
       TRACE_DEBUG("Sending SCP '%c' directive...\r\n", directive->opcode);

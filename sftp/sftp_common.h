@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.2.4
+ * @version 2.3.0
  **/
 
 #ifndef _SFTP_COMMON_H
@@ -209,24 +209,24 @@ typedef enum
  * @brief SFTP packet header
  **/
 
-typedef __start_packed struct
+typedef __packed_struct
 {
    uint32_t length;   //0-3
    uint8_t type;      //4
    uint8_t payload[]; //5
-} __end_packed SftpPacketHeader;
+} SftpPacketHeader;
 
 
 /**
  * @brief SSH_FXP_DATA packet header
  **/
 
-typedef __start_packed struct
+typedef __packed_struct
 {
    uint32_t id;      //0-3
    uint32_t dataLen; //4-7
    uint8_t data[];   //8
-} __end_packed SftpFxpDataHeader;
+} SftpFxpDataHeader;
 
 
 //CodeWarrior or Win32 compiler?

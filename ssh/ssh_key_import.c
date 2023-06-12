@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.2.4
+ * @version 2.3.0
  **/
 
 //Switch to the appropriate trace level
@@ -1401,6 +1401,7 @@ const char_t *sshGetPublicKeyType(const char_t *input, size_t length)
    }
    else
    {
+#if (SSH_ECDSA_SIGN_SUPPORT == ENABLED)
       X509KeyType type;
       EcDomainParameters params;
 
@@ -1451,6 +1452,27 @@ const char_t *sshGetPublicKeyType(const char_t *input, size_t length)
 
       //Release EC domain parameters
       ecFreeDomainParameters(&params);
+#else
+      X509KeyType type;
+
+      //Retrieve the type of the public key (PEM format)
+      error = pemGetPublicKeyType(input, length, &type);
+
+      //Check status
+      if(!error)
+      {
+         //Loop through the list of supported key types
+         for(i = 0; i < arraysize(sshKeyTypes); i++)
+         {
+            //Matching key type?
+            if(sshKeyTypes[i].type == type)
+            {
+               keyType = sshKeyTypes[i].identifier;
+               break;
+            }
+         }
+      }
+#endif
    }
 
    //Return key type

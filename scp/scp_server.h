@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.2.4
+ * @version 2.3.0
  **/
 
 #ifndef _SCP_SERVER_H
@@ -38,7 +38,7 @@
 
 //SCP server support
 #ifndef SCP_SERVER_SUPPORT
-   #define SCP_SERVER_SUPPORT ENABLED
+   #define SCP_SERVER_SUPPORT DISABLED
 #elif (SCP_SERVER_SUPPORT != ENABLED && SCP_SERVER_SUPPORT != DISABLED)
    #error SCP_SERVER_SUPPORT parameter is not valid
 #endif

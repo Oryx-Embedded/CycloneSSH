@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.2.4
+ * @version 2.3.0
  **/
 
 #ifndef _SHELL_SERVER_H
@@ -36,7 +36,7 @@
 
 //Shell server support
 #ifndef SHELL_SERVER_SUPPORT
-   #define SHELL_SERVER_SUPPORT ENABLED
+   #define SHELL_SERVER_SUPPORT DISABLED
 #elif (SHELL_SERVER_SUPPORT != ENABLED && SHELL_SERVER_SUPPORT != DISABLED)
    #error SHELL_SERVER_SUPPORT parameter is not valid
 #endif
