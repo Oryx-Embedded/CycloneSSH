@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.3.0
+ * @version 2.3.2
  **/
 
 #ifndef _SSH_H
@@ -75,13 +75,13 @@
 #endif
 
 //Version string
-#define CYCLONE_SSH_VERSION_STRING "2.3.0"
+#define CYCLONE_SSH_VERSION_STRING "2.3.2"
 //Major version
 #define CYCLONE_SSH_MAJOR_VERSION 2
 //Minor version
 #define CYCLONE_SSH_MINOR_VERSION 3
 //Revision number
-#define CYCLONE_SSH_REV_NUMBER 0
+#define CYCLONE_SSH_REV_NUMBER 2
 
 //SSH support
 #ifndef SSH_SUPPORT
