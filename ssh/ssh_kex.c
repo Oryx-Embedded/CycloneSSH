@@ -1034,6 +1034,15 @@ error_t sshParseNewKeys(SshConnection *connection, const uint8_t *message,
    //Check status code
    if(!error)
    {
+#if (SSH_KEX_STRICT_SUPPORT == ENABLED)
+      //Strict key exchange?
+      if(connection->kexStrictReceived)
+      {
+         //Reset the packet sequence number to zero
+         osMemset(connection->decryptionEngine.seqNum, 0xFF, 4);
+      }
+#endif
+
       //Key re-exchange?
       if(connection->newKeysReceived)
       {
@@ -1051,15 +1060,6 @@ error_t sshParseNewKeys(SshConnection *connection, const uint8_t *message,
       {
          //An SSH_MSG_NEWKEYS message has been successfully received
          connection->newKeysReceived = TRUE;
-
-#if (SSH_KEX_STRICT_SUPPORT == ENABLED)
-      //Strict key exchange?
-      if(connection->kexStrictReceived)
-      {
-         //Reset the packet sequence number to zero
-         osMemset(connection->decryptionEngine.seqNum, 0xFF, 4);
-      }
-#endif
 
 #if (SSH_EXT_INFO_SUPPORT == ENABLED)
          //Server operation mode?
