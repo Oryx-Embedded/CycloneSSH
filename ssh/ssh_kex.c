@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.3.2
+ * @version 2.3.4
  **/
 
 //Switch to the appropriate trace level
@@ -235,6 +235,15 @@ error_t sshSendNewKeys(SshConnection *connection)
    {
       //An SSH_MSG_NEWKEYS message has been successfully sent
       connection->newKeysSent = TRUE;
+
+#if (SSH_KEX_STRICT_SUPPORT == ENABLED)
+      //Strict key exchange?
+      if(connection->kexStrictReceived)
+      {
+         //Reset the packet sequence number to zero
+         osMemset(connection->encryptionEngine.seqNum, 0, 4);
+      }
+#endif
 
 #if (SSH_EXT_INFO_SUPPORT == ENABLED)
       //If a server receives an "ext-info-c", or a client receives an
@@ -1042,6 +1051,15 @@ error_t sshParseNewKeys(SshConnection *connection, const uint8_t *message,
       {
          //An SSH_MSG_NEWKEYS message has been successfully received
          connection->newKeysReceived = TRUE;
+
+#if (SSH_KEX_STRICT_SUPPORT == ENABLED)
+      //Strict key exchange?
+      if(connection->kexStrictReceived)
+      {
+         //Reset the packet sequence number to zero
+         osMemset(connection->decryptionEngine.seqNum, 0xFF, 4);
+      }
+#endif
 
 #if (SSH_EXT_INFO_SUPPORT == ENABLED)
          //Server operation mode?

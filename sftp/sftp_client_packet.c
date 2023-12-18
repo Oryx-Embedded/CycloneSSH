@@ -1,6 +1,6 @@
 /**
- * @file sftp_client.c
- * @brief SFTP client
+ * @file sftp_client_packet.c
+ * @brief SFTP packet parsing and formatting
  *
  * @section License
  *
@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.3.2
+ * @version 2.3.4
  **/
 
 //Switch to the appropriate trace level

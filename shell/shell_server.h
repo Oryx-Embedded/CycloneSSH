@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.3.2
+ * @version 2.3.4
  **/
 
 #ifndef _SHELL_SERVER_H
@@ -180,6 +180,7 @@ typedef void (*ShellServerCloseCallback)(ShellServerSession *session,
 
 typedef struct
 {
+   OsTaskParameters task[SHELL_SERVER_MAX_SESSIONS];   ///<Task parameters
    SshServerContext *sshServerContext;                 ///<SSH server context
    uint_t numSessions;                                 ///<Maximum number of shell sessions
    ShellServerSession *sessions;                       ///<Shell sessions
@@ -198,11 +199,8 @@ struct _ShellServerSession
    ShellServerSessionState state;                    ///<Session state
    OsEvent startEvent;
    OsEvent event;
+   OsTaskParameters taskParams;                      ///<Task parameters
    OsTaskId taskId;                                  ///<Task identifier
-#if (OS_STATIC_TASK_SUPPORT == ENABLED)
-   OsTaskTcb taskTcb;                                ///<Task control block
-   OsStackType taskStack[SHELL_SERVER_STACK_SIZE];   ///<Task stack
-#endif
    ShellServerContext *context;                      ///<Shell server context
    SshChannel *channel;                              ///<Underlying SSH channel
    char_t prompt[SHELL_SERVER_MAX_PROMPT_LEN + 1];   ///<Shell prompt

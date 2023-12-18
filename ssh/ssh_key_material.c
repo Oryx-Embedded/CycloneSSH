@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.3.2
+ * @version 2.3.4
  **/
 
 //Switch to the appropriate trace level
@@ -1114,6 +1114,69 @@ error_t sshDeriveKey(SshConnection *connection, uint8_t x, uint8_t *output,
 
    //Return status code
    return error;
+}
+
+
+/**
+ * @brief Dump secret key (for debugging purpose only)
+ * @param[in] connection Pointer to the SSH connection
+ * @param[in] label Identifying label (NULL-terminated string)
+ * @param[in] key Pointer to the secret key
+ * @param[in] keyLen Length of the secret key, in bytes
+ **/
+
+void sshDumpKey(SshConnection *connection, const char_t *label,
+   const uint8_t *key, size_t keyLen)
+{
+#if (SSH_KEY_LOG_SUPPORT == ENABLED)
+   SshContext *context;
+
+   //Point to the SSH context
+   context = connection->context;
+
+   //Any registered callback?
+   if(context->keyLogCallback != NULL)
+   {
+      size_t i;
+      size_t n;
+      char_t *buffer;
+
+      //Allocate a buffer to hold the formatted string
+      buffer = sshAllocMem(2 * SSH_COOKIE_SIZE + 2 * keyLen +
+         osStrlen(label) + 3);
+
+      //Successful memory allocation?
+      if(buffer != NULL)
+      {
+         //Convert the cookie to a hex string
+         for(i = 0, n = 0; i < SSH_COOKIE_SIZE; i++)
+         {
+            //Format current byte
+            n += osSprintf(buffer + n, "%02" PRIX8, connection->cookie[i]);
+         }
+
+         //The middle part is a static label indicating the type of key material
+         //that follows
+         n += osSprintf(buffer + n, " %s ", label);
+
+         //Convert the shared secret to a hex string
+         for(i = 0; i < keyLen; i++)
+         {
+            //Format current byte
+            n += osSprintf(buffer + n, "%02" PRIX8, key[i]);
+         }
+
+         //Properly terminate the string with a NULL character
+         buffer[n] = '\0';
+
+         //Invoke user callback function
+         context->keyLogCallback(connection, buffer);
+
+         //Release previously allocated memory
+         sshFreeMem(buffer);
+      }
+   }
+#endif
 }
 
 #endif

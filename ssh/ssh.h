@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.3.2
+ * @version 2.3.4
  **/
 
 #ifndef _SSH_H
@@ -43,9 +43,7 @@
 #include "hash/hash_algorithms.h"
 #include "mac/mac_algorithms.h"
 #include "aead/aead_algorithms.h"
-#include "pkc/dh.h"
-#include "ecc/ecdh.h"
-#include "pqc/kem.h"
+#include "pkc/key_exch_algorithms.h"
 
 
 /*
@@ -75,13 +73,13 @@
 #endif
 
 //Version string
-#define CYCLONE_SSH_VERSION_STRING "2.3.2"
+#define CYCLONE_SSH_VERSION_STRING "2.3.4"
 //Major version
 #define CYCLONE_SSH_MAJOR_VERSION 2
 //Minor version
 #define CYCLONE_SSH_MINOR_VERSION 3
 //Revision number
-#define CYCLONE_SSH_REV_NUMBER 2
+#define CYCLONE_SSH_REV_NUMBER 4
 
 //SSH support
 #ifndef SSH_SUPPORT
@@ -151,6 +149,13 @@
    #define SSH_GLOBAL_REQ_OK_EXT_SUPPORT DISABLED
 #elif (SSH_GLOBAL_REQ_OK_EXT_SUPPORT != ENABLED && SSH_GLOBAL_REQ_OK_EXT_SUPPORT != DISABLED)
    #error SSH_GLOBAL_REQ_OK_EXT_SUPPORT parameter is not valid
+#endif
+
+//Strict key exchange extension support
+#ifndef SSH_KEX_STRICT_SUPPORT
+   #define SSH_KEX_STRICT_SUPPORT ENABLED
+#elif (SSH_KEX_STRICT_SUPPORT != ENABLED && SSH_KEX_STRICT_SUPPORT != DISABLED)
+   #error SSH_KEX_STRICT_SUPPORT parameter is not valid
 #endif
 
 //Signature generation/verification callback functions
@@ -648,6 +653,13 @@
    #define SSH_KYBER1024_SUPPORT DISABLED
 #elif (SSH_KYBER1024_SUPPORT != ENABLED && SSH_KYBER1024_SUPPORT != DISABLED)
    #error SSH_KYBER1024_SUPPORT parameter is not valid
+#endif
+
+//Key logging (for debugging purpose only)
+#ifndef SSH_KEY_LOG_SUPPORT
+   #define SSH_KEY_LOG_SUPPORT DISABLED
+#elif (SSH_KEY_LOG_SUPPORT != ENABLED && SSH_KEY_LOG_SUPPORT != DISABLED)
+   #error SSH_KEY_LOG_SUPPORT parameter is not valid
 #endif
 
 //Maximum number of transient RSA keys that can be loaded
@@ -1295,6 +1307,14 @@ typedef void (*SshConnectionCloseCallback)(SshConnection *connection,
 
 
 /**
+ * @brief Key logging callback function (for debugging purpose only)
+ **/
+
+typedef void (*SshKeyLogCallback)(SshConnection *connection,
+   const char_t *key);
+
+
+/**
  * @brief Encryption engine
  **/
 
@@ -1447,6 +1467,9 @@ struct _SshConnection
 #if (SSH_EXT_INFO_SUPPORT == ENABLED)
    bool_t extInfoReceived;                      ///<"ext-info-c" or "ext-info-s" indicator has been received
 #endif
+#if (SSH_KEX_STRICT_SUPPORT == ENABLED)
+   bool_t kexStrictReceived;                    ///<"strict KEX" pseudo-algorithm received
+#endif
 
    uint8_t buffer[SSH_BUFFER_SIZE];             ///<Internal buffer
    size_t txBufferLen;                          ///<Number of bytes that are pending to be sent
@@ -1516,6 +1539,9 @@ struct _SshContext
    void *connectionOpenParam[SSH_MAX_CONN_OPEN_CALLBACKS];                           ///<Opaque pointer passed to the connection open callback
    SshConnectionCloseCallback connectionCloseCallback[SSH_MAX_CONN_CLOSE_CALLBACKS]; ///<Connection close callback function
    void *connectionCloseParam[SSH_MAX_CONN_CLOSE_CALLBACKS];                         ///<Opaque pointer passed to the connection close callback
+#if (SSH_KEY_LOG_SUPPORT == ENABLED)
+   SshKeyLogCallback keyLogCallback;                             ///<Key logging callback (for debugging purpose only)
+#endif
 
    OsMutex mutex;                                                ///<Mutex preventing simultaneous access to the context
    OsEvent event;                                                ///<Event object used to poll the sockets
@@ -1609,6 +1635,9 @@ error_t sshRegisterConnectionCloseCallback(SshContext *context,
 
 error_t sshUnregisterConnectionCloseCallback(SshContext *context,
    SshConnectionCloseCallback callback);
+
+error_t sshRegisterKeyLogCallback(SshContext *context,
+   SshKeyLogCallback callback);
 
 error_t sshLoadRsaKey(SshContext *context, uint_t index,
    const char_t *publicKey, size_t publicKeyLen, const char_t *privateKey,

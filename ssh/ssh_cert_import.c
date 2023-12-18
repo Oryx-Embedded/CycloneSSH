@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.3.2
+ * @version 2.3.4
  **/
 
 //Switch to the appropriate trace level
@@ -361,7 +361,7 @@ const char_t *sshGetCertType(const char_t *input, size_t length)
       n = osStrlen(sshCertTypes[i]);
 
       //Matching identifier?
-      if(length > n && !osMemcmp(input, sshCertTypes[i], n))
+      if(length > n && osMemcmp(input, sshCertTypes[i], n) == 0)
       {
          //The identifier must be followed by a whitespace character
          if(input[n] == ' ' || input[n] == '\t')

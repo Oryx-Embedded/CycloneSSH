@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.3.2
+ * @version 2.3.4
  **/
 
 //Switch to the appropriate trace level
@@ -1308,7 +1308,7 @@ int_t sshFindName(const SshNameList *nameList, const char_t *name)
          if(nameLen == (j - i))
          {
             //Matching name?
-            if(!osMemcmp(nameList->value + i, name, nameLen))
+            if(osMemcmp(nameList->value + i, name, nameLen) == 0)
             {
                //Return the index of the name
                return index;
@@ -1632,7 +1632,7 @@ bool_t sshCompareStrings(const SshString *string1, const SshString *string2)
       string1->length == string2->length)
    {
       //Perform string comparison
-      if(!osMemcmp(string1->value, string2->value, string2->length))
+      if(osMemcmp(string1->value, string2->value, string2->length) == 0)
       {
          res = TRUE;
       }

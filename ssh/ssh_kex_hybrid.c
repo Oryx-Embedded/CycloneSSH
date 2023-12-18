@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.3.2
+ * @version 2.3.4
  **/
 
 //Switch to the appropriate trace level
@@ -325,6 +325,10 @@ error_t sshFormatKexHybridReply(SshConnection *connection, uint8_t *p,
    //Derive the shared secret K = HASH(K_PQ, K_CL)
    connection->hashAlgo->update(&hashContext, connection->k, connection->kLen);
    connection->hashAlgo->final(&hashContext, connection->k + sizeof(uint32_t));
+
+   //Log shared secret (for debugging purpose only)
+   sshDumpKey(connection, "SHARED_SECRET", connection->k + sizeof(uint32_t),
+      connection->hashAlgo->digestSize);
 
    //Convert K to string representation
    STORE32BE(connection->hashAlgo->digestSize, connection->k);
@@ -642,6 +646,10 @@ error_t sshParseKexHybridReply(SshConnection *connection,
    //Derive the shared secret K = HASH(K_PQ, K_CL)
    connection->hashAlgo->update(&hashContext, connection->k, connection->kLen);
    connection->hashAlgo->final(&hashContext, connection->k + sizeof(uint32_t));
+
+   //Log shared secret (for debugging purpose only)
+   sshDumpKey(connection, "SHARED_SECRET", connection->k + sizeof(uint32_t),
+      connection->hashAlgo->digestSize);
 
    //Convert K to string representation
    STORE32BE(connection->hashAlgo->digestSize, connection->k);

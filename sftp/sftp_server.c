@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.3.2
+ * @version 2.3.4
  **/
 
 //Switch to the appropriate trace level
@@ -49,6 +49,11 @@
 
 void sftpServerGetDefaultSettings(SftpServerSettings *settings)
 {
+   //Default task parameters
+   settings->task = OS_TASK_DEFAULT_PARAMS;
+   settings->task.stackSize = SFTP_SERVER_STACK_SIZE;
+   settings->task.priority = SFTP_SERVER_PRIORITY;
+
    //SSH server context
    settings->sshServerContext = NULL;
 
@@ -115,6 +120,10 @@ error_t sftpServerInit(SftpServerContext *context,
 
    //Clear SFTP server context
    osMemset(context, 0, sizeof(SftpServerContext));
+
+   //Initialize task parameters
+   context->taskParams = settings->task;
+   context->taskId = OS_INVALID_TASK_ID;
 
    //Save user settings
    context->sshServerContext = settings->sshServerContext;
@@ -197,17 +206,9 @@ error_t sftpServerStart(SftpServerContext *context)
       context->stop = FALSE;
       context->running = TRUE;
 
-#if (OS_STATIC_TASK_SUPPORT == ENABLED)
-      //Create a task using statically allocated memory
-      context->taskId = osCreateStaticTask("SFTP Server",
-         (OsTaskCode) sftpServerTask, context, &context->taskTcb,
-         context->taskStack, SFTP_SERVER_STACK_SIZE, SFTP_SERVER_PRIORITY);
-#else
       //Create a task
-      context->taskId = osCreateTask("SFTP Server",
-         (OsTaskCode) sftpServerTask, context, SFTP_SERVER_STACK_SIZE,
-         SFTP_SERVER_PRIORITY);
-#endif
+      context->taskId = osCreateTask("SFTP Server", (OsTaskCode) sftpServerTask,
+         context, &context->taskParams);
 
       //Failed to create task?
       if(context->taskId == OS_INVALID_TASK_ID)

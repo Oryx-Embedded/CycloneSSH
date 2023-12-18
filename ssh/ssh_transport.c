@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.3.2
+ * @version 2.3.4
  **/
 
 //Switch to the appropriate trace level
@@ -703,6 +703,16 @@ error_t sshParseIgnore(SshConnection *connection, const uint8_t *message,
    TRACE_DEBUG("SSH_MSG_IGNORE message received (%" PRIuSIZE " bytes)...\r\n", length);
    TRACE_VERBOSE_ARRAY("  ", message, length);
 
+#if (SSH_KEX_STRICT_SUPPORT == ENABLED)
+   //Strict key exchange?
+   if(!connection->newKeysReceived && connection->kexStrictReceived)
+   {
+      //During initial KEX, terminate the connection if any unexpected or
+      //out-of-sequence packet is received
+      return ERROR_UNEXPECTED_MESSAGE;
+   }
+#endif
+
    //Sanity check
    if(length < sizeof(uint8_t))
       return ERROR_INVALID_MESSAGE;
@@ -753,6 +763,16 @@ error_t sshParseDebug(SshConnection *connection, const uint8_t *message,
    //Debug message
    TRACE_INFO("SSH_MSG_DEBUG message received (%" PRIuSIZE " bytes)...\r\n", length);
    TRACE_VERBOSE_ARRAY("  ", message, length);
+
+#if (SSH_KEX_STRICT_SUPPORT == ENABLED)
+   //Strict key exchange?
+   if(!connection->newKeysReceived && connection->kexStrictReceived)
+   {
+      //During initial KEX, terminate the connection if any unexpected or
+      //out-of-sequence packet is received
+      return ERROR_UNEXPECTED_MESSAGE;
+   }
+#endif
 
    //Sanity check
    if(length < sizeof(uint8_t))

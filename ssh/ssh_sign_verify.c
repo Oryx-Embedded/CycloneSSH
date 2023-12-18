@@ -1,5 +1,5 @@
 /**
- * @file ssh_signature_verify.c
+ * @file ssh_sign_verify.c
  * @brief RSA/DSA/ECDSA/EdDSA signature verification
  *
  * @section License
@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.3.2
+ * @version 2.3.4
  **/
 
 //Switch to the appropriate trace level
@@ -174,7 +174,7 @@ error_t sshVerifySignature(SshConnection *connection,
       else
 #endif
 #if (SSH_ED25519_SIGN_SUPPORT == ENABLED)
-      //Ed22519 signature algorithm?
+      //Ed25519 signature algorithm?
       if(sshCompareString(&signFormatId, "ssh-ed25519"))
       {
          //Ed25519 signature verification
@@ -684,7 +684,7 @@ error_t sshVerifyEd25519Signature(const SshString *publicKeyAlgo,
       return ERROR_INVALID_SIGNATURE;
 
 #if (SSH_CERT_SUPPORT == ENABLED)
-   //Ed22519 certificate?
+   //Ed25519 certificate?
    if(sshIsCertPublicKeyAlgo(publicKeyAlgo))
    {
       SshCertificate cert;

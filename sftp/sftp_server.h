@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.3.2
+ * @version 2.3.4
  **/
 
 #ifndef _SFTP_SERVER_H
@@ -201,6 +201,7 @@ typedef struct
 
 typedef struct
 {
+   OsTaskParameters task;                             ///<Task parameters
    SshServerContext *sshServerContext;                ///<SSH server context
    uint_t numSessions;                                ///<Maximum number of SFTP sessions
    SftpServerSession *sessions;                       ///<SFTP sessions
@@ -253,11 +254,8 @@ struct _SftpServerContext
    bool_t running;                                          ///<Operational state of the FTP server
    bool_t stop;                                             ///<Stop request
    OsEvent event;                                           ///<Event object used to poll the channels
+   OsTaskParameters taskParams;                             ///<Task parameters
    OsTaskId taskId;                                         ///<Task identifier
-#if (OS_STATIC_TASK_SUPPORT == ENABLED)
-   OsTaskTcb taskTcb;                                       ///<Task control block
-   OsStackType taskStack[SFTP_SERVER_STACK_SIZE];           ///<Task stack
-#endif
    SshChannelEventDesc eventDesc[SFTP_SERVER_MAX_SESSIONS]; ///<The events the application is interested in
    char_t path[SFTP_SERVER_MAX_PATH_LEN + 1];               ///<Path name
 };

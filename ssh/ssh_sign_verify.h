@@ -1,5 +1,5 @@
 /**
- * @file ssh_signature_verify.h
+ * @file ssh_sign_verify.h
  * @brief RSA/DSA/ECDSA/EdDSA signature verification
  *
  * @section License
@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.3.2
+ * @version 2.3.4
  **/
 
 #ifndef _SSH_SIGN_VERIFY_H

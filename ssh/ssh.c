@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.3.2
+ * @version 2.3.4
  **/
 
 //Switch to the appropriate trace level
@@ -1039,6 +1039,33 @@ error_t sshUnregisterConnectionCloseCallback(SshContext *context,
 
    //Successful processing
    return NO_ERROR;
+}
+
+
+/**
+ * @brief Register key logging callback function (for debugging purpose only)
+ * @param[in] context Pointer to the SSH context
+ * @param[in] callback Key logging callback function
+ * @return Error code
+ **/
+
+error_t sshRegisterKeyLogCallback(SshContext *context,
+   SshKeyLogCallback callback)
+{
+#if (SSH_KEY_LOG_SUPPORT == ENABLED)
+   //Check parameters
+   if(context == NULL || callback == NULL)
+      return ERROR_INVALID_PARAMETER;
+
+   //Save key logging callback function
+   context->keyLogCallback = callback;
+
+   //Successful processing
+   return NO_ERROR;
+#else
+   //Key logging is not implemented
+   return ERROR_NOT_IMPLEMENTED;
+#endif
 }
 
 

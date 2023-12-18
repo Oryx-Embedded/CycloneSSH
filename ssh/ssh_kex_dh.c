@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.3.2
+ * @version 2.3.4
  **/
 
 //Switch to the appropriate trace level
@@ -38,6 +38,7 @@
 #include "ssh/ssh_kex.h"
 #include "ssh/ssh_kex_dh.h"
 #include "ssh/ssh_packet.h"
+#include "ssh/ssh_key_material.h"
 #include "ssh/ssh_exchange_hash.h"
 #include "ssh/ssh_modp_groups.h"
 #include "ssh/ssh_key_verify.h"
@@ -639,6 +640,9 @@ error_t sshComputeDhSharedSecret(SshConnection *connection)
    //Check status code
    if(!error)
    {
+      //Log shared secret (for debugging purpose only)
+      sshDumpKey(connection, "SHARED_SECRET", connection->k, connection->kLen);
+
       //Convert the shared secret K to mpint representation
       error = sshConvertArrayToMpint(connection->k, connection->kLen,
          connection->k, &connection->kLen);

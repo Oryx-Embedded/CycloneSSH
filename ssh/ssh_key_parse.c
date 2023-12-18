@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.3.2
+ * @version 2.3.4
  **/
 
 //Switch to the appropriate trace level
@@ -97,7 +97,7 @@ error_t sshParseHostKey(const uint8_t *data, size_t length,
       else
 #endif
 #if (SSH_ED25519_SIGN_SUPPORT == ENABLED)
-      //Ed22519 public key?
+      //Ed25519 public key?
       if(sshCompareString(keyFormatId, "ssh-ed25519"))
       {
          SshEddsaHostKey hostKey;

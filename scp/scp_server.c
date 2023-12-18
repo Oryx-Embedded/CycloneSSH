@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.3.2
+ * @version 2.3.4
  **/
 
 //Switch to the appropriate trace level
@@ -49,6 +49,11 @@
 
 void scpServerGetDefaultSettings(ScpServerSettings *settings)
 {
+   //Default task parameters
+   settings->task = OS_TASK_DEFAULT_PARAMS;
+   settings->task.stackSize = SCP_SERVER_STACK_SIZE;
+   settings->task.priority = SCP_SERVER_PRIORITY;
+
    //SSH server context
    settings->sshServerContext = NULL;
 
@@ -105,6 +110,10 @@ error_t scpServerInit(ScpServerContext *context,
 
    //Clear SCP server context
    osMemset(context, 0, sizeof(ScpServerContext));
+
+   //Initialize task parameters
+   context->taskParams = settings->task;
+   context->taskId = OS_INVALID_TASK_ID;
 
    //Save user settings
    context->sshServerContext = settings->sshServerContext;
@@ -178,16 +187,9 @@ error_t scpServerStart(ScpServerContext *context)
       context->stop = FALSE;
       context->running = TRUE;
 
-#if (OS_STATIC_TASK_SUPPORT == ENABLED)
-      //Create a task using statically allocated memory
-      context->taskId = osCreateStaticTask("SCP Server",
-         (OsTaskCode) scpServerTask, context, &context->taskTcb,
-         context->taskStack, SCP_SERVER_STACK_SIZE, SCP_SERVER_PRIORITY);
-#else
       //Create a task
       context->taskId = osCreateTask("SCP Server", (OsTaskCode) scpServerTask,
-         context, SCP_SERVER_STACK_SIZE, SCP_SERVER_PRIORITY);
-#endif
+         context, &context->taskParams);
 
       //Failed to create task?
       if(context->taskId == OS_INVALID_TASK_ID)

@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.3.2
+ * @version 2.3.4
  **/
 
 //Switch to the appropriate trace level
@@ -49,6 +49,17 @@
 
 void shellServerGetDefaultSettings(ShellServerSettings *settings)
 {
+   uint_t i;
+
+   //Initialize task parameters
+   for(i = 0; i < SHELL_SERVER_MAX_SESSIONS; i++)
+   {
+      //Default task parameters
+      settings->task[i] = OS_TASK_DEFAULT_PARAMS;
+      settings->task[i].stackSize = SSH_SERVER_STACK_SIZE;
+      settings->task[i].priority = SSH_SERVER_PRIORITY;
+   }
+
    //SSH server context
    settings->sshServerContext = NULL;
 
@@ -111,6 +122,11 @@ error_t shellServerInit(ShellServerContext *context,
 
       //Initialize the structure representing the shell session
       osMemset(session, 0, sizeof(ShellServerSession));
+
+      //Initialize task parameters
+      session->taskParams = settings->task[i];
+      session->taskId = OS_INVALID_TASK_ID;
+
       //Attach shell server context
       session->context = context;
 
@@ -168,16 +184,9 @@ error_t shellServerStart(ShellServerContext *context)
       //Point to the current session
       session = &context->sessions[i];
 
-#if (OS_STATIC_TASK_SUPPORT == ENABLED)
-      //Create a task using statically allocated memory
-      session->taskId = osCreateStaticTask("Shell Session",
-         (OsTaskCode) shellServerTask, session, &session->taskTcb,
-         session->taskStack, SHELL_SERVER_STACK_SIZE, SHELL_SERVER_PRIORITY);
-#else
       //Create a task
-      session->taskId = osCreateTask("Shell Session", shellServerTask,
-         session, SHELL_SERVER_STACK_SIZE, SHELL_SERVER_PRIORITY);
-#endif
+      session->taskId = osCreateTask("Shell Server",
+         (OsTaskCode) shellServerTask, session, &session->taskParams);
 
       //Failed to create task?
       if(session->taskId == OS_INVALID_TASK_ID)

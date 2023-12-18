@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.3.2
+ * @version 2.3.4
  **/
 
 //Switch to the appropriate trace level
@@ -79,7 +79,7 @@ error_t sshVerifyHostKey(const uint8_t *hostKey, size_t hostKeyLen,
          if(!error)
          {
             //Compare host keys
-            if(hostKeyLen == n && !osMemcmp(hostKey, buffer, n))
+            if(hostKeyLen == n && osMemcmp(hostKey, buffer, n) == 0)
             {
                //The host key is trusted
                error = NO_ERROR;

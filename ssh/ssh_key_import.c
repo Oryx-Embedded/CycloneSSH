@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.3.2
+ * @version 2.3.4
  **/
 
 //Switch to the appropriate trace level
@@ -1650,7 +1650,7 @@ error_t sshDecodeOpenSshPublicKeyFile(const char_t *input, size_t inputLen,
       n = osStrlen(sshKeyTypes[i].identifier);
 
       //Matching identifier?
-      if(inputLen > n && !osMemcmp(input, sshKeyTypes[i].identifier, n))
+      if(inputLen > n && osMemcmp(input, sshKeyTypes[i].identifier, n) == 0)
       {
          keyType = sshKeyTypes[i].identifier;
          break;

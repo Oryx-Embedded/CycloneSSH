@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.3.2
+ * @version 2.3.4
  **/
 
 //Switch to the appropriate trace level
@@ -49,6 +49,11 @@
 
 void sshServerGetDefaultSettings(SshServerSettings *settings)
 {
+   //Default task parameters
+   settings->task = OS_TASK_DEFAULT_PARAMS;
+   settings->task.stackSize = SSH_SERVER_STACK_SIZE;
+   settings->task.priority = SSH_SERVER_PRIORITY;
+
    //The SSH server is not bound to any interface
    settings->interface = NULL;
 
@@ -101,6 +106,11 @@ void sshServerGetDefaultSettings(SshServerSettings *settings)
    //ECDH shared secret calculation callback
    settings->ecdhSharedSecretCalcCallback = NULL;
 #endif
+
+#if (SSH_KEY_LOG_SUPPORT == ENABLED)
+   //Key logging callback (for debugging purpose only)
+   settings->keyLogCallback = NULL;
+#endif
 }
 
 
@@ -134,12 +144,19 @@ error_t sshServerInit(SshServerContext *context,
    if(settings->numChannels < settings->numConnections)
       return ERROR_INVALID_PARAMETER;
 
+   //Clear SSH server context
+   osMemset(context, 0, sizeof(SshServerContext));
+
    //Initialize SSH context
    error = sshInit(&context->sshContext, settings->connections,
       settings->numConnections, settings->channels, settings->numChannels);
    //Any error to report?
    if(error)
       return error;
+
+   //Initialize task parameters
+   context->taskParams = settings->task;
+   context->taskId = OS_INVALID_TASK_ID;
 
    //Save settings
    context->interface = settings->interface;
@@ -266,6 +283,19 @@ error_t sshServerInit(SshServerContext *context,
          //Register callback function
          error = sshRegisterEcdhSharedSecretCalcCallback(&context->sshContext,
             settings->ecdhSharedSecretCalcCallback);
+         //Any error to report?
+         if(error)
+            break;
+      }
+#endif
+
+#if (SSH_KEY_LOG_SUPPORT == ENABLED)
+      //Valid key logging callback function?
+      if(settings->keyLogCallback != NULL)
+      {
+         //Register callback function
+         error = sshRegisterKeyLogCallback(&context->sshContext,
+            settings->keyLogCallback);
          //Any error to report?
          if(error)
             break;
@@ -671,16 +701,9 @@ error_t sshServerStart(SshServerContext *context)
       context->stop = FALSE;
       context->running = TRUE;
 
-#if (OS_STATIC_TASK_SUPPORT == ENABLED)
-      //Create a task using statically allocated memory
-      context->taskId = osCreateStaticTask("SSH Server",
-         (OsTaskCode) sshServerTask, context, &context->taskTcb,
-         context->taskStack, SSH_SERVER_STACK_SIZE, SSH_SERVER_PRIORITY);
-#else
       //Create a task
       context->taskId = osCreateTask("SSH Server", (OsTaskCode) sshServerTask,
-         context, SSH_SERVER_STACK_SIZE, SSH_SERVER_PRIORITY);
-#endif
+         context, &context->taskParams);
 
       //Failed to create task?
       if(context->taskId == OS_INVALID_TASK_ID)

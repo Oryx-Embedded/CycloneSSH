@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.3.2
+ * @version 2.3.4
  **/
 
 //Switch to the appropriate trace level
@@ -241,7 +241,7 @@ error_t sshDecryptOpenSshPrivateKey(const SshPrivateKeyHeader *privateKeyHeader,
          kdfOptions.salt.length, kdfOptions.rounds, k, 48);
 
       //Allocate a memory buffer to hold the AES context
-      aesContext = cryptoAllocMem(sizeof(AesContext));
+      aesContext = sshAllocMem(sizeof(AesContext));
 
       //Successful memory allocation?
       if(aesContext != NULL)
@@ -276,7 +276,7 @@ error_t sshDecryptOpenSshPrivateKey(const SshPrivateKeyHeader *privateKeyHeader,
          //Erase cipher context
          aesDeinit(aesContext);
          //Release previously allocated memory
-         cryptoFreeMem(aesContext);
+         sshFreeMem(aesContext);
       }
       else
       {
@@ -383,7 +383,7 @@ error_t sshKdf(const char *password, size_t passwordLen, const uint8_t *salt,
    m = (keyLen + n - 1) / n;
 
    //Allocate a memory buffer to hold the SHA-512 context
-   sha512Context = cryptoAllocMem(sizeof(Sha512Context));
+   sha512Context = sshAllocMem(sizeof(Sha512Context));
 
    //Successful memory allocation?
    if(sha512Context != NULL)
@@ -445,7 +445,7 @@ error_t sshKdf(const char *password, size_t passwordLen, const uint8_t *salt,
       }
 
       //Release previously allocated memory
-      cryptoFreeMem(sha512Context);
+      sshFreeMem(sha512Context);
    }
    else
    {
@@ -479,7 +479,7 @@ error_t sshKdfHash(uint8_t *password, uint8_t *salt, uint8_t *output)
    BlowfishContext *blowfishContext;
 
    //Allocate a memory buffer to hold the Blowfish context
-   blowfishContext = cryptoAllocMem(sizeof(BlowfishContext));
+   blowfishContext = sshAllocMem(sizeof(BlowfishContext));
 
    //Successful memory allocation?
    if(blowfishContext != NULL)
@@ -546,7 +546,7 @@ error_t sshKdfHash(uint8_t *password, uint8_t *salt, uint8_t *output)
       //Erase Blowfish state
       blowfishDeinit(blowfishContext);
       //Release previously allocated memory
-      cryptoFreeMem(blowfishContext);
+      sshFreeMem(blowfishContext);
    }
    else
    {

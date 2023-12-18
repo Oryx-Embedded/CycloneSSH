@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.3.2
+ * @version 2.3.4
  **/
 
 #ifndef _SSH_SERVER_H
@@ -72,6 +72,7 @@ extern "C" {
 
 typedef struct
 {
+   OsTaskParameters task;                                        ///<Task parameters
    NetInterface *interface;                                      ///<Underlying network interface
    uint16_t port;                                                ///<SSH port number
    systime_t timeout;                                            ///<Idle connection timeout
@@ -100,6 +101,9 @@ typedef struct
    SshEcdhKeyPairGenCallback ecdhKeyPairGenCallback;             ///<ECDH key pair generation callback
    SshEcdhSharedSecretCalcCallback ecdhSharedSecretCalcCallback; ///<ECDH shared secret calculation callback
 #endif
+#if (SSH_KEY_LOG_SUPPORT == ENABLED)
+   SshKeyLogCallback keyLogCallback;                             ///<Key logging callback (for debugging purpose only)
+#endif
 } SshServerSettings;
 
 
@@ -111,11 +115,8 @@ typedef struct
 {
    bool_t running;                               ///<Operational state of the SSH server
    bool_t stop;                                  ///<Stop request
+   OsTaskParameters taskParams;                  ///<Task parameters
    OsTaskId taskId;                              ///<Task identifier
-#if (OS_STATIC_TASK_SUPPORT == ENABLED)
-   OsTaskTcb taskTcb;                            ///<Task control block
-   OsStackType taskStack[SSH_SERVER_STACK_SIZE]; ///<Task stack
-#endif
    NetInterface *interface;                      ///<Underlying network interface
    Socket *socket;                               ///<Listening socket
    uint16_t port;                                ///<SSH port number

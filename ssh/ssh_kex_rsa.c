@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.3.2
+ * @version 2.3.4
  **/
 
 //Switch to the appropriate trace level
@@ -38,6 +38,7 @@
 #include "ssh/ssh_kex.h"
 #include "ssh/ssh_kex_rsa.h"
 #include "ssh/ssh_packet.h"
+#include "ssh/ssh_key_material.h"
 #include "ssh/ssh_exchange_hash.h"
 #include "ssh/ssh_key_import.h"
 #include "ssh/ssh_key_format.h"
@@ -922,6 +923,10 @@ error_t sshEncryptSharedSecret(SshConnection *connection,
                connection->k[0] &= (1 << n) - 1;
             }
 
+            //Log shared secret (for debugging purpose only)
+            sshDumpKey(connection, "SHARED_SECRET", connection->k,
+               connection->kLen);
+
             //Convert the shared secret K to mpint representation
             error = sshConvertArrayToMpint(connection->k, connection->kLen,
                connection->k, &connection->kLen);
@@ -1009,8 +1014,13 @@ error_t sshDecryptSharedSecret(SshConnection *connection,
       //Check status code
       if(!error)
       {
-         //Malformed shared secret?
-         if(connection->kLen != (sizeof(uint32_t) + k.length))
+         //Check the length of the shared secret
+         if(connection->kLen == (sizeof(uint32_t) + k.length))
+         {
+            //Log shared secret (for debugging purpose only)
+            sshDumpKey(connection, "SHARED_SECRET", k.value, k.length);
+         }
+         else
          {
             //Report an error
             error = ERROR_DECRYPTION_FAILED;

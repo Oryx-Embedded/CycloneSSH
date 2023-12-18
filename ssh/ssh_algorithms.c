@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.3.2
+ * @version 2.3.4
  **/
 
 //Switch to the appropriate trace level
@@ -616,6 +616,39 @@ error_t sshFormatKexAlgoList(SshConnection *connection, uint8_t *p,
    }
 #endif
 
+#if (SSH_KEX_STRICT_SUPPORT == ENABLED)
+   //The strict key exchange extension is signalled by including a additional
+   //algorithm in the initial kex_algorithms field
+   if(!connection->newKeysSent)
+   {
+      const char_t *indicatorName;
+
+      //Names are separated by commas
+      if(n != sizeof(uint32_t))
+      {
+         p[n++] = ',';
+      }
+
+      //The indicator names inserted by the client and server are different
+      //to ensure these names will not produce a match and therefore not
+      //affect the algorithm chosen in key exchange algorithm negotiation
+      if(connection->context->mode == SSH_OPERATION_MODE_CLIENT)
+      {
+         indicatorName = "kex-strict-c-v00@openssh.com";
+      }
+      else
+      {
+         indicatorName = "kex-strict-s-v00@openssh.com";
+      }
+
+      //The indicator name may be added at any position in the name-list
+      osStrcpy((char_t *) p + n, indicatorName);
+
+      //Update the length of the name list
+      n += osStrlen(indicatorName);
+   }
+#endif
+
    //The name list is preceded by a uint32 containing its length
    STORE32BE(n - sizeof(uint32_t), p);
 
@@ -1001,6 +1034,37 @@ const char_t *sshSelectKexAlgo(SshConnection *connection,
       else
       {
          connection->extInfoReceived = FALSE;
+      }
+   }
+#endif
+
+#if (SSH_KEX_STRICT_SUPPORT == ENABLED)
+   //The strict key exchange extension is signalled by including a additional
+   //algorithm in the initial kex_algorithms field
+   if(!connection->newKeysSent)
+   {
+      const char_t *indicatorName;
+
+      //The indicator names inserted by the client and server are different
+      //to ensure these names will not produce a match and therefore not
+      //affect the algorithm chosen in key exchange algorithm negotiation
+      if(connection->context->mode == SSH_OPERATION_MODE_CLIENT)
+      {
+         indicatorName = "kex-strict-s-v00@openssh.com";
+      }
+      else
+      {
+         indicatorName = "kex-strict-c-v00@openssh.com";
+      }
+
+      //The indicator name may be added at any position in the name-list
+      if(sshFindName(peerAlgoList, indicatorName) >= 0)
+      {
+         connection->kexStrictReceived = TRUE;
+      }
+      else
+      {
+         connection->kexStrictReceived = FALSE;
       }
    }
 #endif
