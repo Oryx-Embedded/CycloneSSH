@@ -6,7 +6,7 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later
  *
- * Copyright (C) 2019-2023 Oryx Embedded SARL. All rights reserved.
+ * Copyright (C) 2019-2024 Oryx Embedded SARL. All rights reserved.
  *
  * This file is part of CycloneSSH Open.
  *
@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.3.4
+ * @version 2.4.0
  **/
 
 //Switch to the appropriate trace level
@@ -1034,6 +1034,15 @@ error_t sshParseNewKeys(SshConnection *connection, const uint8_t *message,
    //Check status code
    if(!error)
    {
+#if (SSH_KEX_STRICT_SUPPORT == ENABLED)
+      //Strict key exchange?
+      if(connection->kexStrictReceived)
+      {
+         //Reset the packet sequence number to zero
+         osMemset(connection->decryptionEngine.seqNum, 0xFF, 4);
+      }
+#endif
+
       //Key re-exchange?
       if(connection->newKeysReceived)
       {
@@ -1051,15 +1060,6 @@ error_t sshParseNewKeys(SshConnection *connection, const uint8_t *message,
       {
          //An SSH_MSG_NEWKEYS message has been successfully received
          connection->newKeysReceived = TRUE;
-
-#if (SSH_KEX_STRICT_SUPPORT == ENABLED)
-      //Strict key exchange?
-      if(connection->kexStrictReceived)
-      {
-         //Reset the packet sequence number to zero
-         osMemset(connection->decryptionEngine.seqNum, 0xFF, 4);
-      }
-#endif
 
 #if (SSH_EXT_INFO_SUPPORT == ENABLED)
          //Server operation mode?

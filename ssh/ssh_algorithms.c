@@ -6,7 +6,7 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later
  *
- * Copyright (C) 2019-2023 Oryx Embedded SARL. All rights reserved.
+ * Copyright (C) 2019-2024 Oryx Embedded SARL. All rights reserved.
  *
  * This file is part of CycloneSSH Open.
  *
@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.3.4
+ * @version 2.4.0
  **/
 
 //Switch to the appropriate trace level
@@ -617,7 +617,7 @@ error_t sshFormatKexAlgoList(SshConnection *connection, uint8_t *p,
 #endif
 
 #if (SSH_KEX_STRICT_SUPPORT == ENABLED)
-   //The strict key exchange extension is signalled by including a additional
+   //The strict key exchange extension is signaled by including a additional
    //algorithm in the initial kex_algorithms field
    if(!connection->newKeysSent)
    {
@@ -1039,7 +1039,7 @@ const char_t *sshSelectKexAlgo(SshConnection *connection,
 #endif
 
 #if (SSH_KEX_STRICT_SUPPORT == ENABLED)
-   //The strict key exchange extension is signalled by including a additional
+   //The strict key exchange extension is signaled by including a additional
    //algorithm in the initial kex_algorithms field
    if(!connection->newKeysSent)
    {

@@ -6,7 +6,7 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later
  *
- * Copyright (C) 2019-2023 Oryx Embedded SARL. All rights reserved.
+ * Copyright (C) 2019-2024 Oryx Embedded SARL. All rights reserved.
  *
  * This file is part of CycloneSSH Open.
  *
@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.3.4
+ * @version 2.4.0
  **/
 
 #ifndef _SSH_H
@@ -44,6 +44,7 @@
 #include "mac/mac_algorithms.h"
 #include "aead/aead_algorithms.h"
 #include "pkc/key_exch_algorithms.h"
+#include "ecc/ec.h"
 
 
 /*
@@ -73,13 +74,13 @@
 #endif
 
 //Version string
-#define CYCLONE_SSH_VERSION_STRING "2.3.4"
+#define CYCLONE_SSH_VERSION_STRING "2.4.0"
 //Major version
 #define CYCLONE_SSH_MAJOR_VERSION 2
 //Minor version
-#define CYCLONE_SSH_MINOR_VERSION 3
+#define CYCLONE_SSH_MINOR_VERSION 4
 //Revision number
-#define CYCLONE_SSH_REV_NUMBER 4
+#define CYCLONE_SSH_REV_NUMBER 0
 
 //SSH support
 #ifndef SSH_SUPPORT
@@ -989,7 +990,9 @@ typedef enum
    SSH_MSG_CHANNEL_CLOSE             = 97,
    SSH_MSG_CHANNEL_REQUEST           = 98,
    SSH_MSG_CHANNEL_SUCCESS           = 99,
-   SSH_MSG_CHANNEL_FAILURE           = 100
+   SSH_MSG_CHANNEL_FAILURE           = 100,
+   SSH_MSG_PING                      = 192,
+   SSH_MSG_PONG                      = 193
 } SshMessageType;
 
 
