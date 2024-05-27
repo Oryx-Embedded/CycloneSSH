@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.4.0
+ * @version 2.4.2
  **/
 
 #ifndef _SSH_H
@@ -74,13 +74,13 @@
 #endif
 
 //Version string
-#define CYCLONE_SSH_VERSION_STRING "2.4.0"
+#define CYCLONE_SSH_VERSION_STRING "2.4.2"
 //Major version
 #define CYCLONE_SSH_MAJOR_VERSION 2
 //Minor version
 #define CYCLONE_SSH_MINOR_VERSION 4
 //Revision number
-#define CYCLONE_SSH_REV_NUMBER 0
+#define CYCLONE_SSH_REV_NUMBER 2
 
 //SSH support
 #ifndef SSH_SUPPORT
@@ -628,32 +628,25 @@
    #error SSH_CURVE448_SUPPORT parameter is not valid
 #endif
 
-//Streamlined NTRU Prime 761 KEM support
+//ML-KEM-768 key encapsulation mechanism support
+#ifndef SSH_MLKEM768_SUPPORT
+   #define SSH_MLKEM768_SUPPORT DISABLED
+#elif (SSH_MLKEM768_SUPPORT != ENABLED && SSH_MLKEM768_SUPPORT != DISABLED)
+   #error SSH_MLKEM768_SUPPORT parameter is not valid
+#endif
+
+//ML-KEM-1024 key encapsulation mechanism support
+#ifndef SSH_MLKEM1024_SUPPORT
+   #define SSH_MLKEM1024_SUPPORT DISABLED
+#elif (SSH_MLKEM1024_SUPPORT != ENABLED && SSH_MLKEM1024_SUPPORT != DISABLED)
+   #error SSH_MLKEM1024_SUPPORT parameter is not valid
+#endif
+
+//Streamlined NTRU Prime 761 key encapsulation mechanism support
 #ifndef SSH_SNTRUP761_SUPPORT
    #define SSH_SNTRUP761_SUPPORT DISABLED
 #elif (SSH_SNTRUP761_SUPPORT != ENABLED && SSH_SNTRUP761_SUPPORT != DISABLED)
    #error SSH_SNTRUP761_SUPPORT parameter is not valid
-#endif
-
-//Kyber-512 KEM support
-#ifndef SSH_KYBER512_SUPPORT
-   #define SSH_KYBER512_SUPPORT DISABLED
-#elif (SSH_KYBER512_SUPPORT != ENABLED && SSH_KYBER512_SUPPORT != DISABLED)
-   #error SSH_KYBER512_SUPPORT parameter is not valid
-#endif
-
-//Kyber-768 KEM support
-#ifndef SSH_KYBER768_SUPPORT
-   #define SSH_KYBER768_SUPPORT DISABLED
-#elif (SSH_KYBER768_SUPPORT != ENABLED && SSH_KYBER768_SUPPORT != DISABLED)
-   #error SSH_KYBER768_SUPPORT parameter is not valid
-#endif
-
-//Kyber-1024 KEM support
-#ifndef SSH_KYBER1024_SUPPORT
-   #define SSH_KYBER1024_SUPPORT DISABLED
-#elif (SSH_KYBER1024_SUPPORT != ENABLED && SSH_KYBER1024_SUPPORT != DISABLED)
-   #error SSH_KYBER1024_SUPPORT parameter is not valid
 #endif
 
 //Key logging (for debugging purpose only)
@@ -834,12 +827,10 @@
 //Maximum shared secret length (PQ-hybrid key exchange)
 #if (SSH_HYBRID_KEX_SUPPORT == ENABLED && SSH_SNTRUP761_SUPPORT == ENABLED)
    #define SSH_MAX_HYBRID_SHARED_SECRET_LEN 68
-#elif (SSH_HYBRID_KEX_SUPPORT == ENABLED && SSH_KYBER1024_SUPPORT == ENABLED)
+#elif (SSH_HYBRID_KEX_SUPPORT == ENABLED && SSH_MLKEM1024_SUPPORT == ENABLED)
    #define SSH_MAX_HYBRID_SHARED_SECRET_LEN 68
-#elif (SSH_HYBRID_KEX_SUPPORT == ENABLED && SSH_KYBER768_SUPPORT == ENABLED)
+#elif (SSH_HYBRID_KEX_SUPPORT == ENABLED && SSH_MLKEM768_SUPPORT == ENABLED)
    #define SSH_MAX_HYBRID_SHARED_SECRET_LEN 52
-#elif (SSH_HYBRID_KEX_SUPPORT == ENABLED && SSH_KYBER512_SUPPORT == ENABLED)
-   #define SSH_MAX_HYBRID_SHARED_SECRET_LEN 36
 #else
    #define SSH_MAX_HYBRID_SHARED_SECRET_LEN 0
 #endif

@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.4.0
+ * @version 2.4.2
  **/
 
 //Switch to the appropriate trace level
@@ -38,6 +38,7 @@
 #include "ssh/ssh_kex.h"
 #include "ssh/ssh_kex_hybrid.h"
 #include "ssh/ssh_packet.h"
+#include "ssh/ssh_key_material.h"
 #include "ssh/ssh_exchange_hash.h"
 #include "ssh/ssh_key_verify.h"
 #include "ssh/ssh_cert_verify.h"
@@ -757,46 +758,36 @@ error_t sshSelectKemAlgo(SshConnection *connection)
    //Release KEM context
    kemFree(&connection->kemContext);
 
+#if (SSH_MLKEM768_SUPPORT == ENABLED)
+   //ML-KEM-768 key encapsulation mechanism?
+   if(sshCompareAlgo(connection->kexAlgo, "mlkem768nistp256-sha256") ||
+      sshCompareAlgo(connection->kexAlgo, "mlkem768x25519-sha256"))
+   {
+      //Initialize KEM context
+      kemInit(&connection->kemContext, MLKEM768_KEM_ALGO);
+      //Successful processing
+      error = NO_ERROR;
+   }
+   else
+#endif
+#if (SSH_MLKEM1024_SUPPORT == ENABLED)
+   //ML-KEM-1024 key encapsulation mechanism?
+   if(sshCompareAlgo(connection->kexAlgo, "mlkem1024nistp384-sha384"))
+   {
+      //Initialize KEM context
+      kemInit(&connection->kemContext, MLKEM1024_KEM_ALGO);
+      //Successful processing
+      error = NO_ERROR;
+   }
+   else
+#endif
 #if (SSH_SNTRUP761_SUPPORT == ENABLED)
    //Streamlined NTRU Prime 761 key encapsulation mechanism?
-   if(sshCompareAlgo(connection->kexAlgo, "sntrup761x25519-sha512@openssh.com"))
+   if(sshCompareAlgo(connection->kexAlgo, "sntrup761x25519-sha512") ||
+      sshCompareAlgo(connection->kexAlgo, "sntrup761x25519-sha512@openssh.com"))
    {
       //Initialize KEM context
       kemInit(&connection->kemContext, SNTRUP761_KEM_ALGO);
-      //Successful processing
-      error = NO_ERROR;
-   }
-   else
-#endif
-#if (SSH_KYBER512_SUPPORT == ENABLED)
-   //Kyber-512 key encapsulation mechanism?
-   if(sshCompareAlgo(connection->kexAlgo, "x25519-kyber-512r3-sha256-d00@amazon.com") ||
-      sshCompareAlgo(connection->kexAlgo, "ecdh-nistp256-kyber-512r3-sha256-d00@openquantumsafe.org"))
-   {
-      //Initialize KEM context
-      kemInit(&connection->kemContext, KYBER512_KEM_ALGO);
-      //Successful processing
-      error = NO_ERROR;
-   }
-   else
-#endif
-#if (SSH_KYBER768_SUPPORT == ENABLED)
-   //Kyber-768 key encapsulation mechanism?
-   if(sshCompareAlgo(connection->kexAlgo, "ecdh-nistp384-kyber-768r3-sha384-d00@openquantumsafe.org"))
-   {
-      //Initialize KEM context
-      kemInit(&connection->kemContext, KYBER768_KEM_ALGO);
-      //Successful processing
-      error = NO_ERROR;
-   }
-   else
-#endif
-#if (SSH_KYBER1024_SUPPORT == ENABLED)
-   //Kyber-1024 key encapsulation mechanism?
-   if(sshCompareAlgo(connection->kexAlgo, "ecdh-nistp521-kyber-1024r3-sha512-d00@openquantumsafe.org"))
-   {
-      //Initialize KEM context
-      kemInit(&connection->kemContext, KYBER1024_KEM_ALGO);
       //Successful processing
       error = NO_ERROR;
    }
@@ -826,18 +817,9 @@ error_t sshLoadKexClassicalEcdhParams(const char_t *kexAlgo,
    error_t error;
    const EcCurveInfo *curveInfo;
 
-#if (SSH_CURVE25519_SUPPORT == ENABLED)
-   //Curve25519 elliptic curve?
-   if(sshCompareAlgo(kexAlgo, "sntrup761x25519-sha512@openssh.com") ||
-      sshCompareAlgo(kexAlgo, "x25519-kyber-512r3-sha256-d00@amazon.com"))
-   {
-      curveInfo = X25519_CURVE;
-   }
-   else
-#endif
 #if (SSH_NISTP256_SUPPORT == ENABLED)
    //NIST P-256 elliptic curve?
-   if(sshCompareAlgo(kexAlgo, "ecdh-nistp256-kyber-512r3-sha256-d00@openquantumsafe.org"))
+   if(sshCompareAlgo(kexAlgo, "mlkem768nistp256-sha256"))
    {
       curveInfo = SECP256R1_CURVE;
    }
@@ -845,17 +827,19 @@ error_t sshLoadKexClassicalEcdhParams(const char_t *kexAlgo,
 #endif
 #if (SSH_NISTP384_SUPPORT == ENABLED)
    //NIST P-384 elliptic curve?
-   if(sshCompareAlgo(kexAlgo, "ecdh-nistp384-kyber-768r3-sha384-d00@openquantumsafe.org"))
+   if(sshCompareAlgo(kexAlgo, "mlkem1024nistp384-sha384"))
    {
       curveInfo = SECP384R1_CURVE;
    }
    else
 #endif
-#if (SSH_NISTP521_SUPPORT == ENABLED)
-   //NIST P-521 elliptic curve?
-   if(sshCompareAlgo(kexAlgo, "ecdh-nistp521-kyber-1024r3-sha512-d00@openquantumsafe.org"))
+#if (SSH_CURVE25519_SUPPORT == ENABLED)
+   //Curve25519 elliptic curve?
+   if(sshCompareAlgo(kexAlgo, "mlkem768x25519-sha256") ||
+      sshCompareAlgo(kexAlgo, "sntrup761x25519-sha512") ||
+      sshCompareAlgo(kexAlgo, "sntrup761x25519-sha512@openssh.com"))
    {
-      curveInfo = SECP521R1_CURVE;
+      curveInfo = X25519_CURVE;
    }
    else
 #endif
