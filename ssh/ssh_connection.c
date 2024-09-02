@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.4.2
+ * @version 2.4.4
  **/
 
 //Switch to the appropriate trace level
@@ -404,17 +404,17 @@ error_t sshFormatChannelOpen(SshChannel *channel, const char_t *channelType,
    *length += sizeof(uint32_t);
 
    //Check channel type
-   if(!osStrcmp(channelType, "session"))
+   if(osStrcmp(channelType, "session") == 0)
    {
       //A "session" channel does not specify any type-specific data
       n = 0;
    }
-   else if(!osStrcmp(channelType, "forwarded-tcpip"))
+   else if(osStrcmp(channelType, "forwarded-tcpip") == 0)
    {
       //Format "forwarded-tcpip" channel specific data
       error = sshFormatForwardedTcpIpParams(channelParams, p, &n);
    }
-   else if(!osStrcmp(channelType, "direct-tcpip"))
+   else if(osStrcmp(channelType, "direct-tcpip") == 0)
    {
       //Format "direct-tcpip" channel specific data
       error = sshFormatDirectTcpIpParams(channelParams, p, &n);

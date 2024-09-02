@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.4.2
+ * @version 2.4.4
  **/
 
 //Switch to the appropriate trace level
@@ -676,7 +676,7 @@ error_t sshVerifyEd25519Signature(const SshString *publicKeyAlgo,
 #if (SSH_ED25519_SIGN_SUPPORT == ENABLED)
    error_t error;
    const uint8_t *ed25519PublicKey;
-   EddsaMessageChunk messageChunks[4];
+   DataChunk messageChunks[4];
    uint8_t temp[4];
 
    //The Ed25519 signature shall consist of 32 octets
@@ -779,7 +779,7 @@ error_t sshVerifyEd448Signature(const SshString *publicKeyAlgo,
 #if (SSH_ED448_SIGN_SUPPORT == ENABLED)
    error_t error;
    SshEddsaHostKey hostKey;
-   EddsaMessageChunk messageChunks[4];
+   DataChunk messageChunks[4];
    uint8_t temp[4];
 
    //The Ed448 signature shall consist of 57 octets

@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.4.2
+ * @version 2.4.4
  **/
 
 //Switch to the appropriate trace level
@@ -241,8 +241,8 @@ void sshCloseConnection(SshConnection *connection)
    ecdhFree(&connection->ecdhContext);
 #endif
 #if (SSH_HYBRID_KEX_SUPPORT == ENABLED)
-    //Release KEM context
-    kemFree(&connection->kemContext);
+   //Release KEM context
+   kemFree(&connection->kemContext);
 #endif
 
    //Release encryption engine
@@ -1601,7 +1601,7 @@ bool_t sshCompareString(const SshString *string, const char_t *value)
       if(string->value != NULL && string->length == n)
       {
          //Perform string comparison
-         if(!osStrncmp(string->value, value, n))
+         if(osStrncmp(string->value, value, n) == 0)
          {
             res = TRUE;
          }
@@ -1661,7 +1661,7 @@ bool_t sshCompareAlgo(const char_t *name1, const char_t *name2)
    if(name1 != NULL && name2 != NULL)
    {
       //Perform string comparison
-      if(!osStrcmp(name1, name2))
+      if(osStrcmp(name1, name2) == 0)
       {
          res = TRUE;
       }

@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.4.2
+ * @version 2.4.4
  **/
 
 //Switch to the appropriate trace level
@@ -497,8 +497,8 @@ error_t sshParseIdString(SshConnection *connection, const uint8_t *id,
 
       //Clients using protocol 2.0 must be able to identify protocol version
       //"1.99" as identical to "2.0" (refer to RFC 4253, section 5.1)
-      if(osStrncmp(connection->serverId, "SSH-2.0-", 8) &&
-         osStrncmp(connection->serverId, "SSH-1.99-", 9))
+      if(osStrncmp(connection->serverId, "SSH-2.0-", 8) != 0 &&
+         osStrncmp(connection->serverId, "SSH-1.99-", 9) != 0)
       {
          //The version advertised by the server is not supported
          return ERROR_WRONG_IDENTIFIER;
@@ -519,8 +519,8 @@ error_t sshParseIdString(SshConnection *connection, const uint8_t *id,
       TRACE_INFO("  %s\r\n", connection->clientId);
 
       //Check protocol version
-      if(osStrncmp(connection->clientId, "SSH-2.0-", 8) &&
-         osStrncmp(connection->clientId, "SSH-1.99-", 9))
+      if(osStrncmp(connection->clientId, "SSH-2.0-", 8) != 0 &&
+         osStrncmp(connection->clientId, "SSH-1.99-", 9) != 0)
       {
          //The version advertised by the client is not supported
          return ERROR_WRONG_IDENTIFIER;

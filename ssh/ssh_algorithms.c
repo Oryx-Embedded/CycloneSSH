@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.4.2
+ * @version 2.4.4
  **/
 
 //Switch to the appropriate trace level
@@ -1536,7 +1536,7 @@ bool_t sshIsHybridKexAlgo(const char_t *kexAlgo)
       sshCompareAlgo(kexAlgo, "mlkem1024nistp384-sha384") ||
       sshCompareAlgo(kexAlgo, "mlkem768x25519-sha256") ||
       sshCompareAlgo(kexAlgo, "sntrup761x25519-sha512") ||
-      sshCompareAlgo(kexAlgo, "sntrup761x25519-sha512@openssh.com")) 
+      sshCompareAlgo(kexAlgo, "sntrup761x25519-sha512@openssh.com"))
    {
       return TRUE;
    }

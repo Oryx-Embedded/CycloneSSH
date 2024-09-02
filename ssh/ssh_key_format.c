@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.4.2
+ * @version 2.4.4
  **/
 
 //Switch to the appropriate trace level
@@ -196,19 +196,19 @@ error_t sshFormatEcdsaPublicKey(const EcDomainParameters *params,
    *written = 0;
 
    //Check elliptic curve
-   if(!osStrcmp(params->name, "secp256r1"))
+   if(osStrcmp(params->name, "secp256r1") == 0)
    {
       //Select NIST P-256 elliptic curve
       keyFormatId = "ecdsa-sha2-nistp256";
       curveName = "nistp256";
    }
-   else if(!osStrcmp(params->name, "secp384r1"))
+   else if(osStrcmp(params->name, "secp384r1") == 0)
    {
       //Select NIST P-384 elliptic curve
       keyFormatId = "ecdsa-sha2-nistp384";
       curveName = "nistp384";
    }
-   else if(!osStrcmp(params->name, "secp521r1"))
+   else if(osStrcmp(params->name, "secp521r1") == 0)
    {
       //Select NIST P-521 elliptic curve
       keyFormatId = "ecdsa-sha2-nistp521";
@@ -702,19 +702,19 @@ error_t sshFormatOpenSshEcdsaPrivateKey(const EcDomainParameters *params,
    length += 2 * sizeof(uint32_t);
 
    //Check elliptic curve
-   if(!osStrcmp(params->name, "secp256r1"))
+   if(osStrcmp(params->name, "secp256r1") == 0)
    {
       //Select NIST P-256 elliptic curve
       keyFormatId = "ecdsa-sha2-nistp256";
       curveName = "nistp256";
    }
-   else if(!osStrcmp(params->name, "secp384r1"))
+   else if(osStrcmp(params->name, "secp384r1") == 0)
    {
       //Select NIST P-384 elliptic curve
       keyFormatId = "ecdsa-sha2-nistp384";
       curveName = "nistp384";
    }
-   else if(!osStrcmp(params->name, "secp521r1"))
+   else if(osStrcmp(params->name, "secp521r1") == 0)
    {
       //Select NIST P-521 elliptic curve
       keyFormatId = "ecdsa-sha2-nistp521";

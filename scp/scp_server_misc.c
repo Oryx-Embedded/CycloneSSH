@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.4.2
+ * @version 2.4.4
  **/
 
 //Switch to the appropriate trace level
@@ -910,8 +910,7 @@ error_t scpServerReceiveDirective(ScpServerSession *session,
       if(session->bufferLen == 0)
       {
          //Read the directive opcode
-         error = sshReadChannel(session->channel, session->buffer, 1,
-            &n, 0);
+         error = sshReadChannel(session->channel, session->buffer, 1, &n, 0);
 
          //Check status code
          if(!error)
@@ -1015,11 +1014,11 @@ void scpServerProcessDirective(ScpServerSession *session,
    if(directive->opcode == SCP_OPCODE_FILE)
    {
       //The file name must not contain illegal characters
-      if(!osStrcmp(directive->filename, ".") ||
-         !osStrcmp(directive->filename, "..") ||
-         osStrchr(directive->filename, '*') ||
-         osStrchr(directive->filename, '/') ||
-         osStrchr(directive->filename, '\\'))
+      if(osStrcmp(directive->filename, ".") == 0 ||
+         osStrcmp(directive->filename, "..") == 0 ||
+         osStrchr(directive->filename, '*') != NULL ||
+         osStrchr(directive->filename, '/') != NULL ||
+         osStrchr(directive->filename, '\\') != NULL)
       {
          //Save status code
          session->statusCode = ERROR_INVALID_PATH;
@@ -1050,11 +1049,11 @@ void scpServerProcessDirective(ScpServerSession *session,
    else if(directive->opcode == SCP_OPCODE_DIR)
    {
       //The file name must not contain illegal characters
-      if(!osStrcmp(directive->filename, ".") ||
-         !osStrcmp(directive->filename, "..") ||
-         osStrchr(directive->filename, '*') ||
-         osStrchr(directive->filename, '/') ||
-         osStrchr(directive->filename, '\\'))
+      if(osStrcmp(directive->filename, ".") == 0 ||
+         osStrcmp(directive->filename, "..") == 0 ||
+         osStrchr(directive->filename, '*') != NULL ||
+         osStrchr(directive->filename, '/') != NULL ||
+         osStrchr(directive->filename, '\\') != NULL)
       {
          //Save status code
          session->statusCode = ERROR_INVALID_PATH;
@@ -1137,7 +1136,7 @@ uint_t scpServerGetFilePermissions(ScpServerSession *session,
    n = osStrlen(session->rootDir);
 
    //Make sure the pathname is valid
-   if(!osStrncmp(path, session->rootDir, n))
+   if(osStrncmp(path, session->rootDir, n) == 0)
    {
       //Strip root directory from the pathname
       path = scpServerStripRootDir(session, path);
@@ -1229,7 +1228,7 @@ error_t scpServerGetPath(ScpServerSession *session, const SshString *path,
    //If the server implementation limits access to certain parts of the file
    //system, it must be extra careful in parsing file names when enforcing
    //such restrictions
-   if(osStrncmp(fullPath, session->rootDir, n))
+   if(osStrncmp(fullPath, session->rootDir, n) != 0)
       return ERROR_INVALID_PATH;
 
    //Successful processing

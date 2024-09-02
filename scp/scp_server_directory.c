@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.4.2
+ * @version 2.4.4
  **/
 
 //Switch to the appropriate trace level
@@ -172,7 +172,8 @@ void scpServerGetNextDirEntry(ScpServerSession *session)
       if(!error)
       {
          //Check file name
-         if(!osStrcmp(dirEntry.name, ".") || !osStrcmp(dirEntry.name, ".."))
+         if(osStrcmp(dirEntry.name, ".") == 0 ||
+            osStrcmp(dirEntry.name, "..") == 0)
          {
             //Discard "." and ".." entries
          }

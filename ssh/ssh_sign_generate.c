@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.4.2
+ * @version 2.4.4
  **/
 
 //Switch to the appropriate trace level
@@ -611,7 +611,7 @@ error_t sshGenerateEd25519Signature(SshConnection *connection,
    error_t error;
    size_t n;
    EddsaPrivateKey eddsaPrivateKey;
-   EddsaMessageChunk messageChunks[4];
+   DataChunk messageChunks[4];
    uint8_t temp[4];
    uint8_t d[ED25519_PRIVATE_KEY_LEN];
 
@@ -710,7 +710,7 @@ error_t sshGenerateEd448Signature(SshConnection *connection,
    error_t error;
    size_t n;
    EddsaPrivateKey eddsaPrivateKey;
-   EddsaMessageChunk messageChunks[4];
+   DataChunk messageChunks[4];
    uint8_t temp[4];
    uint8_t d[ED448_PRIVATE_KEY_LEN];
 

@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.4.2
+ * @version 2.4.4
  **/
 
 //Switch to the appropriate trace level
@@ -356,17 +356,17 @@ error_t sshFormatGlobalRequest(SshConnection *connection,
    *length += sizeof(uint8_t);
 
    //Check request type
-   if(!osStrcmp(requestName, "tcpip-forward"))
+   if(osStrcmp(requestName, "tcpip-forward") == 0)
    {
       //Format "tcpip-forward" request specific data
       error = sshFormatTcpIpFwdParams(requestParams, p, &n);
    }
-   else if(!osStrcmp(requestName, "cancel-tcpip-forward"))
+   else if(osStrcmp(requestName, "cancel-tcpip-forward") == 0)
    {
       //Format "cancel-tcpip-forward" request specific data
       error = sshFormatCancelTcpIpFwdParams(requestParams, p, &n);
    }
-   else if(!osStrcmp(requestName, "elevation"))
+   else if(osStrcmp(requestName, "elevation") == 0)
    {
       //Format "elevation" request specific data
       error = sshFormatElevationParams(requestParams, p, &n);
@@ -601,42 +601,42 @@ error_t sshFormatChannelRequest(SshChannel *channel, const char_t *requestType,
    *length += sizeof(uint8_t);
 
    //Check request type
-   if(!osStrcmp(requestType, "pty-req"))
+   if(osStrcmp(requestType, "pty-req") == 0)
    {
       //Format "pty-req" request specific data
       error = sshFormatPtyReqParams(requestParams, p, &n);
    }
-   else if(!osStrcmp(requestType, "shell"))
+   else if(osStrcmp(requestType, "shell") == 0)
    {
       //The "shell" request does not contain type-specific data
       n = 0;
    }
-   else if(!osStrcmp(requestType, "exec"))
+   else if(osStrcmp(requestType, "exec") == 0)
    {
       //Format "exec" request specific data
       error = sshFormatExecParams(requestParams, p, &n);
    }
-   else if(!osStrcmp(requestType, "subsystem"))
+   else if(osStrcmp(requestType, "subsystem") == 0)
    {
       //Format "subsystem" request specific data
       error = sshFormatSubsystemParams(requestParams, p, &n);
    }
-   else if(!osStrcmp(requestType, "window-change"))
+   else if(osStrcmp(requestType, "window-change") == 0)
    {
       //Format "window-change" request specific data
       error = sshFormatWindowChangeParams(requestParams, p, &n);
    }
-   else if(!osStrcmp(requestType, "signal"))
+   else if(osStrcmp(requestType, "signal") == 0)
    {
       //Format "signal" request specific data
       error = sshFormatSignalParams(requestParams, p, &n);
    }
-   else if(!osStrcmp(requestType, "exit-status"))
+   else if(osStrcmp(requestType, "exit-status") == 0)
    {
       //Format "exit-status" request specific data
       error = sshFormatExitStatusParams(requestParams, p, &n);
    }
-   else if(!osStrcmp(requestType, "break"))
+   else if(osStrcmp(requestType, "break") == 0)
    {
       //Format "break" request specific data
       error = sshFormatBreakParams(requestParams, p, &n);

@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.4.2
+ * @version 2.4.4
  **/
 
 #ifndef _SSH_H
@@ -74,13 +74,13 @@
 #endif
 
 //Version string
-#define CYCLONE_SSH_VERSION_STRING "2.4.2"
+#define CYCLONE_SSH_VERSION_STRING "2.4.4"
 //Major version
 #define CYCLONE_SSH_MAJOR_VERSION 2
 //Minor version
 #define CYCLONE_SSH_MINOR_VERSION 4
 //Revision number
-#define CYCLONE_SSH_REV_NUMBER 2
+#define CYCLONE_SSH_REV_NUMBER 4
 
 //SSH support
 #ifndef SSH_SUPPORT
@@ -133,7 +133,7 @@
 
 //Extension negotiation mechanism
 #ifndef SSH_EXT_INFO_SUPPORT
-   #define SSH_EXT_INFO_SUPPORT DISABLED
+   #define SSH_EXT_INFO_SUPPORT ENABLED
 #elif (SSH_EXT_INFO_SUPPORT != ENABLED && SSH_EXT_INFO_SUPPORT != DISABLED)
    #error SSH_EXT_INFO_SUPPORT parameter is not valid
 #endif

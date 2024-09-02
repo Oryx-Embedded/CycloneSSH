@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.4.2
+ * @version 2.4.4
  **/
 
 //Switch to the appropriate trace level
@@ -251,31 +251,31 @@ error_t shellServerProcessChar(ShellServerSession *session)
          if(isalpha(c) || c == '~')
          {
             //Decode multibyte escape sequence
-            if(!osStrcmp(session->escSeq, VT100_DELETE))
+            if(osStrcmp(session->escSeq, VT100_DELETE) == 0)
             {
                error = shellServerProcessDeleteKey(session);
             }
-            else if(!osStrcmp(session->escSeq, VT100_MOVE_CURSOR_LEFT))
+            else if(osStrcmp(session->escSeq, VT100_MOVE_CURSOR_LEFT) == 0)
             {
                error = shellServerProcessLeftKey(session);
             }
-            else if(!osStrcmp(session->escSeq, VT100_MOVE_CURSOR_RIGHT))
+            else if(osStrcmp(session->escSeq, VT100_MOVE_CURSOR_RIGHT) == 0)
             {
                error = shellServerProcessRightKey(session);
             }
-            if(!osStrcmp(session->escSeq, VT100_MOVE_CURSOR_UP))
+            if(osStrcmp(session->escSeq, VT100_MOVE_CURSOR_UP) == 0)
             {
                error = shellServerProcessUpKey(session);
             }
-            else if(!osStrcmp(session->escSeq, VT100_MOVE_CURSOR_DOWN))
+            else if(osStrcmp(session->escSeq, VT100_MOVE_CURSOR_DOWN) == 0)
             {
                error = shellServerProcessDownKey(session);
             }
-            if(!osStrcmp(session->escSeq, VT100_PAGE_UP))
+            if(osStrcmp(session->escSeq, VT100_PAGE_UP) == 0)
             {
                error = shellServerProcessPageUpKey(session);
             }
-            else if(!osStrcmp(session->escSeq, VT100_PAGE_DOWN))
+            else if(osStrcmp(session->escSeq, VT100_PAGE_DOWN) == 0)
             {
                error = shellServerProcessPageDownKey(session);
             }
