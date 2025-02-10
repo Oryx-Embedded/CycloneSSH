@@ -6,7 +6,7 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later
  *
- * Copyright (C) 2019-2024 Oryx Embedded SARL. All rights reserved.
+ * Copyright (C) 2019-2025 Oryx Embedded SARL. All rights reserved.
  *
  * This file is part of CycloneSSH Open.
  *
@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.4.4
+ * @version 2.5.0
  **/
 
 //Switch to the appropriate trace level
@@ -135,13 +135,13 @@ error_t sshImportCertificate(const char_t *input, size_t inputLen,
 
 /**
  * @brief Import an RSA public key from a certificate
- * @param[in] cert Pointer to the certificate structure
  * @param[out] publicKey Pointer to the RSA public key
+ * @param[in] cert Pointer to the certificate structure
  * @return Error code
  **/
 
-error_t sshImportRsaCertPublicKey(const SshCertificate *cert,
-   RsaPublicKey *publicKey)
+error_t sshImportRsaCertPublicKey(RsaPublicKey *publicKey,
+   const SshCertificate *cert)
 {
 #if (SSH_RSA_SIGN_SUPPORT == ENABLED)
    error_t error;
@@ -183,13 +183,13 @@ error_t sshImportRsaCertPublicKey(const SshCertificate *cert,
 
 /**
  * @brief Import a DSA public key from a certificate
- * @param[in] cert Pointer to the certificate structure
  * @param[out] publicKey Pointer to the DSA public key
+ * @param[in] cert Pointer to the certificate structure
  * @return Error code
  **/
 
-error_t sshImportDsaCertPublicKey(const SshCertificate *cert,
-   DsaPublicKey *publicKey)
+error_t sshImportDsaCertPublicKey(DsaPublicKey *publicKey,
+   const SshCertificate *cert)
 {
 #if (SSH_DSA_SIGN_SUPPORT == ENABLED)
    error_t error;
@@ -245,18 +245,17 @@ error_t sshImportDsaCertPublicKey(const SshCertificate *cert,
 
 /**
  * @brief Import an ECDSA public key from a certificate
- * @param[in] cert Pointer to the certificate structure
- * @param[out] params EC domain parameters
  * @param[out] publicKey Pointer to the ECDSA public key
+ * @param[in] cert Pointer to the certificate structure
  * @return Error code
  **/
 
-error_t sshImportEcdsaCertPublicKey(const SshCertificate *cert,
-   EcDomainParameters *params, EcPublicKey *publicKey)
+error_t sshImportEcdsaCertPublicKey(EcPublicKey *publicKey,
+   const SshCertificate *cert)
 {
 #if (SSH_ECDSA_SIGN_SUPPORT == ENABLED)
    error_t error;
-   const EcCurveInfo *curveInfo;
+   const EcCurve *curve;
 
    //Check key format identifier
    if(sshCompareString(&cert->keyFormatId, "ecdsa-sha2-nistp256-cert-v01@openssh.com") ||
@@ -265,27 +264,22 @@ error_t sshImportEcdsaCertPublicKey(const SshCertificate *cert,
    {
       //Retrieve the elliptic curve that matches the specified key format
       //identifier
-      curveInfo = sshGetCurveInfo(&cert->keyFormatId,
+      curve = sshGetCurve(&cert->keyFormatId,
          &cert->publicKey.ecdsaPublicKey.curveName);
 
       //Make sure the key format identifier is acceptable
-      if(curveInfo != NULL)
+      if(curve != NULL)
       {
-         //Load EC domain parameters
-         error = ecLoadDomainParameters(params, curveInfo);
+         //Import EC public key
+         error = ecImportPublicKey(publicKey, curve,
+            cert->publicKey.ecdsaPublicKey.q.value,
+            cert->publicKey.ecdsaPublicKey.q.length,
+            EC_PUBLIC_KEY_FORMAT_X963);
       }
       else
       {
          //Report an error
          error = ERROR_WRONG_IDENTIFIER;
-      }
-
-      //Check status code
-      if(!error)
-      {
-         //Import EC public key value
-         error = ecImport(params, &publicKey->q, cert->publicKey.ecdsaPublicKey.q.value,
-            cert->publicKey.ecdsaPublicKey.q.length);
       }
    }
    else
@@ -305,13 +299,13 @@ error_t sshImportEcdsaCertPublicKey(const SshCertificate *cert,
 
 /**
  * @brief Import an Ed25519 public key from a certificate
+ * @param[out] publicKey Pointer to the EdDSA public key
  * @param[in] cert Pointer to the certificate structure
- * @param[out] publicKey Pointer to the RSA public key
  * @return Error code
  **/
 
-error_t sshImportEd25519CertPublicKey(const SshCertificate *cert,
-   EddsaPublicKey *publicKey)
+error_t sshImportEd25519CertPublicKey(EddsaPublicKey *publicKey,
+   const SshCertificate *cert)
 {
 #if (SSH_ED25519_SIGN_SUPPORT == ENABLED)
    error_t error;
@@ -319,9 +313,10 @@ error_t sshImportEd25519CertPublicKey(const SshCertificate *cert,
    //Check key format identifier
    if(sshCompareString(&cert->keyFormatId, "ssh-ed25519-cert-v01@openssh.com"))
    {
-      //Import Ed25519 public key value
-      error = mpiImport(&publicKey->q, cert->publicKey.ed25519PublicKey.q.value,
-         cert->publicKey.ed25519PublicKey.q.length, MPI_FORMAT_LITTLE_ENDIAN);
+      //Import Ed25519 public key
+      error = eddsaImportPublicKey(publicKey, ED25519_CURVE,
+         cert->publicKey.ed25519PublicKey.q.value,
+         cert->publicKey.ed25519PublicKey.q.length);
    }
    else
    {

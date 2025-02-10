@@ -6,7 +6,7 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later
  *
- * Copyright (C) 2019-2024 Oryx Embedded SARL. All rights reserved.
+ * Copyright (C) 2019-2025 Oryx Embedded SARL. All rights reserved.
  *
  * This file is part of CycloneSSH Open.
  *
@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.4.4
+ * @version 2.5.0
  **/
 
 //Switch to the appropriate trace level
@@ -124,8 +124,8 @@ error_t sshSendKexDhGexGroup(SshConnection *connection)
       dhGexGroup = &context->dhGexGroups[connection->dhGexGroupIndex];
 
       //Decode the PEM structure that holds Diffie-Hellman parameters
-      error = pemImportDhParameters(dhGexGroup->dhParams,
-         dhGexGroup->dhParamsLen, &connection->dhContext.params);
+      error = pemImportDhParameters(&connection->dhContext.params,
+         dhGexGroup->dhParams, dhGexGroup->dhParamsLen);
    }
    else
    {
@@ -838,7 +838,7 @@ error_t sshParseKexDhGexInit(SshConnection *connection, const uint8_t *message,
       return error;
 
    //Ensure the public key is acceptable
-   error = dhCheckPublicKey(&connection->dhContext.params,
+   error = dhCheckPublicKey(&connection->dhContext,
       &connection->dhContext.yb);
    //Any error to report?
    if(error)

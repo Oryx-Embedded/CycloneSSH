@@ -6,7 +6,7 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later
  *
- * Copyright (C) 2019-2024 Oryx Embedded SARL. All rights reserved.
+ * Copyright (C) 2019-2025 Oryx Embedded SARL. All rights reserved.
  *
  * This file is part of CycloneSSH Open.
  *
@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.4.4
+ * @version 2.5.0
  **/
 
 #ifndef _SSH_MISC_H
@@ -68,7 +68,7 @@ int_t sshSelectNextHostKey(SshConnection *connection);
 error_t sshFormatHostKey(SshConnection *connection, uint8_t *p,
    size_t *written);
 
-const EcCurveInfo *sshGetCurveInfo(const SshString *keyFormatId,
+const EcCurve *sshGetCurve(const SshString *keyFormatId,
    const SshString *curveName);
 
 error_t sshParseString(const uint8_t *p, size_t length, SshString *string);
@@ -91,6 +91,9 @@ error_t sshFormatNameList(const char_t *const nameList[], uint_t nameListLen,
    uint8_t *p, size_t *written);
 
 error_t sshFormatMpint(const Mpi *value, uint8_t *p, size_t *written);
+
+error_t sshConvertScalarToMpint(const uint32_t *value, uint_t length,
+   uint8_t *p, size_t *written);
 
 error_t sshConvertArrayToMpint(const uint8_t *value, size_t length, uint8_t *p,
    size_t *written);

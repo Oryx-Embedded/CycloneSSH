@@ -6,7 +6,7 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later
  *
- * Copyright (C) 2019-2024 Oryx Embedded SARL. All rights reserved.
+ * Copyright (C) 2019-2025 Oryx Embedded SARL. All rights reserved.
  *
  * This file is part of CycloneSSH Open.
  *
@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.4.4
+ * @version 2.5.0
  **/
 
 //Switch to the appropriate trace level
@@ -223,6 +223,7 @@ error_t sshVerifyRsaSignature(const SshString *publicKeyAlgo,
    error_t error;
    const HashAlgo *hashAlgo;
    HashContext hashContext;
+   uint8_t digest[SSH_MAX_HASH_DIGEST_SIZE];
 
 #if (SSH_SHA1_SUPPORT == ENABLED)
    //RSA with SHA-1 public key algorithm?
@@ -288,7 +289,7 @@ error_t sshVerifyRsaSignature(const SshString *publicKeyAlgo,
 
       //Digest the message
       hashAlgo->update(&hashContext, message->value, message->length);
-      hashAlgo->final(&hashContext, NULL);
+      hashAlgo->final(&hashContext, digest);
 
 #if (SSH_CERT_SUPPORT == ENABLED)
       //RSA certificate?
@@ -304,7 +305,7 @@ error_t sshVerifyRsaSignature(const SshString *publicKeyAlgo,
          if(!error)
          {
             //Import RSA public key
-            error = sshImportRsaCertPublicKey(&cert, &rsaPublicKey);
+            error = sshImportRsaCertPublicKey(&rsaPublicKey, &cert);
          }
       }
       else
@@ -321,7 +322,7 @@ error_t sshVerifyRsaSignature(const SshString *publicKeyAlgo,
          if(!error)
          {
             //Import RSA public key
-            error = sshImportRsaHostKey(&hostKey, &rsaPublicKey);
+            error = sshImportRsaHostKey(&rsaPublicKey, &hostKey);
          }
       }
 
@@ -329,8 +330,8 @@ error_t sshVerifyRsaSignature(const SshString *publicKeyAlgo,
       if(!error)
       {
          //Verify RSA signature
-         error = rsassaPkcs1v15Verify(&rsaPublicKey, hashAlgo,
-            hashContext.digest, signatureBlob->value, signatureBlob->length);
+         error = rsassaPkcs1v15Verify(&rsaPublicKey, hashAlgo, digest,
+            signatureBlob->value, signatureBlob->length);
       }
 
       //Free previously allocated resources
@@ -370,6 +371,7 @@ error_t sshVerifyDsaSignature(const SshString *publicKeyAlgo,
    DsaPublicKey dsaPublicKey;
    DsaSignature dsaSignature;
    Sha1Context sha1Context;
+   uint8_t digest[SHA1_DIGEST_SIZE];
 
    //The DSA signature blob contains R followed by S (which are 160-bit
    //integers)
@@ -400,7 +402,7 @@ error_t sshVerifyDsaSignature(const SshString *publicKeyAlgo,
 
       //Digest the message
       sha1Update(&sha1Context, message->value, message->length);
-      sha1Final(&sha1Context, NULL);
+      sha1Final(&sha1Context, digest);
 
 #if (SSH_CERT_SUPPORT == ENABLED)
       //DSA certificate?
@@ -416,7 +418,7 @@ error_t sshVerifyDsaSignature(const SshString *publicKeyAlgo,
          if(!error)
          {
             //Import DSA public key
-            error = sshImportDsaCertPublicKey(&cert, &dsaPublicKey);
+            error = sshImportDsaCertPublicKey(&dsaPublicKey, &cert);
          }
       }
       else
@@ -433,7 +435,7 @@ error_t sshVerifyDsaSignature(const SshString *publicKeyAlgo,
          if(!error)
          {
             //Import DSA public key
-            error = sshImportDsaHostKey(&hostKey, &dsaPublicKey);
+            error = sshImportDsaHostKey(&dsaPublicKey, &hostKey);
          }
       }
 
@@ -457,8 +459,8 @@ error_t sshVerifyDsaSignature(const SshString *publicKeyAlgo,
       if(!error)
       {
          //Verify DSA signature
-         error = dsaVerifySignature(&dsaPublicKey, sha1Context.digest,
-            SHA1_DIGEST_SIZE, &dsaSignature);
+         error = dsaVerifySignature(&dsaPublicKey, digest, SHA1_DIGEST_SIZE,
+            &dsaSignature);
       }
 
       //Free previously allocated resources
@@ -499,6 +501,7 @@ error_t sshVerifyEcdsaSignature(const SshString *publicKeyAlgo,
    SshEcdsaSignature signature;
    const HashAlgo *hashAlgo;
    HashContext hashContext;
+   uint8_t digest[SSH_MAX_HASH_DIGEST_SIZE];
 
 #if (SSH_NISTP256_SUPPORT == ENABLED && SSH_SHA256_SUPPORT == ENABLED)
    //ECDSA with NIST P-256 public key algorithm?
@@ -539,13 +542,10 @@ error_t sshVerifyEcdsaSignature(const SshString *publicKeyAlgo,
    //Make sure the hash algorithm is supported
    if(hashAlgo != NULL)
    {
-      EcDomainParameters ecParams;
       EcPublicKey ecPublicKey;
       EcdsaSignature ecdsaSignature;
 
-      //Initialize EC domain parameters
-      ecInitDomainParameters(&ecParams);
-      //Initialize EC public key
+      //Initialize ECDSA public key
       ecInitPublicKey(&ecPublicKey);
       //Initialize ECDSA signature
       ecdsaInitSignature(&ecdsaSignature);
@@ -570,7 +570,7 @@ error_t sshVerifyEcdsaSignature(const SshString *publicKeyAlgo,
 
       //Digest the message
       hashAlgo->update(&hashContext, message->value, message->length);
-      hashAlgo->final(&hashContext, NULL);
+      hashAlgo->final(&hashContext, digest);
 
 #if (SSH_CERT_SUPPORT == ENABLED)
       //ECDSA certificate?
@@ -586,7 +586,7 @@ error_t sshVerifyEcdsaSignature(const SshString *publicKeyAlgo,
          if(!error)
          {
             //Import ECDSA public key
-            error = sshImportEcdsaCertPublicKey(&cert, &ecParams, &ecPublicKey);
+            error = sshImportEcdsaCertPublicKey(&ecPublicKey, &cert);
          }
       }
       else
@@ -596,14 +596,14 @@ error_t sshVerifyEcdsaSignature(const SshString *publicKeyAlgo,
          SshEcdsaHostKey hostKey;
 
          //Parse ECDSA host key structure
-         error = sshParseEcdsaHostKey(publicKeyBlob->value, publicKeyBlob->length,
-            &hostKey);
+         error = sshParseEcdsaHostKey(publicKeyBlob->value,
+            publicKeyBlob->length, &hostKey);
 
          //Check status code
          if(!error)
          {
             //Import ECDSA public key
-            error = sshImportEcdsaHostKey(&hostKey, &ecParams, &ecPublicKey);
+            error = sshImportEcdsaHostKey(&ecPublicKey, &hostKey);
          }
       }
 
@@ -619,28 +619,27 @@ error_t sshVerifyEcdsaSignature(const SshString *publicKeyAlgo,
       if(!error)
       {
          //Import integer R
-         error = mpiImport(&ecdsaSignature.r, signature.r.value,
-            signature.r.length, MPI_FORMAT_BIG_ENDIAN);
+         error = ecdsaImportSignature(&ecdsaSignature, ecPublicKey.curve,
+            signature.r.value, signature.r.length, ECDSA_SIGNATURE_FORMAT_RAW_R);
       }
 
       //Check status code
       if(!error)
       {
          //Import integer S
-         error = mpiImport(&ecdsaSignature.s, signature.s.value,
-            signature.s.length, MPI_FORMAT_BIG_ENDIAN);
+         error = ecdsaImportSignature(&ecdsaSignature, ecPublicKey.curve,
+            signature.s.value, signature.s.length, ECDSA_SIGNATURE_FORMAT_RAW_S);
       }
 
       //Check status code
       if(!error)
       {
          //Verify ECDSA signature
-         error = ecdsaVerifySignature(&ecParams, &ecPublicKey,
-            hashContext.digest, hashAlgo->digestSize, &ecdsaSignature);
+         error = ecdsaVerifySignature(&ecPublicKey, digest,
+            hashAlgo->digestSize, &ecdsaSignature);
       }
 
       //Free previously allocated resources
-      ecFreeDomainParameters(&ecParams);
       ecFreePublicKey(&ecPublicKey);
       ecdsaFreeSignature(&ecdsaSignature);
    }
@@ -676,7 +675,8 @@ error_t sshVerifyEd25519Signature(const SshString *publicKeyAlgo,
 #if (SSH_ED25519_SIGN_SUPPORT == ENABLED)
    error_t error;
    const uint8_t *ed25519PublicKey;
-   DataChunk messageChunks[4];
+   uint_t numMessageChunks;
+   DataChunk messageChunks[3];
    uint8_t temp[4];
 
    //The Ed25519 signature shall consist of 32 octets
@@ -736,21 +736,24 @@ error_t sshVerifyEd25519Signature(const SshString *publicKeyAlgo,
          messageChunks[1].length = sessionId->length;
          messageChunks[2].buffer = message->value;
          messageChunks[2].length = message->length;
-         messageChunks[3].buffer = NULL;
-         messageChunks[3].length = 0;
+
+         //Number of data chunks representing the message to be signed
+         numMessageChunks = 3;
       }
       else
       {
-         //The message fits in a single chunk
+         //Data to be signed is run through the EdDSA algorithm without
+         //pre-hashing
          messageChunks[0].buffer = message->value;
          messageChunks[0].length = message->length;
-         messageChunks[1].buffer = NULL;
-         messageChunks[1].length = 0;
+
+         //The message fits in a single chunk
+         numMessageChunks = 1;
       }
 
       //Verify Ed25519 signature (PureEdDSA mode)
-      error = ed25519VerifySignatureEx(ed25519PublicKey, messageChunks, NULL,
-         0, 0, signatureBlob->value);
+      error = ed25519VerifySignatureEx(ed25519PublicKey, messageChunks,
+         numMessageChunks, NULL, 0, 0, signatureBlob->value);
    }
 
    //Return status code
@@ -779,7 +782,8 @@ error_t sshVerifyEd448Signature(const SshString *publicKeyAlgo,
 #if (SSH_ED448_SIGN_SUPPORT == ENABLED)
    error_t error;
    SshEddsaHostKey hostKey;
-   DataChunk messageChunks[4];
+   uint_t numMessageChunks;
+   DataChunk messageChunks[3];
    uint8_t temp[4];
 
    //The Ed448 signature shall consist of 57 octets
@@ -808,21 +812,24 @@ error_t sshVerifyEd448Signature(const SshString *publicKeyAlgo,
          messageChunks[1].length = sessionId->length;
          messageChunks[2].buffer = message->value;
          messageChunks[2].length = message->length;
-         messageChunks[3].buffer = NULL;
-         messageChunks[3].length = 0;
+
+         //Number of data chunks representing the message to be signed
+         numMessageChunks = 3;
       }
       else
       {
-         //The message fits in a single chunk
+         //Data to be signed is run through the EdDSA algorithm without
+         //pre-hashing
          messageChunks[0].buffer = message->value;
          messageChunks[0].length = message->length;
-         messageChunks[1].buffer = NULL;
-         messageChunks[1].length = 0;
+
+         //The message fits in a single chunk
+         numMessageChunks = 1;
       }
 
       //Verify Ed448 signature (PureEdDSA mode)
-      error = ed448VerifySignatureEx(hostKey.q.value, messageChunks, NULL,
-         0, 0, signatureBlob->value);
+      error = ed448VerifySignatureEx(hostKey.q.value, messageChunks,
+         numMessageChunks, NULL, 0, 0, signatureBlob->value);
    }
 
    //Return status code

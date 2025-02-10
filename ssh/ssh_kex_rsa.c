@@ -6,7 +6,7 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later
  *
- * Copyright (C) 2019-2024 Oryx Embedded SARL. All rights reserved.
+ * Copyright (C) 2019-2025 Oryx Embedded SARL. All rights reserved.
  *
  * This file is part of CycloneSSH Open.
  *
@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.4.4
+ * @version 2.5.0
  **/
 
 //Switch to the appropriate trace level
@@ -824,8 +824,8 @@ error_t sshFormatTransientRsaPublicKey(SshConnection *connection, uint8_t *p,
    if(i >= 0 && i < SSH_MAX_RSA_KEYS)
    {
       //Load the transient RSA public key
-      error = sshImportRsaPublicKey(context->rsaKeys[i].publicKey,
-         context->rsaKeys[i].publicKeyLen, &rsaPublicKey);
+      error = sshImportRsaPublicKey(&rsaPublicKey,
+         context->rsaKeys[i].publicKey, context->rsaKeys[i].publicKeyLen);
 
       //Check status code
       if(!error)
@@ -890,7 +890,7 @@ error_t sshEncryptSharedSecret(SshConnection *connection,
    if(!error)
    {
       //Load the transient RSA public key
-      error = sshImportRsaHostKey(&rsaHostKey, &rsaPublicKey);
+      error = sshImportRsaHostKey(&rsaPublicKey, &rsaHostKey);
    }
 
    //Check status code
@@ -991,9 +991,9 @@ error_t sshDecryptSharedSecret(SshConnection *connection,
    if(i >= 0 && i < SSH_MAX_RSA_KEYS)
    {
       //Load the transient RSA private key
-      error = pemImportRsaPrivateKey(context->rsaKeys[i].privateKey,
-         context->rsaKeys[i].privateKeyLen, context->rsaKeys[i].password,
-         &rsaPrivateKey);
+      error = pemImportRsaPrivateKey(&rsaPrivateKey,
+         context->rsaKeys[i].privateKey,
+         context->rsaKeys[i].privateKeyLen, context->rsaKeys[i].password);
 
       //Check status code
       if(!error)

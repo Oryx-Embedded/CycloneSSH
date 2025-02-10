@@ -6,7 +6,7 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later
  *
- * Copyright (C) 2019-2024 Oryx Embedded SARL. All rights reserved.
+ * Copyright (C) 2019-2025 Oryx Embedded SARL. All rights reserved.
  *
  * This file is part of CycloneSSH Open.
  *
@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.4.4
+ * @version 2.5.0
  **/
 
 #ifndef _SSH_KEY_FORMAT_H
@@ -50,8 +50,8 @@ error_t sshFormatRsaPublicKey(const RsaPublicKey *publicKey,
 error_t sshFormatDsaPublicKey(const DsaPublicKey *publicKey,
    uint8_t *p, size_t *written);
 
-error_t sshFormatEcdsaPublicKey(const EcDomainParameters *params,
-   const EcPublicKey *publicKey, uint8_t *p, size_t *written);
+error_t sshFormatEcdsaPublicKey(const EcPublicKey *publicKey,
+   uint8_t *p, size_t *written);
 
 error_t sshFormatEd25519PublicKey(const EddsaPublicKey *publicKey,
    uint8_t *p, size_t *written);
@@ -65,17 +65,16 @@ error_t sshFormatOpenSshRsaPrivateKey(const RsaPrivateKey *privateKey,
    uint8_t *p, size_t *written);
 
 error_t sshFormatOpenSshDsaPrivateKey(const DsaPrivateKey *privateKey,
-   const DsaPublicKey *publicKey, uint8_t *p, size_t *written);
+   uint8_t *p, size_t *written);
 
-error_t sshFormatOpenSshEcdsaPrivateKey(const EcDomainParameters *params,
-   const EcPrivateKey *privateKey, const EcPublicKey *publicKey,
+error_t sshFormatOpenSshEcdsaPrivateKey(const EcPrivateKey *privateKey,
    uint8_t *p, size_t *written);
 
 error_t sshFormatOpenSshEd25519PrivateKey(const EddsaPrivateKey *privateKey,
-   const EddsaPublicKey *publicKey, uint8_t *p, size_t *written);
+   uint8_t *p, size_t *written);
 
 error_t sshFormatOpenSshEd448PrivateKey(const EddsaPrivateKey *privateKey,
-   const EddsaPublicKey *publicKey, uint8_t *p, size_t *written);
+   uint8_t *p, size_t *written);
 
 //C++ guard
 #ifdef __cplusplus

@@ -6,7 +6,7 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later
  *
- * Copyright (C) 2019-2024 Oryx Embedded SARL. All rights reserved.
+ * Copyright (C) 2019-2025 Oryx Embedded SARL. All rights reserved.
  *
  * This file is part of CycloneSSH Open.
  *
@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.4.4
+ * @version 2.5.0
  **/
 
 #ifndef _SSH_KEY_IMPORT_H
@@ -59,50 +59,44 @@ typedef struct
 
 
 //SSH key file import functions
-error_t sshImportRsaPublicKey(const char_t *input, size_t length,
-   RsaPublicKey *publicKey);
+error_t sshImportRsaPublicKey(RsaPublicKey *publicKey, const char_t *input,
+   size_t length);
 
-error_t sshImportDsaPublicKey(const char_t *input, size_t length,
-   DsaPublicKey *publicKey);
+error_t sshImportDsaPublicKey(DsaPublicKey *publicKey, const char_t *input,
+   size_t length);
 
-error_t sshImportEcdsaPublicKey(const char_t *input, size_t length,
-   EcDomainParameters *params, EcPublicKey *publicKey);
+error_t sshImportEcdsaPublicKey(EcPublicKey *publicKey, const char_t *input,
+   size_t length);
 
-error_t sshImportEd25519PublicKey(const char_t *input, size_t length,
-   EddsaPublicKey *publicKey);
+error_t sshImportEd25519PublicKey(EddsaPublicKey *publicKey,
+   const char_t *input, size_t length);
 
-error_t sshImportEd448PublicKey(const char_t *input, size_t length,
-   EddsaPublicKey *publicKey);
+error_t sshImportEd448PublicKey(EddsaPublicKey *publicKey,
+   const char_t *input, size_t length);
 
-error_t sshImportRsaPrivateKey(const char_t *input, size_t length,
-   const char_t *password, RsaPrivateKey *privateKey);
+error_t sshImportRsaPrivateKey(RsaPrivateKey *privateKey, const char_t *input,
+   size_t length, const char_t *password);
 
-error_t sshImportDsaPrivateKey(const char_t *input, size_t length,
-   const char_t *password, DsaPrivateKey *privateKey);
+error_t sshImportDsaPrivateKey(DsaPrivateKey *privateKey, const char_t *input,
+   size_t length, const char_t *password);
 
-error_t sshImportEcdsaPrivateKey(const char_t *input, size_t length,
-   const char_t *password, EcPrivateKey *privateKey);
+error_t sshImportEcdsaPrivateKey(EcPrivateKey *privateKey, const char_t *input,
+   size_t length, const char_t *password);
 
-error_t sshImportEd25519PrivateKey(const char_t *input, size_t length,
-   const char_t *password, EddsaPrivateKey *privateKey);
+error_t sshImportEd25519PrivateKey(EddsaPrivateKey *privateKey,
+   const char_t *input, size_t length, const char_t *password);
 
-error_t sshImportEd448PrivateKey(const char_t *input, size_t length,
-   const char_t *password, EddsaPrivateKey *privateKey);
+error_t sshImportEd448PrivateKey(EddsaPrivateKey *privateKey,
+   const char_t *input, size_t length, const char_t *password);
 
-error_t sshImportRsaHostKey(const SshRsaHostKey *hostKey,
-   RsaPublicKey *publicKey);
+error_t sshImportRsaHostKey(RsaPublicKey *publicKey,
+   const SshRsaHostKey *hostKey);
 
-error_t sshImportDsaHostKey(const SshDsaHostKey *hostKey,
-   DsaPublicKey *publicKey);
+error_t sshImportDsaHostKey(DsaPublicKey *publicKey,
+   const SshDsaHostKey *hostKey);
 
-error_t sshImportEcdsaHostKey(const SshEcdsaHostKey *hostKey,
-   EcDomainParameters *params, EcPublicKey *publicKey);
-
-error_t sshImportEd25519HostKey(const SshEddsaHostKey *hostKey,
-   EddsaPublicKey *publicKey);
-
-error_t sshImportEd448HostKey(const SshEddsaHostKey *hostKey,
-   EddsaPublicKey *publicKey);
+error_t sshImportEcdsaHostKey(EcPublicKey *publicKey,
+   const SshEcdsaHostKey *hostKey);
 
 const char_t *sshGetPublicKeyType(const char_t *input, size_t length);
 

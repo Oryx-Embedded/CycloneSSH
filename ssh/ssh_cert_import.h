@@ -6,7 +6,7 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later
  *
- * Copyright (C) 2019-2024 Oryx Embedded SARL. All rights reserved.
+ * Copyright (C) 2019-2025 Oryx Embedded SARL. All rights reserved.
  *
  * This file is part of CycloneSSH Open.
  *
@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.4.4
+ * @version 2.5.0
  **/
 
 #ifndef _SSH_CERT_IMPORT_H
@@ -48,17 +48,17 @@ extern "C" {
 error_t sshImportCertificate(const char_t *input, size_t inputLen,
    uint8_t *output, size_t *outputLen);
 
-error_t sshImportRsaCertPublicKey(const SshCertificate *cert,
-   RsaPublicKey *publicKey);
+error_t sshImportRsaCertPublicKey(RsaPublicKey *publicKey,
+   const SshCertificate *cert);
 
-error_t sshImportDsaCertPublicKey(const SshCertificate *cert,
-   DsaPublicKey *publicKey);
+error_t sshImportDsaCertPublicKey(DsaPublicKey *publicKey,
+   const SshCertificate *cert);
 
-error_t sshImportEcdsaCertPublicKey(const SshCertificate *cert,
-   EcDomainParameters *params, EcPublicKey *publicKey);
+error_t sshImportEcdsaCertPublicKey(EcPublicKey *publicKey,
+   const SshCertificate *cert);
 
-error_t sshImportEd25519CertPublicKey(const SshCertificate *cert,
-   EddsaPublicKey *publicKey);
+error_t sshImportEd25519CertPublicKey(EddsaPublicKey *publicKey,
+   const SshCertificate *cert);
 
 const char_t *sshGetCertType(const char_t *input, size_t length);
 

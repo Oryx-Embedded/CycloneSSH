@@ -6,7 +6,7 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later
  *
- * Copyright (C) 2019-2024 Oryx Embedded SARL. All rights reserved.
+ * Copyright (C) 2019-2025 Oryx Embedded SARL. All rights reserved.
  *
  * This file is part of CycloneSSH Open.
  *
@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.4.4
+ * @version 2.5.0
  **/
 
 //Switch to the appropriate trace level
@@ -212,6 +212,7 @@ error_t sshGenerateRsaSignature(SshConnection *connection,
    size_t n;
    const HashAlgo *hashAlgo;
    HashContext hashContext;
+   uint8_t digest[SSH_MAX_HASH_DIGEST_SIZE];
 
 #if (SSH_SHA1_SUPPORT == ENABLED)
    //RSA with SHA-1 public key algorithm?
@@ -274,18 +275,18 @@ error_t sshGenerateRsaSignature(SshConnection *connection,
 
       //Digest the message
       hashAlgo->update(&hashContext, message->value, message->length);
-      hashAlgo->final(&hashContext, NULL);
+      hashAlgo->final(&hashContext, digest);
 
       //Import RSA private key
-      error = sshImportRsaPrivateKey(hostKey->privateKey,
-         hostKey->privateKeyLen, hostKey->password, &rsaPrivateKey);
+      error = sshImportRsaPrivateKey(&rsaPrivateKey, hostKey->privateKey,
+         hostKey->privateKeyLen, hostKey->password);
 
       //Check status code
       if(!error)
       {
          //Generate RSA signature
-         error = rsassaPkcs1v15Sign(&rsaPrivateKey, hashAlgo,
-            hashContext.digest, p + 4, &n);
+         error = rsassaPkcs1v15Sign(&rsaPrivateKey, hashAlgo, digest, p + 4,
+            &n);
       }
 
       //Check status code
@@ -339,6 +340,7 @@ error_t sshGenerateDsaSignature(SshConnection *connection,
    DsaPrivateKey dsaPrivateKey;
    DsaSignature dsaSignature;
    Sha1Context sha1Context;
+   uint8_t digest[SHA1_DIGEST_SIZE];
 
    //Initialize variable
    n = 0;
@@ -371,18 +373,18 @@ error_t sshGenerateDsaSignature(SshConnection *connection,
 
    //Digest the message
    sha1Update(&sha1Context, message->value, message->length);
-   sha1Final(&sha1Context, NULL);
+   sha1Final(&sha1Context, digest);
 
    //Import DSA private key
-   error = sshImportDsaPrivateKey(hostKey->privateKey,
-      hostKey->privateKeyLen, hostKey->password, &dsaPrivateKey);
+   error = sshImportDsaPrivateKey(&dsaPrivateKey, hostKey->privateKey,
+      hostKey->privateKeyLen, hostKey->password);
 
    //Check status code
    if(!error)
    {
       //Generate DSA signature
       error = dsaGenerateSignature(context->prngAlgo, context->prngContext,
-         &dsaPrivateKey, sha1Context.digest, SHA1_DIGEST_SIZE, &dsaSignature);
+         &dsaPrivateKey, digest, SHA1_DIGEST_SIZE, &dsaSignature);
    }
 
    //Check status code
@@ -447,9 +449,10 @@ error_t sshGenerateEcdsaSignature(SshConnection *connection,
    size_t rLen;
    size_t sLen;
    SshContext *context;
+   const EcCurve *curve;
    const HashAlgo *hashAlgo;
-   const EcCurveInfo *curveInfo;
    HashContext hashContext;
+   uint8_t digest[SSH_MAX_HASH_DIGEST_SIZE];
 
    //Point to the SSH context
    context = connection->context;
@@ -459,7 +462,7 @@ error_t sshGenerateEcdsaSignature(SshConnection *connection,
    if(sshCompareAlgo(publicKeyAlgo, "ecdsa-sha2-nistp256"))
    {
       //Select the relevant curve and hash algorithm
-      curveInfo = SECP256R1_CURVE;
+      curve = SECP256R1_CURVE;
       hashAlgo = SHA256_HASH_ALGO;
    }
    else
@@ -469,7 +472,7 @@ error_t sshGenerateEcdsaSignature(SshConnection *connection,
    if(sshCompareAlgo(publicKeyAlgo, "ecdsa-sha2-nistp384"))
    {
       //Select the relevant curve and hash algorithm
-      curveInfo = SECP384R1_CURVE;
+      curve = SECP384R1_CURVE;
       hashAlgo = SHA384_HASH_ALGO;
    }
    else
@@ -479,7 +482,7 @@ error_t sshGenerateEcdsaSignature(SshConnection *connection,
    if(sshCompareAlgo(publicKeyAlgo, "ecdsa-sha2-nistp521"))
    {
       //Select the relevant curve and hash algorithm
-      curveInfo = SECP521R1_CURVE;
+      curve = SECP521R1_CURVE;
       hashAlgo = SHA512_HASH_ALGO;
    }
    else
@@ -487,19 +490,16 @@ error_t sshGenerateEcdsaSignature(SshConnection *connection,
    //Unknown public key algorithm?
    {
       //Just for sanity
-      curveInfo = NULL;
+      curve = NULL;
       hashAlgo = NULL;
    }
 
    //Valid parameters?
-   if(curveInfo != NULL && hashAlgo != NULL)
+   if(curve != NULL && hashAlgo != NULL)
    {
-      EcDomainParameters ecParams;
       EcPrivateKey ecPrivateKey;
       EcdsaSignature ecdsaSignature;
 
-      //Initialize EC domain parameters
-      ecInitDomainParameters(&ecParams);
       //Initialize EC private key
       ecInitPrivateKey(&ecPrivateKey);
       //Initialize ECDSA signature
@@ -525,40 +525,34 @@ error_t sshGenerateEcdsaSignature(SshConnection *connection,
 
       //Digest the message
       hashAlgo->update(&hashContext, message->value, message->length);
-      hashAlgo->final(&hashContext, NULL);
+      hashAlgo->final(&hashContext, digest);
 
-      //Import EC domain parameters
-      error = ecLoadDomainParameters(&ecParams, curveInfo);
-
-      //Check status code
-      if(!error)
-      {
-         //Import ECDSA private key
-         error = sshImportEcdsaPrivateKey(hostKey->privateKey,
-            hostKey->privateKeyLen, hostKey->password, &ecPrivateKey);
-      }
+      //Import ECDSA private key
+      error = sshImportEcdsaPrivateKey(&ecPrivateKey, hostKey->privateKey,
+         hostKey->privateKeyLen, hostKey->password);
 
       //Check status code
       if(!error)
       {
          //Generate ECDSA signature
          error = ecdsaGenerateSignature(context->prngAlgo, context->prngContext,
-            &ecParams, &ecPrivateKey, hashContext.digest, hashAlgo->digestSize,
-            &ecdsaSignature);
+            &ecPrivateKey, digest, hashAlgo->digestSize, &ecdsaSignature);
       }
 
       //Check status code
       if(!error)
       {
          //Encode integer R
-         error = sshFormatMpint(&ecdsaSignature.r, p + 4, &rLen);
+         error = sshConvertScalarToMpint(ecdsaSignature.r, EC_MAX_ORDER_SIZE,
+            p + 4, &rLen);
       }
 
       //Check status code
       if(!error)
       {
          //Encode integer S
-         error = sshFormatMpint(&ecdsaSignature.s, p + rLen + 4, &sLen);
+         error = sshConvertScalarToMpint(ecdsaSignature.s, EC_MAX_ORDER_SIZE,
+            p + rLen + 4, &sLen);
       }
 
       //Check status code
@@ -571,7 +565,6 @@ error_t sshGenerateEcdsaSignature(SshConnection *connection,
       }
 
       //Free previously allocated resources
-      ecFreeDomainParameters(&ecParams);
       ecFreePrivateKey(&ecPrivateKey);
       ecdsaFreeSignature(&ecdsaSignature);
    }
@@ -610,25 +603,18 @@ error_t sshGenerateEd25519Signature(SshConnection *connection,
 #if (SSH_ED25519_SIGN_SUPPORT == ENABLED)
    error_t error;
    size_t n;
+   const uint8_t *q;
    EddsaPrivateKey eddsaPrivateKey;
-   DataChunk messageChunks[4];
+   uint_t numMessageChunks;
+   DataChunk messageChunks[3];
    uint8_t temp[4];
-   uint8_t d[ED25519_PRIVATE_KEY_LEN];
 
    //Initialize EdDSA private key
    eddsaInitPrivateKey(&eddsaPrivateKey);
 
    //Import Ed25519 private key
-   error = sshImportEd25519PrivateKey(hostKey->privateKey,
-      hostKey->privateKeyLen, hostKey->password, &eddsaPrivateKey);
-
-   //Check status code
-   if(!error)
-   {
-      //Retrieve raw private key
-      error = mpiExport(&eddsaPrivateKey.d, d, ED25519_PRIVATE_KEY_LEN,
-         MPI_FORMAT_LITTLE_ENDIAN);
-   }
+   error = sshImportEd25519PrivateKey(&eddsaPrivateKey, hostKey->privateKey,
+      hostKey->privateKeyLen, hostKey->password);
 
    //Check status code
    if(!error)
@@ -648,29 +634,34 @@ error_t sshGenerateEd25519Signature(SshConnection *connection,
          messageChunks[1].length = sessionId->length;
          messageChunks[2].buffer = message->value;
          messageChunks[2].length = message->length;
-         messageChunks[3].buffer = NULL;
-         messageChunks[3].length = 0;
+
+         //Number of data chunks representing the message to be signed
+         numMessageChunks = 3;
       }
       else
       {
-         //The message fits in a single chunk
+         //Data to be signed is run through the EdDSA algorithm without
+         //pre-hashing
          messageChunks[0].buffer = message->value;
          messageChunks[0].length = message->length;
-         messageChunks[1].buffer = NULL;
-         messageChunks[1].length = 0;
+
+         //The message fits in a single chunk
+         numMessageChunks = 1;
       }
 
-      //Generate Ed25519 signature (PureEdDSA mode)
-      error = ed25519GenerateSignatureEx(d, NULL, messageChunks, NULL, 0, 0,
-         p + 4);
+      //The public key is optional
+      q = (eddsaPrivateKey.q.curve != NULL) ? eddsaPrivateKey.q.q : NULL;
 
-      //The Ed25519 signature consists of 32 octets
-      n = ED25519_SIGNATURE_LEN;
+      //Generate Ed25519 signature (PureEdDSA mode)
+      error = ed25519GenerateSignatureEx(eddsaPrivateKey.d, q, messageChunks,
+         numMessageChunks, NULL, 0, 0, p + 4);
    }
 
    //Check status code
    if(!error)
    {
+      //The Ed25519 signature consists of 32 octets
+      n = ED25519_SIGNATURE_LEN;
       //The resulting EdDSA signature is encoded as a string
       STORE32BE(n, p);
       //Total number of bytes that have been written
@@ -709,25 +700,18 @@ error_t sshGenerateEd448Signature(SshConnection *connection,
 #if (SSH_ED448_SIGN_SUPPORT == ENABLED)
    error_t error;
    size_t n;
+   const uint8_t *q;
    EddsaPrivateKey eddsaPrivateKey;
-   DataChunk messageChunks[4];
+   uint_t numMessageChunks;
+   DataChunk messageChunks[3];
    uint8_t temp[4];
-   uint8_t d[ED448_PRIVATE_KEY_LEN];
 
    //Initialize EdDSA private key
    eddsaInitPrivateKey(&eddsaPrivateKey);
 
    //Import Ed448 private key
-   error = sshImportEd448PrivateKey(hostKey->privateKey,
-      hostKey->privateKeyLen, hostKey->password, &eddsaPrivateKey);
-
-   //Check status code
-   if(!error)
-   {
-      //Retrieve raw private key
-      error = mpiExport(&eddsaPrivateKey.d, d, ED448_PRIVATE_KEY_LEN,
-         MPI_FORMAT_LITTLE_ENDIAN);
-   }
+   error = sshImportEd448PrivateKey(&eddsaPrivateKey, hostKey->privateKey,
+      hostKey->privateKeyLen, hostKey->password);
 
    //Check status code
    if(!error)
@@ -747,29 +731,34 @@ error_t sshGenerateEd448Signature(SshConnection *connection,
          messageChunks[1].length = sessionId->length;
          messageChunks[2].buffer = message->value;
          messageChunks[2].length = message->length;
-         messageChunks[3].buffer = NULL;
-         messageChunks[3].length = 0;
+
+         //Number of data chunks representing the message to be signed
+         numMessageChunks = 3;
       }
       else
       {
-         //The message fits in a single chunk
+         //Data to be signed is run through the EdDSA algorithm without
+         //pre-hashing
          messageChunks[0].buffer = message->value;
          messageChunks[0].length = message->length;
-         messageChunks[1].buffer = NULL;
-         messageChunks[1].length = 0;
+
+         //The message fits in a single chunk
+         numMessageChunks = 1;
       }
 
-      //Generate Ed448 signature (PureEdDSA mode)
-      error = ed448GenerateSignatureEx(d, NULL, messageChunks, NULL, 0, 0,
-         p + 4);
+      //The public key is optional
+      q = (eddsaPrivateKey.q.curve != NULL) ? eddsaPrivateKey.q.q : NULL;
 
-      //The Ed448 signature consists of 57 octets
-      n = ED448_SIGNATURE_LEN;
+      //Generate Ed448 signature (PureEdDSA mode)
+      error = ed448GenerateSignatureEx(eddsaPrivateKey.d, q, messageChunks,
+         numMessageChunks, NULL, 0, 0, p + 4);
    }
 
    //Check status code
    if(!error)
    {
+      //The Ed448 signature consists of 57 octets
+      n = ED448_SIGNATURE_LEN;
       //The resulting EdDSA signature is encoded as a string
       STORE32BE(n, p);
       //Total number of bytes that have been written

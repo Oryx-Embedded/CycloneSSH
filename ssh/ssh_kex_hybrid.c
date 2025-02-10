@@ -6,7 +6,7 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later
  *
- * Copyright (C) 2019-2024 Oryx Embedded SARL. All rights reserved.
+ * Copyright (C) 2019-2025 Oryx Embedded SARL. All rights reserved.
  *
  * This file is part of CycloneSSH Open.
  *
@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.4.4
+ * @version 2.5.0
  **/
 
 //Switch to the appropriate trace level
@@ -83,9 +83,8 @@ error_t sshSendKexHybridInit(SshConnection *connection)
    //Check status code
    if(!error)
    {
-      //Load ECDH domain parameters
-      error = sshLoadKexClassicalEcdhParams(connection->kexAlgo,
-         &connection->ecdhContext.params);
+      //Select ECDH domain parameters
+      error = sshSelectClassicalEcdhCurve(connection);
    }
 
    //Check status code
@@ -215,8 +214,8 @@ error_t sshFormatKexHybridInit(SshConnection *connection, uint8_t *p,
    osMemcpy(p + sizeof(uint32_t), connection->kemContext.pk, m);
 
    //Format client's classical public key (C_CL)
-   error = ecExport(&connection->ecdhContext.params,
-      &connection->ecdhContext.qa.q, p + sizeof(uint32_t) + m, &n);
+   error = ecExportPublicKey(&connection->ecdhContext.da.q,
+      p + sizeof(uint32_t) + m, &n, EC_PUBLIC_KEY_FORMAT_X963);
    //Any error to report?
    if(error)
       return error;
@@ -298,8 +297,8 @@ error_t sshFormatKexHybridReply(SshConnection *connection, uint8_t *p,
    connection->hashAlgo->update(&hashContext, connection->k, connection->kLen);
 
    //Format server's ephemeral public key (S_CL)
-   error = ecExport(&connection->ecdhContext.params,
-      &connection->ecdhContext.qa.q, p + sizeof(uint32_t) + m, &n);
+   error = ecExportPublicKey(&connection->ecdhContext.da.q,
+      p + sizeof(uint32_t) + m, &n, EC_PUBLIC_KEY_FORMAT_X963);
    //Any error to report?
    if(error)
       return error;
@@ -448,24 +447,23 @@ error_t sshParseKexHybridInit(SshConnection *connection,
    if(error)
       return error;
 
-   //Load ECDH domain parameters
-   error = sshLoadKexClassicalEcdhParams(connection->kexAlgo,
-      &connection->ecdhContext.params);
+   //Select ECDH domain parameters
+   error = sshSelectClassicalEcdhCurve(connection);
    //Any error to report?
    if(error)
       return error;
 
    //Load client's classical public key (C_CL)
-   error = ecImport(&connection->ecdhContext.params,
-      &connection->ecdhContext.qb.q, clientInit.value + n,
-      clientInit.length - n);
+   error = ecImportPublicKey(&connection->ecdhContext.qb,
+      connection->ecdhContext.curve, clientInit.value + n,
+      clientInit.length - n, EC_PUBLIC_KEY_FORMAT_X963);
    //Any error to report?
    if(error)
       return error;
 
    //Ensure the public key is acceptable
-   error = ecdhCheckPublicKey(&connection->ecdhContext.params,
-      &connection->ecdhContext.qb.q);
+   error = ecdhCheckPublicKey(&connection->ecdhContext,
+      &connection->ecdhContext.qb);
    //Any error to report?
    if(error)
       return error;
@@ -624,15 +622,15 @@ error_t sshParseKexHybridReply(SshConnection *connection,
    connection->hashAlgo->update(&hashContext, connection->k, connection->kLen);
 
    //Load server's classical public key (S_CL)
-   error = ecImport(&connection->ecdhContext.params,
-      &connection->ecdhContext.qb.q, serverReply.value + n,
-      serverReply.length - n);
+   error = ecImportPublicKey(&connection->ecdhContext.qb,
+      connection->ecdhContext.curve, serverReply.value + n,
+      serverReply.length - n, EC_PUBLIC_KEY_FORMAT_X963);
    //Any error to report?
    if(error)
       return error;
 
    //Ensure the public key is acceptable
-   error = ecdhCheckPublicKey(&connection->ecdhContext.params,
+   error = ecdhCheckPublicKey(&connection->ecdhContext,
       &connection->ecdhContext.qb.q);
    //Any error to report?
    if(error)
@@ -805,54 +803,55 @@ error_t sshSelectKemAlgo(SshConnection *connection)
 
 
 /**
- * @brief Load the EC parameters that match specified key exchange algorithm
- * @param[in] kexAlgo Key exchange algorithm name
- * @param[out] params Elliptic curve domain parameters
+ * @brief Select ECDH domain parameters
+ * @param[in] connection Pointer to the SSH connection
  * @return Error code
  **/
 
-error_t sshLoadKexClassicalEcdhParams(const char_t *kexAlgo,
-   EcDomainParameters *params)
+error_t sshSelectClassicalEcdhCurve(SshConnection *connection)
 {
    error_t error;
-   const EcCurveInfo *curveInfo;
+   const EcCurve *curve;
+
+   //Initialize status code
+   error = NO_ERROR;
 
 #if (SSH_NISTP256_SUPPORT == ENABLED)
    //NIST P-256 elliptic curve?
-   if(sshCompareAlgo(kexAlgo, "mlkem768nistp256-sha256"))
+   if(sshCompareAlgo(connection->kexAlgo, "mlkem768nistp256-sha256"))
    {
-      curveInfo = SECP256R1_CURVE;
+      curve = SECP256R1_CURVE;
    }
    else
 #endif
 #if (SSH_NISTP384_SUPPORT == ENABLED)
    //NIST P-384 elliptic curve?
-   if(sshCompareAlgo(kexAlgo, "mlkem1024nistp384-sha384"))
+   if(sshCompareAlgo(connection->kexAlgo, "mlkem1024nistp384-sha384"))
    {
-      curveInfo = SECP384R1_CURVE;
+      curve = SECP384R1_CURVE;
    }
    else
 #endif
 #if (SSH_CURVE25519_SUPPORT == ENABLED)
    //Curve25519 elliptic curve?
-   if(sshCompareAlgo(kexAlgo, "mlkem768x25519-sha256") ||
-      sshCompareAlgo(kexAlgo, "sntrup761x25519-sha512") ||
-      sshCompareAlgo(kexAlgo, "sntrup761x25519-sha512@openssh.com"))
+   if(sshCompareAlgo(connection->kexAlgo, "mlkem768x25519-sha256") ||
+      sshCompareAlgo(connection->kexAlgo, "sntrup761x25519-sha512") ||
+      sshCompareAlgo(connection->kexAlgo, "sntrup761x25519-sha512@openssh.com"))
    {
-      curveInfo = X25519_CURVE;
+      curve = X25519_CURVE;
    }
    else
 #endif
    //Unknown elliptic curve?
    {
-      curveInfo = NULL;
+      curve = NULL;
    }
 
-   //Make sure the key exchange algorithm is acceptable
-   if(curveInfo != NULL)
+   //Make sure the specified elliptic curve is supported
+   if(curve != NULL)
    {
-      //Load EC domain parameters
-      error = ecLoadDomainParameters(params, curveInfo);
+      //Save ECDH domain parameters
+      connection->ecdhContext.curve = curve;
    }
    else
    {
@@ -885,7 +884,7 @@ error_t sshGenerateClassicalEcdhKeyPair(SshConnection *connection)
    {
       //Invoke user-defined callback
       error = context->ecdhKeyPairGenCallback(connection, connection->kexAlgo,
-         &connection->ecdhContext.qa);
+         &connection->ecdhContext.da.q);
    }
    else
 #endif
@@ -972,8 +971,8 @@ error_t sshDigestClientInit(SshConnection *connection)
       osMemcpy(buffer, connection->kemContext.pk, m);
 
       //Format client's classical public key (C_CL)
-      error = ecExport(&connection->ecdhContext.params,
-         &connection->ecdhContext.qa.q, buffer + m, &n);
+      error = ecExportPublicKey(&connection->ecdhContext.da.q, buffer + m, &n,
+         EC_PUBLIC_KEY_FORMAT_X963);
 
       //Check status code
       if(!error)

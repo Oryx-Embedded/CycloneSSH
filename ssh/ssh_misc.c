@@ -6,7 +6,7 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later
  *
- * Copyright (C) 2019-2024 Oryx Embedded SARL. All rights reserved.
+ * Copyright (C) 2019-2025 Oryx Embedded SARL. All rights reserved.
  *
  * This file is part of CycloneSSH Open.
  *
@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.4.4
+ * @version 2.5.0
  **/
 
 //Switch to the appropriate trace level
@@ -50,6 +50,7 @@
 #include "ssh/ssh_key_format.h"
 #include "ssh/ssh_cert_import.h"
 #include "ssh/ssh_misc.h"
+#include "ecc/ec_misc.h"
 #include "debug.h"
 
 //Check SSH stack configuration
@@ -882,8 +883,8 @@ error_t sshFormatHostKey(SshConnection *connection, uint8_t *p,
          rsaInitPublicKey(&rsaPublicKey);
 
          //Load RSA public key
-         error = sshImportRsaPublicKey(hostKey->publicKey,
-            hostKey->publicKeyLen, &rsaPublicKey);
+         error = sshImportRsaPublicKey(&rsaPublicKey, hostKey->publicKey,
+            hostKey->publicKeyLen);
 
          //Check status code
          if(!error)
@@ -917,8 +918,8 @@ error_t sshFormatHostKey(SshConnection *connection, uint8_t *p,
          dsaInitPublicKey(&dsaPublicKey);
 
          //Load DSA public key
-         error = sshImportDsaPublicKey(hostKey->publicKey,
-            hostKey->publicKeyLen, &dsaPublicKey);
+         error = sshImportDsaPublicKey(&dsaPublicKey, hostKey->publicKey,
+            hostKey->publicKeyLen);
 
          //Check status code
          if(!error)
@@ -948,28 +949,23 @@ error_t sshFormatHostKey(SshConnection *connection, uint8_t *p,
          sshCompareAlgo(hostKey->keyFormatId, "ecdsa-sha2-nistp384") ||
          sshCompareAlgo(hostKey->keyFormatId, "ecdsa-sha2-nistp521"))
       {
-         EcDomainParameters ecParams;
          EcPublicKey ecPublicKey;
 
-         //Initialize EC domain parameters
-         ecInitDomainParameters(&ecParams);
-         //Initialize EC public key
+         //Initialize ECDSA public key
          ecInitPublicKey(&ecPublicKey);
 
          //Load ECDSA public key
-         error = sshImportEcdsaPublicKey(hostKey->publicKey,
-            hostKey->publicKeyLen, &ecParams, &ecPublicKey);
+         error = sshImportEcdsaPublicKey(&ecPublicKey, hostKey->publicKey,
+            hostKey->publicKeyLen);
 
          //Check status code
          if(!error)
          {
             //Format ECDSA host key structure
-            error = sshFormatEcdsaPublicKey(&ecParams, &ecPublicKey, p,
-               written);
+            error = sshFormatEcdsaPublicKey(&ecPublicKey, p, written);
          }
 
          //Free previously allocated resources
-         ecFreeDomainParameters(&ecParams);
          ecFreePublicKey(&ecPublicKey);
       }
       else
@@ -996,8 +992,8 @@ error_t sshFormatHostKey(SshConnection *connection, uint8_t *p,
          eddsaInitPublicKey(&eddsaPublicKey);
 
          //Load EdDSA public key
-         error = sshImportEd25519PublicKey(hostKey->publicKey,
-            hostKey->publicKeyLen, &eddsaPublicKey);
+         error = sshImportEd25519PublicKey(&eddsaPublicKey, hostKey->publicKey,
+            hostKey->publicKeyLen);
 
          //Check status code
          if(!error)
@@ -1031,8 +1027,8 @@ error_t sshFormatHostKey(SshConnection *connection, uint8_t *p,
          eddsaInitPublicKey(&eddsaPublicKey);
 
          //Load EdDSA public key
-         error = sshImportEd448PublicKey(hostKey->publicKey,
-            hostKey->publicKeyLen, &eddsaPublicKey);
+         error = sshImportEd448PublicKey(&eddsaPublicKey, hostKey->publicKey,
+            hostKey->publicKeyLen);
 
          //Check status code
          if(!error)
@@ -1067,13 +1063,13 @@ error_t sshFormatHostKey(SshConnection *connection, uint8_t *p,
  * @brief Get the elliptic curve that matches the specified key format identifier
  * @param[in] keyFormatId Key format identifier
  * @param[in] curveName Curve name
- * @return Elliptic curve domain parameters
+ * @return Elliptic curve parameters
  **/
 
-const EcCurveInfo *sshGetCurveInfo(const SshString *keyFormatId,
+const EcCurve *sshGetCurve(const SshString *keyFormatId,
    const SshString *curveName)
 {
-   const EcCurveInfo *curveInfo;
+   const EcCurve *curve;
 
 #if (SSH_ECDSA_SIGN_SUPPORT == ENABLED)
 #if (SSH_NISTP256_SUPPORT == ENABLED)
@@ -1081,7 +1077,7 @@ const EcCurveInfo *sshGetCurveInfo(const SshString *keyFormatId,
    if(sshCompareString(keyFormatId, "ecdsa-sha2-nistp256") &&
       sshCompareString(curveName, "nistp256"))
    {
-      curveInfo = SECP256R1_CURVE;
+      curve = SECP256R1_CURVE;
    }
    else
 #endif
@@ -1090,7 +1086,7 @@ const EcCurveInfo *sshGetCurveInfo(const SshString *keyFormatId,
    if(sshCompareString(keyFormatId, "ecdsa-sha2-nistp256-cert-v01@openssh.com") &&
       sshCompareString(curveName, "nistp256"))
    {
-      curveInfo = SECP256R1_CURVE;
+      curve = SECP256R1_CURVE;
    }
    else
 #endif
@@ -1099,7 +1095,7 @@ const EcCurveInfo *sshGetCurveInfo(const SshString *keyFormatId,
    if(sshCompareString(keyFormatId, "ecdsa-sha2-nistp384") &&
       sshCompareString(curveName, "nistp384"))
    {
-      curveInfo = SECP384R1_CURVE;
+      curve = SECP384R1_CURVE;
    }
    else
 #endif
@@ -1108,7 +1104,7 @@ const EcCurveInfo *sshGetCurveInfo(const SshString *keyFormatId,
    if(sshCompareString(keyFormatId, "ecdsa-sha2-nistp384-cert-v01@openssh.com") &&
       sshCompareString(curveName, "nistp384"))
    {
-      curveInfo = SECP384R1_CURVE;
+      curve = SECP384R1_CURVE;
    }
    else
 #endif
@@ -1117,7 +1113,7 @@ const EcCurveInfo *sshGetCurveInfo(const SshString *keyFormatId,
    if(sshCompareString(keyFormatId, "ecdsa-sha2-nistp521") &&
       sshCompareString(curveName, "nistp521"))
    {
-      curveInfo = SECP521R1_CURVE;
+      curve = SECP521R1_CURVE;
    }
    else
 #endif
@@ -1126,18 +1122,18 @@ const EcCurveInfo *sshGetCurveInfo(const SshString *keyFormatId,
    if(sshCompareString(keyFormatId, "ecdsa-sha2-nistp521-cert-v01@openssh.com") &&
       sshCompareString(curveName, "nistp521"))
    {
-      curveInfo = SECP521R1_CURVE;
+      curve = SECP521R1_CURVE;
    }
    else
 #endif
 #endif
    //Unknow elliptic curve?
    {
-      curveInfo = NULL;
+      curve = NULL;
    }
 
-   //Return the elliptic curve domain parameters, if any
-   return curveInfo;
+   //Return the elliptic curve parameters, if any
+   return curve;
 }
 
 
@@ -1518,6 +1514,50 @@ error_t sshFormatMpint(const Mpi *value, uint8_t *p, size_t *written)
    return error;
 }
 
+
+/**
+ * @brief Convert a scalar to mpint representation
+ * @param[in] value Pointer the integer
+ * @param[in] length Length of the integer, in words
+ * @param[out] p Output stream where to write the multiple precision integer
+ * @param[out] written Total number of bytes that have been written
+ * @return Error code
+ **/
+
+error_t sshConvertScalarToMpint(const uint32_t *value, uint_t length,
+   uint8_t *p, size_t *written)
+{
+   error_t error;
+   size_t n;
+
+   //Retrieve the length of the multiple precision integer
+   n = ecScalarGetBitLength(value, length);
+
+   //The value zero must be stored as a string with zero bytes of data
+   if(n != 0)
+   {
+      //If the most significant bit would be set for a positive number, the
+      //number must be preceded by a zero byte (refer to RFC 4251, section 5)
+      n = (n / 8) + 1;
+   }
+
+   //The value of the multiple precision integer is encoded MSB first.
+   //Unnecessary leading bytes with the value 0 must not be included
+   error = ecScalarExport(value, length, p + 4, n, EC_SCALAR_FORMAT_BIG_ENDIAN);
+
+   //Check status code
+   if(!error)
+   {
+      //The integer is preceded by a uint32 containing its length
+      STORE32BE(n, p);
+
+      //Total number of bytes that have been written
+      *written = sizeof(uint32_t) + n;
+   }
+
+   //Return status code
+   return error;
+}
 
 /**
  * @brief Convert a binary string to mpint representation

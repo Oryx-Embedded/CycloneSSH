@@ -6,7 +6,7 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later
  *
- * Copyright (C) 2019-2024 Oryx Embedded SARL. All rights reserved.
+ * Copyright (C) 2019-2025 Oryx Embedded SARL. All rights reserved.
  *
  * This file is part of CycloneSSH Open.
  *
@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.4.4
+ * @version 2.5.0
  **/
 
 //Switch to the appropriate trace level
@@ -976,7 +976,8 @@ const char_t *sshSelectKexAlgo(SshConnection *connection,
                   if(sshIsDhGexKexAlgo(sshSupportedKexAlgos[i]))
                   {
                      //Diffie-Hellman Group Exchange algorithms can only be
-                     //negotiated at server-side if a valid group has been loaded
+                     //negotiated at server-side if a valid group has been
+                     //loaded
                      if(sshSelectDhGexGroup(connection->context,
                         SSH_MIN_DH_MODULUS_SIZE, SSH_PREFERRED_DH_MODULUS_SIZE,
                         SSH_MAX_DH_MODULUS_SIZE) >= 0)

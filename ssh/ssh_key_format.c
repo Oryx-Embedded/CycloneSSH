@@ -6,7 +6,7 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later
  *
- * Copyright (C) 2019-2024 Oryx Embedded SARL. All rights reserved.
+ * Copyright (C) 2019-2025 Oryx Embedded SARL. All rights reserved.
  *
  * This file is part of CycloneSSH Open.
  *
@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.4.4
+ * @version 2.5.0
  **/
 
 //Switch to the appropriate trace level
@@ -176,15 +176,14 @@ error_t sshFormatDsaPublicKey(const DsaPublicKey *publicKey,
 
 /**
  * @brief Format an ECDSA public host key
- * @param[in] params EC domain parameters
  * @param[in] publicKey Pointer to the ECDSA public key
  * @param[out] p Buffer where to store the host key structure
  * @param[out] written Length of the resulting host key structure
  * @return Error code
  **/
 
-error_t sshFormatEcdsaPublicKey(const EcDomainParameters *params,
-   const EcPublicKey *publicKey, uint8_t *p, size_t *written)
+error_t sshFormatEcdsaPublicKey(const EcPublicKey *publicKey,
+   uint8_t *p, size_t *written)
 {
 #if (SSH_ECDSA_SIGN_SUPPORT == ENABLED)
    error_t error;
@@ -195,20 +194,24 @@ error_t sshFormatEcdsaPublicKey(const EcDomainParameters *params,
    //Total length of the public host key structure
    *written = 0;
 
+   //Invalid ECDSA public key?
+   if(publicKey->curve == NULL)
+      return ERROR_UNSUPPORTED_ELLIPTIC_CURVE;
+
    //Check elliptic curve
-   if(osStrcmp(params->name, "secp256r1") == 0)
+   if(osStrcmp(publicKey->curve->name, "secp256r1") == 0)
    {
       //Select NIST P-256 elliptic curve
       keyFormatId = "ecdsa-sha2-nistp256";
       curveName = "nistp256";
    }
-   else if(osStrcmp(params->name, "secp384r1") == 0)
+   else if(osStrcmp(publicKey->curve->name, "secp384r1") == 0)
    {
       //Select NIST P-384 elliptic curve
       keyFormatId = "ecdsa-sha2-nistp384";
       curveName = "nistp384";
    }
-   else if(osStrcmp(params->name, "secp521r1") == 0)
+   else if(osStrcmp(publicKey->curve->name, "secp521r1") == 0)
    {
       //Select NIST P-521 elliptic curve
       keyFormatId = "ecdsa-sha2-nistp521";
@@ -241,7 +244,7 @@ error_t sshFormatEcdsaPublicKey(const EcDomainParameters *params,
    *written += n;
 
    //Format EC public key
-   error = ecExport(params, &publicKey->q, p + 4, &n);
+   error = ecExportPublicKey(publicKey, p + 4, &n, EC_PUBLIC_KEY_FORMAT_X963);
    //Any error to report?
    if(error)
       return error;
@@ -289,11 +292,8 @@ error_t sshFormatEd25519PublicKey(const EddsaPublicKey *publicKey,
    p += n;
    *written += n;
 
-   //The public key shall consist of 32 octets
-   n = ED25519_PUBLIC_KEY_LEN;
-
    //Format Ed25519 public key
-   error = mpiExport(&publicKey->q, p + 4, n, MPI_FORMAT_LITTLE_ENDIAN);
+   error = eddsaExportPublicKey(publicKey, p + 4, &n);
    //Any error to report?
    if(error)
       return error;
@@ -341,11 +341,8 @@ error_t sshFormatEd448PublicKey(const EddsaPublicKey *publicKey,
    p += n;
    *written += n;
 
-   //The public key shall consist of 57 octets
-   n = ED448_PUBLIC_KEY_LEN;
-
    //Format Ed448 public key
-   error = mpiExport(&publicKey->q, p + 4, n, MPI_FORMAT_LITTLE_ENDIAN);
+   error = eddsaExportPublicKey(publicKey, p + 4, &n);
    //Any error to report?
    if(error)
       return error;
@@ -556,14 +553,13 @@ error_t sshFormatOpenSshRsaPrivateKey(const RsaPrivateKey *privateKey,
 /**
  * @brief Format DSA private key blob (OpenSSH format)
  * @param[in] privateKey Pointer to the DSA private key
- * @param[in] publicKey Pointer to the DSA public key
  * @param[out] p Buffer where to store the private key blob
  * @param[out] written Length of the resulting private key blob
  * @return Error code
  **/
 
 error_t sshFormatOpenSshDsaPrivateKey(const DsaPrivateKey *privateKey,
-   const DsaPublicKey *publicKey, uint8_t *p, size_t *written)
+   uint8_t *p, size_t *written)
 {
 #if (SSH_DSA_SIGN_SUPPORT == ENABLED)
    error_t error;
@@ -622,7 +618,7 @@ error_t sshFormatOpenSshDsaPrivateKey(const DsaPrivateKey *privateKey,
    length += n;
 
    //Format DSA public key value
-   error = sshFormatMpint(&publicKey->y, p, &n);
+   error = sshFormatMpint(&privateKey->y, p, &n);
    //Any error to report?
    if(error)
       return error;
@@ -671,16 +667,13 @@ error_t sshFormatOpenSshDsaPrivateKey(const DsaPrivateKey *privateKey,
 
 /**
  * @brief Format ECDSA private key blob (OpenSSH format)
- * @param[in] params EC domain parameters
  * @param[in] privateKey Pointer to the ECDSA private key
- * @param[in] publicKey Pointer to the ECDSA public key
  * @param[out] p Buffer where to store the private key blob
  * @param[out] written Length of the resulting private key blob
  * @return Error code
  **/
 
-error_t sshFormatOpenSshEcdsaPrivateKey(const EcDomainParameters *params,
-   const EcPrivateKey *privateKey, const EcPublicKey *publicKey,
+error_t sshFormatOpenSshEcdsaPrivateKey(const EcPrivateKey *privateKey,
    uint8_t *p, size_t *written)
 {
 #if (SSH_ECDSA_SIGN_SUPPORT == ENABLED)
@@ -689,6 +682,13 @@ error_t sshFormatOpenSshEcdsaPrivateKey(const EcDomainParameters *params,
    size_t length;
    const char_t *keyFormatId;
    const char_t *curveName;
+
+   //Invalid elliptic curve?
+   if(privateKey->curve == NULL ||
+      privateKey->curve != privateKey->q.curve)
+   {
+      return ERROR_UNSUPPORTED_ELLIPTIC_CURVE;
+   }
 
    //Total length of the private key blob
    length = 0;
@@ -702,19 +702,19 @@ error_t sshFormatOpenSshEcdsaPrivateKey(const EcDomainParameters *params,
    length += 2 * sizeof(uint32_t);
 
    //Check elliptic curve
-   if(osStrcmp(params->name, "secp256r1") == 0)
+   if(osStrcmp(privateKey->curve->name, "secp256r1") == 0)
    {
       //Select NIST P-256 elliptic curve
       keyFormatId = "ecdsa-sha2-nistp256";
       curveName = "nistp256";
    }
-   else if(osStrcmp(params->name, "secp384r1") == 0)
+   else if(osStrcmp(privateKey->curve->name, "secp384r1") == 0)
    {
       //Select NIST P-384 elliptic curve
       keyFormatId = "ecdsa-sha2-nistp384";
       curveName = "nistp384";
    }
-   else if(osStrcmp(params->name, "secp521r1") == 0)
+   else if(osStrcmp(privateKey->curve->name, "secp521r1") == 0)
    {
       //Select NIST P-521 elliptic curve
       keyFormatId = "ecdsa-sha2-nistp521";
@@ -747,7 +747,8 @@ error_t sshFormatOpenSshEcdsaPrivateKey(const EcDomainParameters *params,
    length += n;
 
    //Format EC public key
-   error = ecExport(params, &publicKey->q, p + 4, &n);
+   error = ecExportPublicKey(&privateKey->q, p + 4, &n,
+      EC_PUBLIC_KEY_FORMAT_X963);
    //Any error to report?
    if(error)
       return error;
@@ -759,8 +760,11 @@ error_t sshFormatOpenSshEcdsaPrivateKey(const EcDomainParameters *params,
    p += sizeof(uint32_t) + n;
    length += sizeof(uint32_t) + n;
 
+   //Get the length of the private key, in words
+   n = (privateKey->curve->orderSize + 31) / 32;
+
    //Format EC private key
-   error = sshFormatMpint(&privateKey->d, p, &n);
+   error = sshConvertScalarToMpint(privateKey->d, n, p, &n);
    //Any error to report?
    if(error)
       return error;
@@ -800,17 +804,17 @@ error_t sshFormatOpenSshEcdsaPrivateKey(const EcDomainParameters *params,
 /**
  * @brief Format Ed25519 private key blob (OpenSSH format)
  * @param[in] privateKey Pointer to the Ed25519 private key
- * @param[in] publicKey Pointer to the Ed25519 public key
  * @param[out] p Buffer where to store the private key blob
  * @param[out] written Length of the resulting private key blob
  * @return Error code
  **/
 
 error_t sshFormatOpenSshEd25519PrivateKey(const EddsaPrivateKey *privateKey,
-   const EddsaPublicKey *publicKey, uint8_t *p, size_t *written)
+   uint8_t *p, size_t *written)
 {
 #if (SSH_ED25519_SIGN_SUPPORT == ENABLED)
    error_t error;
+   size_t m;
    size_t n;
    size_t length;
 
@@ -835,11 +839,8 @@ error_t sshFormatOpenSshEd25519PrivateKey(const EddsaPrivateKey *privateKey,
    p += n;
    length += n;
 
-   //The public key shall consist of 32 octets
-   n = ED25519_PUBLIC_KEY_LEN;
-
    //Format Ed25519 public key
-   error = mpiExport(&publicKey->q, p + 4, n, MPI_FORMAT_LITTLE_ENDIAN);
+   error = eddsaExportPublicKey(&privateKey->q, p + 4, &n);
    //Any error to report?
    if(error)
       return error;
@@ -850,30 +851,25 @@ error_t sshFormatOpenSshEd25519PrivateKey(const EddsaPrivateKey *privateKey,
    //Point to the next field
    p += sizeof(uint32_t) + n;
    length += sizeof(uint32_t) + n;
-
-   //The private key shall consist of 64 octets
-   n = ED25519_PRIVATE_KEY_LEN + ED25519_PUBLIC_KEY_LEN;
 
    //Format Ed25519 private key
-   error = mpiExport(&privateKey->d, p + 4, ED25519_PRIVATE_KEY_LEN,
-      MPI_FORMAT_LITTLE_ENDIAN);
+   error = eddsaExportPrivateKey(privateKey, p + 4, &m);
    //Any error to report?
    if(error)
       return error;
 
-   //Format Ed25519 public key
-   error = mpiExport(&publicKey->q, p + 4 + ED25519_PRIVATE_KEY_LEN,
-      ED25519_PUBLIC_KEY_LEN, MPI_FORMAT_LITTLE_ENDIAN);
+   //Concatenate the Ed25519 public key
+   error = eddsaExportPublicKey(&privateKey->q, p + 4 + m, &n);
    //Any error to report?
    if(error)
       return error;
 
    //The octet string value is preceded by a uint32 containing its length
-   STORE32BE(n, p);
+   STORE32BE(m + n, p);
 
    //Point to the next field
-   p += sizeof(uint32_t) + n;
-   length += sizeof(uint32_t) + n;
+   p += sizeof(uint32_t) + m + n;
+   length += sizeof(uint32_t) + m + n;
 
    //The private key is followed by a comment
    error = sshFormatString("", p, &n);
@@ -906,17 +902,17 @@ error_t sshFormatOpenSshEd25519PrivateKey(const EddsaPrivateKey *privateKey,
 /**
  * @brief Format Ed448 private key blob (OpenSSH format)
  * @param[in] privateKey Pointer to the Ed448 private key
- * @param[in] publicKey Pointer to the Ed448 public key
  * @param[out] p Buffer where to store the private key blob
  * @param[out] written Length of the resulting private key blob
  * @return Error code
  **/
 
 error_t sshFormatOpenSshEd448PrivateKey(const EddsaPrivateKey *privateKey,
-   const EddsaPublicKey *publicKey, uint8_t *p, size_t *written)
+   uint8_t *p, size_t *written)
 {
 #if (SSH_ED448_SIGN_SUPPORT == ENABLED)
    error_t error;
+   size_t m;
    size_t n;
    size_t length;
 
@@ -941,11 +937,8 @@ error_t sshFormatOpenSshEd448PrivateKey(const EddsaPrivateKey *privateKey,
    p += n;
    length += n;
 
-   //The public key shall consist of 57 octets
-   n = ED448_PUBLIC_KEY_LEN;
-
    //Format Ed448 public key
-   error = mpiExport(&publicKey->q, p + 4, n, MPI_FORMAT_LITTLE_ENDIAN);
+   error = eddsaExportPublicKey(&privateKey->q, p + 4, &n);
    //Any error to report?
    if(error)
       return error;
@@ -956,30 +949,25 @@ error_t sshFormatOpenSshEd448PrivateKey(const EddsaPrivateKey *privateKey,
    //Point to the next field
    p += sizeof(uint32_t) + n;
    length += sizeof(uint32_t) + n;
-
-   //The private key shall consist of 114 octets
-   n = ED448_PRIVATE_KEY_LEN + ED448_PUBLIC_KEY_LEN;
 
    //Format Ed448 private key
-   error = mpiExport(&privateKey->d, p + 4, ED448_PRIVATE_KEY_LEN,
-      MPI_FORMAT_LITTLE_ENDIAN);
+   error = eddsaExportPrivateKey(privateKey, p + 4, &m);
    //Any error to report?
    if(error)
       return error;
 
-   //Format Ed448 public key
-   error = mpiExport(&publicKey->q, p + 4 + ED448_PRIVATE_KEY_LEN,
-      ED448_PUBLIC_KEY_LEN, MPI_FORMAT_LITTLE_ENDIAN);
+   //Concatenate the Ed448 public key
+   error = eddsaExportPublicKey(&privateKey->q, p + 4 + m, &n);
    //Any error to report?
    if(error)
       return error;
 
    //The octet string value is preceded by a uint32 containing its length
-   STORE32BE(n, p);
+   STORE32BE(m + n, p);
 
    //Point to the next field
-   p += sizeof(uint32_t) + n;
-   length += sizeof(uint32_t) + n;
+   p += sizeof(uint32_t) + m + n;
+   length += sizeof(uint32_t) + m + n;
 
    //The private key is followed by a comment
    error = sshFormatString("", p, &n);

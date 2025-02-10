@@ -6,7 +6,7 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later
  *
- * Copyright (C) 2019-2024 Oryx Embedded SARL. All rights reserved.
+ * Copyright (C) 2019-2025 Oryx Embedded SARL. All rights reserved.
  *
  * This file is part of CycloneSSH Open.
  *
@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.4.4
+ * @version 2.5.0
  **/
 
 //Switch to the appropriate trace level
@@ -134,7 +134,6 @@ error_t sshExportDsaPublicKey(const DsaPublicKey *publicKey,
 
 /**
  * @brief Export an ECDSA public key to SSH public key file format
- * @param[in] params EC domain parameters
  * @param[in] publicKey ECDSA public key
  * @param[out] output Buffer where to store the SSH public key file
  * @param[out] written Length of the resulting SSH public key file
@@ -142,9 +141,8 @@ error_t sshExportDsaPublicKey(const DsaPublicKey *publicKey,
  * @return Error code
  **/
 
-error_t sshExportEcdsaPublicKey(const EcDomainParameters *params,
-   const EcPublicKey *publicKey, char_t *output, size_t *written,
-   SshPublicKeyFormat format)
+error_t sshExportEcdsaPublicKey(const EcPublicKey *publicKey,
+   char_t *output, size_t *written, SshPublicKeyFormat format)
 {
 #if (SSH_ECDSA_SIGN_SUPPORT == ENABLED)
    error_t error;
@@ -155,7 +153,7 @@ error_t sshExportEcdsaPublicKey(const EcDomainParameters *params,
       return ERROR_INVALID_PARAMETER;
 
    //Format ECDSA host key structure
-   error = sshFormatEcdsaPublicKey(params, publicKey, (uint8_t *) output, &n);
+   error = sshFormatEcdsaPublicKey(publicKey, (uint8_t *) output, &n);
    //Any error to report?
    if(error)
       return error;
@@ -270,7 +268,6 @@ error_t sshExportEd448PublicKey(const EddsaPublicKey *publicKey,
 /**
  * @brief Export an RSA private key to SSH private key file format
  * @param[in] privateKey RSA private key
- * @param[in] publicKey RSA public key
  * @param[out] output Buffer where to store the SSH private key file
  * @param[out] written Length of the resulting SSH private key file
  * @param[in] format Desired output format (OpenSSH only is supported)
@@ -278,8 +275,7 @@ error_t sshExportEd448PublicKey(const EddsaPublicKey *publicKey,
  **/
 
 error_t sshExportRsaPrivateKey(const RsaPrivateKey *privateKey,
-   const RsaPublicKey *publicKey, char_t *output, size_t *written,
-   SshPrivateKeyFormat format)
+   char_t *output, size_t *written, SshPrivateKeyFormat format)
 {
    error_t error;
 
@@ -287,8 +283,7 @@ error_t sshExportRsaPrivateKey(const RsaPrivateKey *privateKey,
    if(format == SSH_PRIVATE_KEY_FORMAT_OPENSSH)
    {
       //Export RSA private key file (OpenSSH format)
-      error = sshExportOpenSshRsaPrivateKey(privateKey, publicKey, output,
-         written);
+      error = sshExportOpenSshRsaPrivateKey(privateKey, output, written);
    }
    else
    {
@@ -304,7 +299,6 @@ error_t sshExportRsaPrivateKey(const RsaPrivateKey *privateKey,
 /**
  * @brief Export a DSA private key to SSH private key file format
  * @param[in] privateKey DSA private key
- * @param[in] publicKey DSA public key
  * @param[out] output Buffer where to store the SSH private key file
  * @param[out] written Length of the resulting SSH private key file
  * @param[in] format Desired output format (OpenSSH only is supported)
@@ -312,8 +306,7 @@ error_t sshExportRsaPrivateKey(const RsaPrivateKey *privateKey,
  **/
 
 error_t sshExportDsaPrivateKey(const DsaPrivateKey *privateKey,
-   const DsaPublicKey *publicKey, char_t *output, size_t *written,
-   SshPrivateKeyFormat format)
+   char_t *output, size_t *written, SshPrivateKeyFormat format)
 {
    error_t error;
 
@@ -321,8 +314,7 @@ error_t sshExportDsaPrivateKey(const DsaPrivateKey *privateKey,
    if(format == SSH_PRIVATE_KEY_FORMAT_OPENSSH)
    {
       //Export DSA private key file (OpenSSH format)
-      error = sshExportOpenSshDsaPrivateKey(privateKey, publicKey, output,
-         written);
+      error = sshExportOpenSshDsaPrivateKey(privateKey, output, written);
    }
    else
    {
@@ -337,17 +329,14 @@ error_t sshExportDsaPrivateKey(const DsaPrivateKey *privateKey,
 
 /**
  * @brief Export an ECDSA private key to SSH private key file format
- * @param[in] params EC domain parameters
  * @param[in] privateKey ECDSA private key
- * @param[in] publicKey ECDSA public key
  * @param[out] output Buffer where to store the SSH private key file
  * @param[out] written Length of the resulting SSH private key file
  * @param[in] format Desired output format (OpenSSH only is supported)
  * @return Error code
  **/
 
-error_t sshExportEcdsaPrivateKey(const EcDomainParameters *params,
-   const EcPrivateKey *privateKey, const EcPublicKey *publicKey,
+error_t sshExportEcdsaPrivateKey(const EcPrivateKey *privateKey,
    char_t *output, size_t *written, SshPrivateKeyFormat format)
 {
    error_t error;
@@ -356,8 +345,7 @@ error_t sshExportEcdsaPrivateKey(const EcDomainParameters *params,
    if(format == SSH_PRIVATE_KEY_FORMAT_OPENSSH)
    {
       //Export ECDSA private key file (OpenSSH format)
-      error = sshExportOpenSshEcdsaPrivateKey(params, privateKey, publicKey,
-         output, written);
+      error = sshExportOpenSshEcdsaPrivateKey(privateKey, output, written);
    }
    else
    {
@@ -373,7 +361,6 @@ error_t sshExportEcdsaPrivateKey(const EcDomainParameters *params,
 /**
  * @brief Export an Ed25519 private key to SSH private key file format
  * @param[in] privateKey Ed25519 private key
- * @param[in] publicKey Ed25519 public key
  * @param[out] output Buffer where to store the SSH private key file
  * @param[out] written Length of the resulting SSH private key file
  * @param[in] format Desired output format (OpenSSH only is supported)
@@ -381,8 +368,7 @@ error_t sshExportEcdsaPrivateKey(const EcDomainParameters *params,
  **/
 
 error_t sshExportEd25519PrivateKey(const EddsaPrivateKey *privateKey,
-   const EddsaPublicKey *publicKey, char_t *output, size_t *written,
-   SshPrivateKeyFormat format)
+   char_t *output, size_t *written, SshPrivateKeyFormat format)
 {
    error_t error;
 
@@ -390,8 +376,7 @@ error_t sshExportEd25519PrivateKey(const EddsaPrivateKey *privateKey,
    if(format == SSH_PRIVATE_KEY_FORMAT_OPENSSH)
    {
       //Export Ed25519 private key file (OpenSSH format)
-      error = sshExportOpenSshEd25519PrivateKey(privateKey, publicKey, output,
-         written);
+      error = sshExportOpenSshEd25519PrivateKey(privateKey, output, written);
    }
    else
    {
@@ -407,7 +392,6 @@ error_t sshExportEd25519PrivateKey(const EddsaPrivateKey *privateKey,
 /**
  * @brief Export an Ed448 private key to SSH private key file format
  * @param[in] privateKey Ed448 private key
- * @param[in] publicKey Ed448 public key
  * @param[out] output Buffer where to store the SSH private key file
  * @param[out] written Length of the resulting SSH private key file
  * @param[in] format Desired output format (OpenSSH only is supported)
@@ -415,8 +399,7 @@ error_t sshExportEd25519PrivateKey(const EddsaPrivateKey *privateKey,
  **/
 
 error_t sshExportEd448PrivateKey(const EddsaPrivateKey *privateKey,
-   const EddsaPublicKey *publicKey, char_t *output, size_t *written,
-   SshPrivateKeyFormat format)
+   char_t *output, size_t *written, SshPrivateKeyFormat format)
 {
    error_t error;
 
@@ -424,8 +407,7 @@ error_t sshExportEd448PrivateKey(const EddsaPrivateKey *privateKey,
    if(format == SSH_PRIVATE_KEY_FORMAT_OPENSSH)
    {
       //Export Ed448 private key file (OpenSSH format)
-      error = sshExportOpenSshEd448PrivateKey(privateKey, publicKey, output,
-         written);
+      error = sshExportOpenSshEd448PrivateKey(privateKey, output, written);
    }
    else
    {
@@ -441,20 +423,20 @@ error_t sshExportEd448PrivateKey(const EddsaPrivateKey *privateKey,
 /**
  * @brief Export an RSA private key to OpenSSH private key file format
  * @param[in] privateKey RSA private key
- * @param[in] publicKey RSA public key
  * @param[out] output Buffer where to store the OpenSSH private key file
  * @param[out] written Length of the resulting OpenSSH private key file
  * @return Error code
  **/
 
 error_t sshExportOpenSshRsaPrivateKey(const RsaPrivateKey *privateKey,
-   const RsaPublicKey *publicKey, char_t *output, size_t *written)
+   char_t *output, size_t *written)
 {
 #if (SSH_RSA_SIGN_SUPPORT == ENABLED)
    error_t error;
    size_t n;
    size_t length;
    uint8_t *p;
+   RsaPublicKey publicKey;
 
    //Initialize variables
    p = (uint8_t *) output;
@@ -470,8 +452,12 @@ error_t sshExportOpenSshRsaPrivateKey(const RsaPrivateKey *privateKey,
    p += n;
    length += n;
 
+   //The pair of numbers (n, e) form the RSA public key
+   publicKey.n = privateKey->n;
+   publicKey.e = privateKey->e;
+
    //Format 'publickey' field
-   error = sshFormatRsaPublicKey(publicKey, p + sizeof(uint32_t), &n);
+   error = sshFormatRsaPublicKey(&publicKey, p + sizeof(uint32_t), &n);
    //Any error to report?
    if(error)
       return error;
@@ -516,20 +502,20 @@ error_t sshExportOpenSshRsaPrivateKey(const RsaPrivateKey *privateKey,
 /**
  * @brief Export a DSA private key to OpenSSH private key file format
  * @param[in] privateKey DSA private key
- * @param[in] publicKey DSA public key
  * @param[out] output Buffer where to store the OpenSSH private key file
  * @param[out] written Length of the resulting OpenSSH private key file
  * @return Error code
  **/
 
 error_t sshExportOpenSshDsaPrivateKey(const DsaPrivateKey *privateKey,
-   const DsaPublicKey *publicKey, char_t *output, size_t *written)
+   char_t *output, size_t *written)
 {
 #if (SSH_DSA_SIGN_SUPPORT == ENABLED)
    error_t error;
    size_t n;
    size_t length;
    uint8_t *p;
+   DsaPublicKey publicKey;
 
    //Initialize variables
    p = (uint8_t *) output;
@@ -545,8 +531,12 @@ error_t sshExportOpenSshDsaPrivateKey(const DsaPrivateKey *privateKey,
    p += n;
    length += n;
 
+   //These four parameters (p, q, g and y) form the DSA public key
+   publicKey.params = privateKey->params;
+   publicKey.y = privateKey->y;
+
    //Format 'publickey' field
-   error = sshFormatDsaPublicKey(publicKey, p + sizeof(uint32_t), &n);
+   error = sshFormatDsaPublicKey(&publicKey, p + sizeof(uint32_t), &n);
    //Any error to report?
    if(error)
       return error;
@@ -559,8 +549,7 @@ error_t sshExportOpenSshDsaPrivateKey(const DsaPrivateKey *privateKey,
    length += sizeof(uint32_t) + n;
 
    //Format 'encrypted' field
-   error = sshFormatOpenSshDsaPrivateKey(privateKey, publicKey,
-      p + sizeof(uint32_t), &n);
+   error = sshFormatOpenSshDsaPrivateKey(privateKey, p + sizeof(uint32_t), &n);
    //Any error to report?
    if(error)
       return error;
@@ -591,16 +580,13 @@ error_t sshExportOpenSshDsaPrivateKey(const DsaPrivateKey *privateKey,
 
 /**
  * @brief Export an ECDSA private key to OpenSSH private key file format
- * @param[in] params EC domain parameters
  * @param[in] privateKey ECDSA private key
- * @param[in] publicKey ECDSA public key
  * @param[out] output Buffer where to store the OpenSSH private key file
  * @param[out] written Length of the resulting OpenSSH private key file
  * @return Error code
  **/
 
-error_t sshExportOpenSshEcdsaPrivateKey(const EcDomainParameters *params,
-   const EcPrivateKey *privateKey, const EcPublicKey *publicKey,
+error_t sshExportOpenSshEcdsaPrivateKey(const EcPrivateKey *privateKey,
    char_t *output, size_t *written)
 {
 #if (SSH_ECDSA_SIGN_SUPPORT == ENABLED)
@@ -624,7 +610,7 @@ error_t sshExportOpenSshEcdsaPrivateKey(const EcDomainParameters *params,
    length += n;
 
    //Format 'publickey' field
-   error = sshFormatEcdsaPublicKey(params, publicKey, p + sizeof(uint32_t), &n);
+   error = sshFormatEcdsaPublicKey(&privateKey->q, p + sizeof(uint32_t), &n);
    //Any error to report?
    if(error)
       return error;
@@ -637,7 +623,7 @@ error_t sshExportOpenSshEcdsaPrivateKey(const EcDomainParameters *params,
    length += sizeof(uint32_t) + n;
 
    //Format 'encrypted' field
-   error = sshFormatOpenSshEcdsaPrivateKey(params, privateKey, publicKey,
+   error = sshFormatOpenSshEcdsaPrivateKey(privateKey,
       p + sizeof(uint32_t), &n);
    //Any error to report?
    if(error)
@@ -670,14 +656,13 @@ error_t sshExportOpenSshEcdsaPrivateKey(const EcDomainParameters *params,
 /**
  * @brief Export an Ed25519 private key to OpenSSH private key file format
  * @param[in] privateKey Ed25519 private key
- * @param[in] publicKey Ed25519 public key
  * @param[out] output Buffer where to store the OpenSSH private key file
  * @param[out] written Length of the resulting OpenSSH private key file
  * @return Error code
  **/
 
 error_t sshExportOpenSshEd25519PrivateKey(const EddsaPrivateKey *privateKey,
-   const EddsaPublicKey *publicKey, char_t *output, size_t *written)
+   char_t *output, size_t *written)
 {
 #if (SSH_ED25519_SIGN_SUPPORT == ENABLED)
    error_t error;
@@ -700,7 +685,7 @@ error_t sshExportOpenSshEd25519PrivateKey(const EddsaPrivateKey *privateKey,
    length += n;
 
    //Format 'publickey' field
-   error = sshFormatEd25519PublicKey(publicKey, p + sizeof(uint32_t), &n);
+   error = sshFormatEd25519PublicKey(&privateKey->q, p + sizeof(uint32_t), &n);
    //Any error to report?
    if(error)
       return error;
@@ -713,7 +698,7 @@ error_t sshExportOpenSshEd25519PrivateKey(const EddsaPrivateKey *privateKey,
    length += sizeof(uint32_t) + n;
 
    //Format 'encrypted' field
-   error = sshFormatOpenSshEd25519PrivateKey(privateKey, publicKey,
+   error = sshFormatOpenSshEd25519PrivateKey(privateKey,
       p + sizeof(uint32_t), &n);
    //Any error to report?
    if(error)
@@ -746,14 +731,13 @@ error_t sshExportOpenSshEd25519PrivateKey(const EddsaPrivateKey *privateKey,
 /**
  * @brief Export an Ed448 private key to OpenSSH private key file format
  * @param[in] privateKey Ed448 private key
- * @param[in] publicKey Ed448 public key
  * @param[out] output Buffer where to store the OpenSSH private key file
  * @param[out] written Length of the resulting OpenSSH private key file
  * @return Error code
  **/
 
 error_t sshExportOpenSshEd448PrivateKey(const EddsaPrivateKey *privateKey,
-   const EddsaPublicKey *publicKey, char_t *output, size_t *written)
+   char_t *output, size_t *written)
 {
 #if (SSH_ED448_SIGN_SUPPORT == ENABLED)
    error_t error;
@@ -776,7 +760,7 @@ error_t sshExportOpenSshEd448PrivateKey(const EddsaPrivateKey *privateKey,
    length += n;
 
    //Format 'publickey' field
-   error = sshFormatEd448PublicKey(publicKey, p + sizeof(uint32_t), &n);
+   error = sshFormatEd448PublicKey(&privateKey->q, p + sizeof(uint32_t), &n);
    //Any error to report?
    if(error)
       return error;
@@ -789,7 +773,7 @@ error_t sshExportOpenSshEd448PrivateKey(const EddsaPrivateKey *privateKey,
    length += sizeof(uint32_t) + n;
 
    //Format 'encrypted' field
-   error = sshFormatOpenSshEd448PrivateKey(privateKey, publicKey,
+   error = sshFormatOpenSshEd448PrivateKey(privateKey,
       p + sizeof(uint32_t), &n);
    //Any error to report?
    if(error)

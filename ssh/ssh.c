@@ -6,7 +6,7 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later
  *
- * Copyright (C) 2019-2024 Oryx Embedded SARL. All rights reserved.
+ * Copyright (C) 2019-2025 Oryx Embedded SARL. All rights reserved.
  *
  * This file is part of CycloneSSH Open.
  *
@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.4.4
+ * @version 2.5.0
  **/
 
 //Switch to the appropriate trace level
@@ -1119,14 +1119,14 @@ error_t sshLoadRsaKey(SshContext *context, uint_t index,
    rsaInitPrivateKey(&rsaPrivateKey);
 
    //Check whether the RSA public key is valid
-   error = sshImportRsaPublicKey(publicKey, publicKeyLen, &rsaPublicKey);
+   error = sshImportRsaPublicKey(&rsaPublicKey, publicKey, publicKeyLen);
 
    //Check status code
    if(!error)
    {
       //Check whether the RSA private key is valid
-      error = sshImportRsaPrivateKey(privateKey, privateKeyLen,
-         password, &rsaPrivateKey);
+      error = sshImportRsaPrivateKey(&rsaPrivateKey, privateKey, privateKeyLen,
+         password);
    }
 
    //Check status code
@@ -1256,7 +1256,7 @@ error_t sshLoadDhGexGroup(SshContext *context, uint_t index,
    dhInitParameters(&params);
 
    //Decode the PEM structure that holds Diffie-Hellman parameters
-   error = pemImportDhParameters(dhParams, dhParamsLen, &params);
+   error = pemImportDhParameters(&params, dhParams, dhParamsLen);
 
    //Check status code
    if(!error)
@@ -1396,7 +1396,7 @@ error_t sshLoadHostKey(SshContext *context, uint_t index,
       rsaInitPrivateKey(&rsaPrivateKey);
 
       //Check whether the RSA public key is valid
-      error = sshImportRsaPublicKey(publicKey, publicKeyLen, &rsaPublicKey);
+      error = sshImportRsaPublicKey(&rsaPublicKey, publicKey, publicKeyLen);
 
       //Check status code
       if(!error)
@@ -1406,8 +1406,8 @@ error_t sshLoadHostKey(SshContext *context, uint_t index,
          if(privateKey != NULL)
          {
             //Check whether the RSA private key is valid
-            error = sshImportRsaPrivateKey(privateKey, privateKeyLen,
-               password, &rsaPrivateKey);
+            error = sshImportRsaPrivateKey(&rsaPrivateKey, privateKey,
+               privateKeyLen, password);
          }
       }
 
@@ -1429,7 +1429,7 @@ error_t sshLoadHostKey(SshContext *context, uint_t index,
       dsaInitPrivateKey(&dsaPrivateKey);
 
       //Check whether the DSA public key is valid
-      error = sshImportDsaPublicKey(publicKey, publicKeyLen, &dsaPublicKey);
+      error = sshImportDsaPublicKey(&dsaPublicKey, publicKey, publicKeyLen);
 
       //Check status code
       if(!error)
@@ -1439,8 +1439,8 @@ error_t sshLoadHostKey(SshContext *context, uint_t index,
          if(privateKey != NULL)
          {
             //Check whether the DSA private key is valid
-            error = sshImportDsaPrivateKey(privateKey, privateKeyLen,
-               password, &dsaPrivateKey);
+            error = sshImportDsaPrivateKey(&dsaPrivateKey, privateKey,
+               privateKeyLen, password);
          }
       }
 
@@ -1456,18 +1456,15 @@ error_t sshLoadHostKey(SshContext *context, uint_t index,
       sshCompareAlgo(keyType, "ecdsa-sha2-nistp384") ||
       sshCompareAlgo(keyType, "ecdsa-sha2-nistp521"))
    {
-      EcDomainParameters ecParams;
       EcPublicKey ecPublicKey;
       EcPrivateKey ecPrivateKey;
 
       //Initialize ECDSA public and private keys
-      ecInitDomainParameters(&ecParams);
       ecInitPublicKey(&ecPublicKey);
       ecInitPrivateKey(&ecPrivateKey);
 
       //Check whether the ECDSA public key is valid
-      error = sshImportEcdsaPublicKey(publicKey, publicKeyLen, &ecParams,
-         &ecPublicKey);
+      error = sshImportEcdsaPublicKey(&ecPublicKey, publicKey, publicKeyLen);
 
       //Check status code
       if(!error)
@@ -1477,13 +1474,12 @@ error_t sshLoadHostKey(SshContext *context, uint_t index,
          if(privateKey != NULL)
          {
             //Check whether the ECDSA private key is valid
-            error = sshImportEcdsaPrivateKey(privateKey, privateKeyLen,
-               password, &ecPrivateKey);
+            error = sshImportEcdsaPrivateKey(&ecPrivateKey, privateKey,
+               privateKeyLen, password);
          }
       }
 
       //Release previously allocated memory
-      ecFreeDomainParameters(&ecParams);
       ecFreePublicKey(&ecPublicKey);
       ecFreePrivateKey(&ecPrivateKey);
    }
@@ -1501,8 +1497,8 @@ error_t sshLoadHostKey(SshContext *context, uint_t index,
       eddsaInitPrivateKey(&eddsaPrivateKey);
 
       //Check whether the EdDSA public key is valid
-      error = sshImportEd25519PublicKey(publicKey, publicKeyLen,
-         &eddsaPublicKey);
+      error = sshImportEd25519PublicKey(&eddsaPublicKey, publicKey,
+         publicKeyLen);
 
       //Check status code
       if(!error)
@@ -1512,8 +1508,8 @@ error_t sshLoadHostKey(SshContext *context, uint_t index,
          if(privateKey != NULL)
          {
             //Check whether the EdDSA private key is valid
-            error = sshImportEd25519PrivateKey(privateKey, privateKeyLen,
-               password, &eddsaPrivateKey);
+            error = sshImportEd25519PrivateKey(&eddsaPrivateKey, privateKey,
+               privateKeyLen, password);
          }
       }
 
@@ -1535,8 +1531,8 @@ error_t sshLoadHostKey(SshContext *context, uint_t index,
       eddsaInitPrivateKey(&eddsaPrivateKey);
 
       //Check whether the EdDSA public key is valid
-      error = sshImportEd448PublicKey(publicKey, publicKeyLen,
-         &eddsaPublicKey);
+      error = sshImportEd448PublicKey(&eddsaPublicKey, publicKey,
+         publicKeyLen);
 
       //Check status code
       if(!error)
@@ -1546,8 +1542,8 @@ error_t sshLoadHostKey(SshContext *context, uint_t index,
          if(privateKey != NULL)
          {
             //Check whether the EdDSA private key is valid
-            error = sshImportEd448PrivateKey(privateKey, privateKeyLen,
-               password, &eddsaPrivateKey);
+            error = sshImportEd448PrivateKey(&eddsaPrivateKey, privateKey,
+               privateKeyLen, password);
          }
       }
 
@@ -1728,8 +1724,8 @@ error_t sshLoadCertificate(SshContext *context, uint_t index,
       if(privateKey != NULL)
       {
          //Check whether the RSA private key is valid
-         error = sshImportRsaPrivateKey(privateKey, privateKeyLen,
-            password, &rsaPrivateKey);
+         error = sshImportRsaPrivateKey(&rsaPrivateKey, privateKey,
+            privateKeyLen, password);
       }
 
       //Release previously allocated memory
@@ -1751,8 +1747,8 @@ error_t sshLoadCertificate(SshContext *context, uint_t index,
       if(privateKey != NULL)
       {
          //Check whether the DSA private key is valid
-         error = sshImportDsaPrivateKey(privateKey, privateKeyLen,
-            password, &dsaPrivateKey);
+         error = sshImportDsaPrivateKey(&dsaPrivateKey, privateKey,
+            privateKeyLen, password);
       }
 
       //Release previously allocated memory
@@ -1776,8 +1772,8 @@ error_t sshLoadCertificate(SshContext *context, uint_t index,
       if(privateKey != NULL)
       {
          //Check whether the EC private key is valid
-         error = sshImportEcdsaPrivateKey(privateKey, privateKeyLen,
-            password, &ecPrivateKey);
+         error = sshImportEcdsaPrivateKey(&ecPrivateKey, privateKey,
+            privateKeyLen, password);
       }
 
       //Release previously allocated memory
@@ -1799,8 +1795,8 @@ error_t sshLoadCertificate(SshContext *context, uint_t index,
       if(privateKey != NULL)
       {
          //Check whether the EdDSA private key is valid
-         error = sshImportEd25519PrivateKey(privateKey, privateKeyLen,
-            password, &ed25519PrivateKey);
+         error = sshImportEd25519PrivateKey(&ed25519PrivateKey, privateKey,
+            privateKeyLen, password);
       }
 
       //Release previously allocated memory

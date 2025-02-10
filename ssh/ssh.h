@@ -6,7 +6,7 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later
  *
- * Copyright (C) 2019-2024 Oryx Embedded SARL. All rights reserved.
+ * Copyright (C) 2019-2025 Oryx Embedded SARL. All rights reserved.
  *
  * This file is part of CycloneSSH Open.
  *
@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.4.4
+ * @version 2.5.0
  **/
 
 #ifndef _SSH_H
@@ -74,13 +74,13 @@
 #endif
 
 //Version string
-#define CYCLONE_SSH_VERSION_STRING "2.4.4"
+#define CYCLONE_SSH_VERSION_STRING "2.5.0"
 //Major version
 #define CYCLONE_SSH_MAJOR_VERSION 2
 //Minor version
-#define CYCLONE_SSH_MINOR_VERSION 4
+#define CYCLONE_SSH_MINOR_VERSION 5
 //Revision number
-#define CYCLONE_SSH_REV_NUMBER 4
+#define CYCLONE_SSH_REV_NUMBER 0
 
 //SSH support
 #ifndef SSH_SUPPORT

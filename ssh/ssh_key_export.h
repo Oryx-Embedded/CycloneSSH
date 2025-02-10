@@ -6,7 +6,7 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later
  *
- * Copyright (C) 2019-2024 Oryx Embedded SARL. All rights reserved.
+ * Copyright (C) 2019-2025 Oryx Embedded SARL. All rights reserved.
  *
  * This file is part of CycloneSSH Open.
  *
@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.4.4
+ * @version 2.5.0
  **/
 
 #ifndef _SSH_KEY_EXPORT_H
@@ -72,9 +72,8 @@ error_t sshExportRsaPublicKey(const RsaPublicKey *publicKey,
 error_t sshExportDsaPublicKey(const DsaPublicKey *publicKey,
    char_t *output, size_t *written, SshPublicKeyFormat format);
 
-error_t sshExportEcdsaPublicKey(const EcDomainParameters *params,
-   const EcPublicKey *publicKey, char_t *output, size_t *written,
-   SshPublicKeyFormat format);
+error_t sshExportEcdsaPublicKey(const EcPublicKey *publicKey,
+   char_t *output, size_t *written, SshPublicKeyFormat format);
 
 error_t sshExportEd25519PublicKey(const EddsaPublicKey *publicKey,
    char_t *output, size_t *written, SshPublicKeyFormat format);
@@ -83,40 +82,34 @@ error_t sshExportEd448PublicKey(const EddsaPublicKey *publicKey,
    char_t *output, size_t *written, SshPublicKeyFormat format);
 
 error_t sshExportRsaPrivateKey(const RsaPrivateKey *privateKey,
-   const RsaPublicKey *publicKey, char_t *output, size_t *written,
-   SshPrivateKeyFormat format);
+   char_t *output, size_t *written, SshPrivateKeyFormat format);
 
 error_t sshExportDsaPrivateKey(const DsaPrivateKey *privateKey,
-   const DsaPublicKey *publicKey, char_t *output, size_t *written,
-   SshPrivateKeyFormat format);
+   char_t *output, size_t *written, SshPrivateKeyFormat format);
 
-error_t sshExportEcdsaPrivateKey(const EcDomainParameters *params,
-   const EcPrivateKey *privateKey, const EcPublicKey *publicKey,
+error_t sshExportEcdsaPrivateKey(const EcPrivateKey *privateKey,
    char_t *output, size_t *written, SshPrivateKeyFormat format);
 
 error_t sshExportEd25519PrivateKey(const EddsaPrivateKey *privateKey,
-   const EddsaPublicKey *publicKey, char_t *output, size_t *written,
-   SshPrivateKeyFormat format);
+   char_t *output, size_t *written, SshPrivateKeyFormat format);
 
 error_t sshExportEd448PrivateKey(const EddsaPrivateKey *privateKey,
-   const EddsaPublicKey *publicKey, char_t *output, size_t *written,
-   SshPrivateKeyFormat format);
+   char_t *output, size_t *written, SshPrivateKeyFormat format);
 
 error_t sshExportOpenSshRsaPrivateKey(const RsaPrivateKey *privateKey,
-   const RsaPublicKey *publicKey, char_t *output, size_t *written);
+   char_t *output, size_t *written);
 
 error_t sshExportOpenSshDsaPrivateKey(const DsaPrivateKey *privateKey,
-   const DsaPublicKey *publicKey, char_t *output, size_t *written);
+   char_t *output, size_t *written);
 
-error_t sshExportOpenSshEcdsaPrivateKey(const EcDomainParameters *params,
-   const EcPrivateKey *privateKey, const EcPublicKey *publicKey,
+error_t sshExportOpenSshEcdsaPrivateKey(const EcPrivateKey *privateKey,
    char_t *output, size_t *written);
 
 error_t sshExportOpenSshEd25519PrivateKey(const EddsaPrivateKey *privateKey,
-   const EddsaPublicKey *publicKey, char_t *output, size_t *written);
+   char_t *output, size_t *written);
 
 error_t sshExportOpenSshEd448PrivateKey(const EddsaPrivateKey *privateKey,
-   const EddsaPublicKey *publicKey, char_t *output, size_t *written);
+   char_t *output, size_t *written);
 
 error_t sshEncodePublicKeyFile(const void *input, size_t inputLen,
    char_t *output, size_t *outputLen, SshPublicKeyFormat format);

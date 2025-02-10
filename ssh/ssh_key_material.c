@@ -6,7 +6,7 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later
  *
- * Copyright (C) 2019-2024 Oryx Embedded SARL. All rights reserved.
+ * Copyright (C) 2019-2025 Oryx Embedded SARL. All rights reserved.
  *
  * This file is part of CycloneSSH Open.
  *
@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.4.4
+ * @version 2.5.0
  **/
 
 //Switch to the appropriate trace level
@@ -1046,6 +1046,7 @@ error_t sshDeriveKey(SshConnection *connection, uint8_t x, uint8_t *output,
    size_t n;
    const HashAlgo *hashAlgo;
    HashContext *hashContext;
+   uint8_t digest[SSH_MAX_HASH_DIGEST_SIZE];
 
    //Each key exchange method specifies a hash function that is used in the key
    //exchange. The same hash algorithm must be used in key derivation (refer to
@@ -1067,12 +1068,12 @@ error_t sshDeriveKey(SshConnection *connection, uint8_t x, uint8_t *output,
          hashAlgo->update(hashContext, connection->h, connection->hLen);
          hashAlgo->update(hashContext, &x, sizeof(x));
          hashAlgo->update(hashContext, connection->sessionId, connection->sessionIdLen);
-         hashAlgo->final(hashContext, NULL);
+         hashAlgo->final(hashContext, digest);
 
          //Key data must be taken from the beginning of the hash output
          for(n = 0; n < hashAlgo->digestSize && n < outputLen; n++)
          {
-            output[n] = hashContext->digest[n];
+            output[n] = digest[n];
          }
 
          //If the key length needed is longer than the output of the HASH, the key
@@ -1085,12 +1086,12 @@ error_t sshDeriveKey(SshConnection *connection, uint8_t x, uint8_t *output,
             hashAlgo->update(hashContext, connection->k, connection->kLen);
             hashAlgo->update(hashContext, connection->h, connection->hLen);
             hashAlgo->update(hashContext, output, n);
-            hashAlgo->final(hashContext, NULL);
+            hashAlgo->final(hashContext, digest);
 
             //This process is repeated until enough key material is available
             for(i = 0; i < hashAlgo->digestSize && n < outputLen; i++, n++)
             {
-               output[n] = hashContext->digest[i];
+               output[n] = digest[i];
             }
          }
 
