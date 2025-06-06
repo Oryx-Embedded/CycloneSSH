@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.5.0
+ * @version 2.5.2
  **/
 
 #ifndef _SSH_KEY_FORMAT_H
@@ -37,6 +37,9 @@
 #include "pkc/dsa.h"
 #include "ecc/ec.h"
 #include "ecc/eddsa.h"
+
+//Helper macro
+#define SSH_INC_POINTER(p, n) ((p != NULL) ? (p + n) : NULL)
 
 //C++ guard
 #ifdef __cplusplus

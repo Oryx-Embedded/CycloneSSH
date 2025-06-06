@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.5.0
+ * @version 2.5.2
  **/
 
 //Switch to the appropriate trace level
@@ -149,6 +149,11 @@ static const SshHostKeyAlgo sshSupportedHostKeyAlgos[] =
 {
 #if (SSH_ED25519_SIGN_SUPPORT == ENABLED && SSH_CERT_SUPPORT == ENABLED)
    {
+      "ssh-ed25519-cert",
+      "ssh-ed25519-cert",
+      "ssh-ed25519"
+   },
+   {
       "ssh-ed25519-cert-v01@openssh.com",
       "ssh-ed25519-cert-v01@openssh.com",
       "ssh-ed25519"
@@ -161,6 +166,13 @@ static const SshHostKeyAlgo sshSupportedHostKeyAlgos[] =
       "ssh-ed25519"
    },
 #endif
+#if (SSH_ED448_SIGN_SUPPORT == ENABLED && SSH_CERT_SUPPORT == ENABLED)
+   {
+      "ssh-ed448-cert",
+      "ssh-ed448-cert",
+      "ssh-ed448"
+   },
+#endif
 #if (SSH_ED448_SIGN_SUPPORT == ENABLED)
    {
       "ssh-ed448",
@@ -170,6 +182,11 @@ static const SshHostKeyAlgo sshSupportedHostKeyAlgos[] =
 #endif
 #if (SSH_ECDSA_SIGN_SUPPORT == ENABLED && SSH_NISTP256_SUPPORT == ENABLED && \
    SSH_SHA256_SUPPORT == ENABLED && SSH_CERT_SUPPORT == ENABLED)
+   {
+      "ecdsa-sha2-nistp256-cert",
+      "ecdsa-sha2-nistp256-cert",
+      "ecdsa-sha2-nistp256"
+   },
    {
       "ecdsa-sha2-nistp256-cert-v01@openssh.com",
       "ecdsa-sha2-nistp256-cert-v01@openssh.com",
@@ -187,6 +204,11 @@ static const SshHostKeyAlgo sshSupportedHostKeyAlgos[] =
 #if (SSH_ECDSA_SIGN_SUPPORT == ENABLED && SSH_NISTP384_SUPPORT == ENABLED && \
    SSH_SHA384_SUPPORT == ENABLED && SSH_CERT_SUPPORT == ENABLED)
    {
+      "ecdsa-sha2-nistp384-cert",
+      "ecdsa-sha2-nistp384-cert",
+      "ecdsa-sha2-nistp384"
+   },
+   {
       "ecdsa-sha2-nistp384-cert-v01@openssh.com",
       "ecdsa-sha2-nistp384-cert-v01@openssh.com",
       "ecdsa-sha2-nistp384"
@@ -202,6 +224,11 @@ static const SshHostKeyAlgo sshSupportedHostKeyAlgos[] =
 #endif
 #if (SSH_ECDSA_SIGN_SUPPORT == ENABLED && SSH_NISTP521_SUPPORT == ENABLED && \
    SSH_SHA512_SUPPORT == ENABLED && SSH_CERT_SUPPORT == ENABLED)
+   {
+      "ecdsa-sha2-nistp521-cert",
+      "ecdsa-sha2-nistp521-cert",
+      "ecdsa-sha2-nistp521"
+   },
    {
       "ecdsa-sha2-nistp521-cert-v01@openssh.com",
       "ecdsa-sha2-nistp521-cert-v01@openssh.com",
@@ -249,6 +276,11 @@ static const SshHostKeyAlgo sshSupportedHostKeyAlgos[] =
 #if (SSH_RSA_SIGN_SUPPORT == ENABLED && SSH_SHA1_SUPPORT == ENABLED && \
    SSH_CERT_SUPPORT == ENABLED)
    {
+      "ssh-rsa-cert",
+      "ssh-rsa-cert",
+      "ssh-rsa"
+   },
+   {
       "ssh-rsa-cert-v01@openssh.com",
       "ssh-rsa-cert-v01@openssh.com",
       "ssh-rsa"
@@ -263,6 +295,11 @@ static const SshHostKeyAlgo sshSupportedHostKeyAlgos[] =
 #endif
 #if (SSH_DSA_SIGN_SUPPORT == ENABLED && SSH_SHA1_SUPPORT == ENABLED && \
    SSH_CERT_SUPPORT == ENABLED)
+   {
+      "ssh-dss-cert",
+      "ssh-dss-cert",
+      "ssh-dss"
+   },
    {
       "ssh-dss-cert-v01@openssh.com",
       "ssh-dss-cert-v01@openssh.com",
@@ -286,12 +323,15 @@ static const SshHostKeyAlgo sshSupportedHostKeyAlgos[] =
 static const char_t *const sshSupportedEncAlgos[] =
 {
 #if (SSH_CHACHA20_POLY1305_SUPPORT == ENABLED)
+   "chacha20-poly1305",
    "chacha20-poly1305@openssh.com",
 #endif
 #if (SSH_AES_128_SUPPORT == ENABLED && SSH_GCM_CIPHER_SUPPORT == ENABLED)
+   "aes128-gcm",
    "aes128-gcm@openssh.com",
 #endif
 #if (SSH_AES_256_SUPPORT == ENABLED && SSH_GCM_CIPHER_SUPPORT == ENABLED)
+   "aes256-gcm",
    "aes256-gcm@openssh.com",
 #endif
 #if (SSH_AES_128_SUPPORT == ENABLED && SSH_RFC5647_SUPPORT == ENABLED)
@@ -1196,8 +1236,11 @@ const char_t *sshSelectMacAlgo(SshContext *context, const char_t *encAlgo,
 
 #if (SSH_GCM_CIPHER_SUPPORT == ENABLED || SSH_CHACHA20_POLY1305_SUPPORT == ENABLED)
    //AES-GCM or ChaCha20Poly1305 encryption algorithm?
-   if(sshCompareAlgo(encAlgo, "aes128-gcm@openssh.com") ||
+   if(sshCompareAlgo(encAlgo, "aes128-gcm") ||
+      sshCompareAlgo(encAlgo, "aes128-gcm@openssh.com") ||
+      sshCompareAlgo(encAlgo, "aes256-gcm") ||
       sshCompareAlgo(encAlgo, "aes256-gcm@openssh.com") ||
+      sshCompareAlgo(encAlgo, "chacha20-poly1305") ||
       sshCompareAlgo(encAlgo, "chacha20-poly1305@openssh.com"))
    {
       //AEAD algorithms offer both encryption and authentication
@@ -1525,6 +1568,28 @@ bool_t sshIsEcdhKexAlgo(const char_t *kexAlgo)
 
 
 /**
+ * @brief Test if the specified algorithm is an ML-KEM key exchange algorithm
+ * @param[in] kexAlgo Key exchange algorithm name
+ * @return TRUE if ML-KEM key exchange algorithm, else FALSE
+ **/
+
+bool_t sshIsMlkemKexAlgo(const char_t *kexAlgo)
+{
+   //ML-KEM key exchange algorithm?
+   if(sshCompareAlgo(kexAlgo, "mlkem512-sha256") ||
+      sshCompareAlgo(kexAlgo, "mlkem768-sha256") ||
+      sshCompareAlgo(kexAlgo, "mlkem1024-sha384"))
+   {
+      return TRUE;
+   }
+   else
+   {
+      return FALSE;
+   }
+}
+
+
+/**
  * @brief Test if the specified algorithm is a PQ-hybrid key exchange algorithm
  * @param[in] kexAlgo Key exchange algorithm name
  * @return TRUE if PQ-hybrid key exchange algorithm, else FALSE
@@ -1557,14 +1622,21 @@ bool_t sshIsHybridKexAlgo(const char_t *kexAlgo)
 bool_t sshIsCertPublicKeyAlgo(const SshString *publicKeyAlgo)
 {
    //Check public key algorithm name
-   if(sshCompareString(publicKeyAlgo, "ssh-dss-cert-v01@openssh.com") ||
+   if(sshCompareString(publicKeyAlgo, "ssh-rsa-cert") ||
       sshCompareString(publicKeyAlgo, "ssh-rsa-cert-v01@openssh.com") ||
       sshCompareString(publicKeyAlgo, "rsa-sha2-256-cert-v01@openssh.com") ||
       sshCompareString(publicKeyAlgo, "rsa-sha2-512-cert-v01@openssh.com") ||
+      sshCompareString(publicKeyAlgo, "ssh-dss-cert") ||
+      sshCompareString(publicKeyAlgo, "ssh-dss-cert-v01@openssh.com") ||
+      sshCompareString(publicKeyAlgo, "ecdsa-sha2-nistp256-cert") ||
+      sshCompareString(publicKeyAlgo, "ecdsa-sha2-nistp384-cert") ||
+      sshCompareString(publicKeyAlgo, "ecdsa-sha2-nistp521-cert") ||
       sshCompareString(publicKeyAlgo, "ecdsa-sha2-nistp256-cert-v01@openssh.com") ||
       sshCompareString(publicKeyAlgo, "ecdsa-sha2-nistp384-cert-v01@openssh.com") ||
       sshCompareString(publicKeyAlgo, "ecdsa-sha2-nistp521-cert-v01@openssh.com") ||
-      sshCompareString(publicKeyAlgo, "ssh-ed25519-cert-v01@openssh.com"))
+      sshCompareString(publicKeyAlgo, "ssh-ed25519-cert") ||
+      sshCompareString(publicKeyAlgo, "ssh-ed25519-cert-v01@openssh.com") ||
+      sshCompareString(publicKeyAlgo, "ssh-ed448-cert"))
    {
       return TRUE;
    }

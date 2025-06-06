@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.5.0
+ * @version 2.5.2
  **/
 
 //Switch to the appropriate trace level
@@ -67,7 +67,7 @@ error_t sshFormatRsaPublicKey(const RsaPublicKey *publicKey,
       return error;
 
    //Point to the next field
-   p += n;
+   p = SSH_INC_POINTER(p, n);
    *written += n;
 
    //Format RSA public exponent
@@ -77,7 +77,7 @@ error_t sshFormatRsaPublicKey(const RsaPublicKey *publicKey,
       return error;
 
    //Point to the next field
-   p += n;
+   p = SSH_INC_POINTER(p, n);
    *written += n;
 
    //Format RSA modulus
@@ -123,7 +123,7 @@ error_t sshFormatDsaPublicKey(const DsaPublicKey *publicKey,
       return error;
 
    //Point to the next field
-   p += n;
+   p = SSH_INC_POINTER(p, n);
    *written += n;
 
    //Format DSA prime modulus
@@ -133,7 +133,7 @@ error_t sshFormatDsaPublicKey(const DsaPublicKey *publicKey,
       return error;
 
    //Point to the next field
-   p += n;
+   p = SSH_INC_POINTER(p, n);
    *written += n;
 
    //Format DSA group order
@@ -143,7 +143,7 @@ error_t sshFormatDsaPublicKey(const DsaPublicKey *publicKey,
       return error;
 
    //Point to the next field
-   p += n;
+   p = SSH_INC_POINTER(p, n);
    *written += n;
 
    //Format DSA group generator
@@ -153,7 +153,7 @@ error_t sshFormatDsaPublicKey(const DsaPublicKey *publicKey,
       return error;
 
    //Point to the next field
-   p += n;
+   p = SSH_INC_POINTER(p, n);
    *written += n;
 
    //Format DSA public key value
@@ -230,7 +230,7 @@ error_t sshFormatEcdsaPublicKey(const EcPublicKey *publicKey,
       return error;
 
    //Point to the next field
-   p += n;
+   p = SSH_INC_POINTER(p, n);
    *written += n;
 
    //Format the elliptic curve domain parameter identifier
@@ -240,17 +240,21 @@ error_t sshFormatEcdsaPublicKey(const EcPublicKey *publicKey,
       return error;
 
    //Point to the next field
-   p += n;
+   p = SSH_INC_POINTER(p, n);
    *written += n;
 
    //Format EC public key
-   error = ecExportPublicKey(publicKey, p + 4, &n, EC_PUBLIC_KEY_FORMAT_X963);
+   error = ecExportPublicKey(publicKey, SSH_INC_POINTER(p, sizeof(uint32_t)),
+      &n, EC_PUBLIC_KEY_FORMAT_X963);
    //Any error to report?
    if(error)
       return error;
 
    //The octet string value is preceded by a uint32 containing its length
-   STORE32BE(n, p);
+   if(p != NULL)
+   {
+      STORE32BE(n, p);
+   }
 
    //Total number of bytes that have been written
    *written += sizeof(uint32_t) + n;
@@ -289,17 +293,21 @@ error_t sshFormatEd25519PublicKey(const EddsaPublicKey *publicKey,
       return error;
 
    //Point to the next field
-   p += n;
+   p = SSH_INC_POINTER(p, n);
    *written += n;
 
    //Format Ed25519 public key
-   error = eddsaExportPublicKey(publicKey, p + 4, &n);
+   error = eddsaExportPublicKey(publicKey,
+      SSH_INC_POINTER(p, sizeof(uint32_t)), &n);
    //Any error to report?
    if(error)
       return error;
 
    //The octet string value is preceded by a uint32 containing its length
-   STORE32BE(n, p);
+   if(p != NULL)
+   {
+      STORE32BE(n, p);
+   }
 
    //Total number of bytes that have been written
    *written += sizeof(uint32_t) + n;
@@ -338,17 +346,21 @@ error_t sshFormatEd448PublicKey(const EddsaPublicKey *publicKey,
       return error;
 
    //Point to the next field
-   p += n;
+   p = SSH_INC_POINTER(p, n);
    *written += n;
 
    //Format Ed448 public key
-   error = eddsaExportPublicKey(publicKey, p + 4, &n);
+   error = eddsaExportPublicKey(publicKey,
+      SSH_INC_POINTER(p, sizeof(uint32_t)), &n);
    //Any error to report?
    if(error)
       return error;
 
    //The octet string value is preceded by a uint32 containing its length
-   STORE32BE(n, p);
+   if(p != NULL)
+   {
+      STORE32BE(n, p);
+   }
 
    //Total number of bytes that have been written
    *written += sizeof(uint32_t) + n;
@@ -378,10 +390,13 @@ error_t sshFormatOpenSshPrivateKeyHeader(uint8_t *p, size_t *written)
    *written = 0;
 
    //Format magic identifier
-   osMemmove(p, "openssh-key-v1", SSH_AUTH_MAGIC_SIZE);
+   if(p != NULL)
+   {
+      osMemmove(p, "openssh-key-v1", SSH_AUTH_MAGIC_SIZE);
+   }
 
    //Point to the next field
-   p += SSH_AUTH_MAGIC_SIZE;
+   p = SSH_INC_POINTER(p, SSH_AUTH_MAGIC_SIZE);
    *written += SSH_AUTH_MAGIC_SIZE;
 
    //Format 'ciphername' field (for unencrypted keys the cipher "none" is used)
@@ -391,7 +406,7 @@ error_t sshFormatOpenSshPrivateKeyHeader(uint8_t *p, size_t *written)
       return error;
 
    //Point to the next field
-   p += n;
+   p = SSH_INC_POINTER(p, n);
    *written += n;
 
    //Format 'kdfname' field (for unencrypted keys the KDF "none" is used)
@@ -401,7 +416,7 @@ error_t sshFormatOpenSshPrivateKeyHeader(uint8_t *p, size_t *written)
       return error;
 
    //Point to the next field
-   p += n;
+   p = SSH_INC_POINTER(p, n);
    *written += n;
 
    //Format 'kdfoptions' field
@@ -411,14 +426,17 @@ error_t sshFormatOpenSshPrivateKeyHeader(uint8_t *p, size_t *written)
       return error;
 
    //Point to the next field
-   p += n;
+   p = SSH_INC_POINTER(p, n);
    *written += n;
 
    //Format 'number of keys' field
-   STORE32BE(1, p);
+   if(p != NULL)
+   {
+      STORE32BE(1, p);
+   }
 
    //Total number of bytes that have been written
-   *written += n;
+   *written += sizeof(uint32_t);
 
    //Successful processing
    return NO_ERROR;
@@ -445,11 +463,14 @@ error_t sshFormatOpenSshRsaPrivateKey(const RsaPrivateKey *privateKey,
    length = 0;
 
    //Format 'checkint' fields
-   STORE32BE(0x12345678, p);
-   STORE32BE(0x12345678, p + sizeof(uint32_t));
+   if(p != NULL)
+   {
+      STORE32BE(0x12345678, p);
+      STORE32BE(0x12345678, p + sizeof(uint32_t));
+   }
 
    //Point to the next field
-   p += 2 * sizeof(uint32_t);
+   p = SSH_INC_POINTER(p, 2 * sizeof(uint32_t));
    length += 2 * sizeof(uint32_t);
 
    //Format key format identifier
@@ -459,7 +480,7 @@ error_t sshFormatOpenSshRsaPrivateKey(const RsaPrivateKey *privateKey,
       return error;
 
    //Point to the next field
-   p += n;
+   p = SSH_INC_POINTER(p, n);
    length += n;
 
    //Format RSA modulus
@@ -469,7 +490,7 @@ error_t sshFormatOpenSshRsaPrivateKey(const RsaPrivateKey *privateKey,
       return error;
 
    //Point to the next field
-   p += n;
+   p = SSH_INC_POINTER(p, n);
    length += n;
 
    //Format RSA public exponent
@@ -479,7 +500,7 @@ error_t sshFormatOpenSshRsaPrivateKey(const RsaPrivateKey *privateKey,
       return error;
 
    //Point to the next field
-   p += n;
+   p = SSH_INC_POINTER(p, n);
    length += n;
 
    //Format RSA private exponent
@@ -489,7 +510,7 @@ error_t sshFormatOpenSshRsaPrivateKey(const RsaPrivateKey *privateKey,
       return error;
 
    //Point to the next field
-   p += n;
+   p = SSH_INC_POINTER(p, n);
    length += n;
 
    //Format RSA CRT coefficient
@@ -499,7 +520,7 @@ error_t sshFormatOpenSshRsaPrivateKey(const RsaPrivateKey *privateKey,
       return error;
 
    //Point to the next field
-   p += n;
+   p = SSH_INC_POINTER(p, n);
    length += n;
 
    //Parse RSA first factor
@@ -509,7 +530,7 @@ error_t sshFormatOpenSshRsaPrivateKey(const RsaPrivateKey *privateKey,
       return error;
 
    //Point to the next field
-   p += n;
+   p = SSH_INC_POINTER(p, n);
    length += n;
 
    //Parse RSA second factor
@@ -519,7 +540,7 @@ error_t sshFormatOpenSshRsaPrivateKey(const RsaPrivateKey *privateKey,
       return error;
 
    //Point to the next field
-   p += n;
+   p = SSH_INC_POINTER(p, n);
    length += n;
 
    //The private key is followed by a comment
@@ -529,13 +550,16 @@ error_t sshFormatOpenSshRsaPrivateKey(const RsaPrivateKey *privateKey,
       return error;
 
    //Point to the next field
-   p += n;
+   p = SSH_INC_POINTER(p, n);
    length += n;
 
    //The padding size is determined by the 'ciphername' field
    for(n = 0; (length % 8) != 0; n++, length++)
    {
-      p[n] = n + 1;
+      if(p != NULL)
+      {
+         p[n] = n + 1;
+      }
    }
 
    //Total number of bytes that have been written
@@ -570,11 +594,14 @@ error_t sshFormatOpenSshDsaPrivateKey(const DsaPrivateKey *privateKey,
    length = 0;
 
    //Format 'checkint' fields
-   STORE32BE(0x12345678, p);
-   STORE32BE(0x12345678, p + sizeof(uint32_t));
+   if(p != NULL)
+   {
+      STORE32BE(0x12345678, p);
+      STORE32BE(0x12345678, p + sizeof(uint32_t));
+   }
 
    //Point to the next field
-   p += 2 * sizeof(uint32_t);
+   p = SSH_INC_POINTER(p, 2 * sizeof(uint32_t));
    length += 2 * sizeof(uint32_t);
 
    //Format key format identifier
@@ -584,7 +611,7 @@ error_t sshFormatOpenSshDsaPrivateKey(const DsaPrivateKey *privateKey,
       return error;
 
    //Point to the next field
-   p += n;
+   p = SSH_INC_POINTER(p, n);
    length += n;
 
    //Format DSA prime modulus
@@ -594,7 +621,7 @@ error_t sshFormatOpenSshDsaPrivateKey(const DsaPrivateKey *privateKey,
       return error;
 
    //Point to the next field
-   p += n;
+   p = SSH_INC_POINTER(p, n);
    length += n;
 
    //Format DSA group order
@@ -604,7 +631,7 @@ error_t sshFormatOpenSshDsaPrivateKey(const DsaPrivateKey *privateKey,
       return error;
 
    //Point to the next field
-   p += n;
+   p = SSH_INC_POINTER(p, n);
    length += n;
 
    //Format DSA group generator
@@ -614,7 +641,7 @@ error_t sshFormatOpenSshDsaPrivateKey(const DsaPrivateKey *privateKey,
       return error;
 
    //Point to the next field
-   p += n;
+   p = SSH_INC_POINTER(p, n);
    length += n;
 
    //Format DSA public key value
@@ -624,7 +651,7 @@ error_t sshFormatOpenSshDsaPrivateKey(const DsaPrivateKey *privateKey,
       return error;
 
    //Point to the next field
-   p += n;
+   p = SSH_INC_POINTER(p, n);
    length += n;
 
    //Format DSA private key value
@@ -634,7 +661,7 @@ error_t sshFormatOpenSshDsaPrivateKey(const DsaPrivateKey *privateKey,
       return error;
 
    //Point to the next field
-   p += n;
+   p = SSH_INC_POINTER(p, n);
    length += n;
 
    //The private key is followed by a comment
@@ -644,13 +671,16 @@ error_t sshFormatOpenSshDsaPrivateKey(const DsaPrivateKey *privateKey,
       return error;
 
    //Point to the next field
-   p += n;
+   p = SSH_INC_POINTER(p, n);
    length += n;
 
    //The padding size is determined by the 'ciphername' field
    for(n = 0; (length % 8) != 0; n++, length++)
    {
-      p[n] = n + 1;
+      if(p != NULL)
+      {
+         p[n] = n + 1;
+      }
    }
 
    //Total number of bytes that have been written
@@ -694,11 +724,14 @@ error_t sshFormatOpenSshEcdsaPrivateKey(const EcPrivateKey *privateKey,
    length = 0;
 
    //Format 'checkint' fields
-   STORE32BE(0x12345678, p);
-   STORE32BE(0x12345678, p + sizeof(uint32_t));
+   if(p != NULL)
+   {
+      STORE32BE(0x12345678, p);
+      STORE32BE(0x12345678, p + sizeof(uint32_t));
+   }
 
    //Point to the next field
-   p += 2 * sizeof(uint32_t);
+   p = SSH_INC_POINTER(p, 2 * sizeof(uint32_t));
    length += 2 * sizeof(uint32_t);
 
    //Check elliptic curve
@@ -733,7 +766,7 @@ error_t sshFormatOpenSshEcdsaPrivateKey(const EcPrivateKey *privateKey,
       return error;
 
    //Point to the next field
-   p += n;
+   p = SSH_INC_POINTER(p, n);
    length += n;
 
    //Format the elliptic curve domain parameter identifier
@@ -743,21 +776,24 @@ error_t sshFormatOpenSshEcdsaPrivateKey(const EcPrivateKey *privateKey,
       return error;
 
    //Point to the next field
-   p += n;
+   p = SSH_INC_POINTER(p, n);
    length += n;
 
    //Format EC public key
-   error = ecExportPublicKey(&privateKey->q, p + 4, &n,
-      EC_PUBLIC_KEY_FORMAT_X963);
+   error = ecExportPublicKey(&privateKey->q,
+      SSH_INC_POINTER(p, sizeof(uint32_t)), &n, EC_PUBLIC_KEY_FORMAT_X963);
    //Any error to report?
    if(error)
       return error;
 
    //The octet string value is preceded by a uint32 containing its length
-   STORE32BE(n, p);
+   if(p != NULL)
+   {
+      STORE32BE(n, p);
+   }
 
    //Point to the next field
-   p += sizeof(uint32_t) + n;
+   p = SSH_INC_POINTER(p, sizeof(uint32_t) + n);
    length += sizeof(uint32_t) + n;
 
    //Get the length of the private key, in words
@@ -770,7 +806,7 @@ error_t sshFormatOpenSshEcdsaPrivateKey(const EcPrivateKey *privateKey,
       return error;
 
    //Point to the next field
-   p += n;
+   p = SSH_INC_POINTER(p, n);
    length += n;
 
    //The private key is followed by a comment
@@ -780,13 +816,16 @@ error_t sshFormatOpenSshEcdsaPrivateKey(const EcPrivateKey *privateKey,
       return error;
 
    //Point to the next field
-   p += n;
+   p = SSH_INC_POINTER(p, n);
    length += n;
 
    //The padding size is determined by the 'ciphername' field
    for(n = 0; (length % 8) != 0; n++, length++)
    {
-      p[n] = n + 1;
+      if(p != NULL)
+      {
+         p[n] = n + 1;
+      }
    }
 
    //Total number of bytes that have been written
@@ -822,11 +861,14 @@ error_t sshFormatOpenSshEd25519PrivateKey(const EddsaPrivateKey *privateKey,
    length = 0;
 
    //Format 'checkint' fields
-   STORE32BE(0x12345678, p);
-   STORE32BE(0x12345678, p + sizeof(uint32_t));
+   if(p != NULL)
+   {
+      STORE32BE(0x12345678, p);
+      STORE32BE(0x12345678, p + sizeof(uint32_t));
+   }
 
    //Point to the next field
-   p += 2 * sizeof(uint32_t);
+   p = SSH_INC_POINTER(p, 2 * sizeof(uint32_t));
    length += 2 * sizeof(uint32_t);
 
    //Format key format identifier
@@ -836,39 +878,48 @@ error_t sshFormatOpenSshEd25519PrivateKey(const EddsaPrivateKey *privateKey,
       return error;
 
    //Point to the next field
-   p += n;
+   p = SSH_INC_POINTER(p, n);
    length += n;
 
    //Format Ed25519 public key
-   error = eddsaExportPublicKey(&privateKey->q, p + 4, &n);
+   error = eddsaExportPublicKey(&privateKey->q,
+      SSH_INC_POINTER(p, sizeof(uint32_t)), &n);
    //Any error to report?
    if(error)
       return error;
 
    //The octet string value is preceded by a uint32 containing its length
-   STORE32BE(n, p);
+   if(p != NULL)
+   {
+      STORE32BE(n, p);
+   }
 
    //Point to the next field
-   p += sizeof(uint32_t) + n;
+   p = SSH_INC_POINTER(p, sizeof(uint32_t) + n);
    length += sizeof(uint32_t) + n;
 
    //Format Ed25519 private key
-   error = eddsaExportPrivateKey(privateKey, p + 4, &m);
+   error = eddsaExportPrivateKey(privateKey,
+      SSH_INC_POINTER(p, sizeof(uint32_t)), &m);
    //Any error to report?
    if(error)
       return error;
 
    //Concatenate the Ed25519 public key
-   error = eddsaExportPublicKey(&privateKey->q, p + 4 + m, &n);
+   error = eddsaExportPublicKey(&privateKey->q,
+      SSH_INC_POINTER(p, sizeof(uint32_t) + m), &n);
    //Any error to report?
    if(error)
       return error;
 
    //The octet string value is preceded by a uint32 containing its length
-   STORE32BE(m + n, p);
+   if(p != NULL)
+   {
+      STORE32BE(m + n, p);
+   }
 
    //Point to the next field
-   p += sizeof(uint32_t) + m + n;
+   p = SSH_INC_POINTER(p, sizeof(uint32_t) + m + n);
    length += sizeof(uint32_t) + m + n;
 
    //The private key is followed by a comment
@@ -878,13 +929,16 @@ error_t sshFormatOpenSshEd25519PrivateKey(const EddsaPrivateKey *privateKey,
       return error;
 
    //Point to the next field
-   p += n;
+   p = SSH_INC_POINTER(p, n);
    length += n;
 
    //The padding size is determined by the 'ciphername' field
    for(n = 0; (length % 8) != 0; n++, length++)
    {
-      p[n] = n + 1;
+      if(p != NULL)
+      {
+         p[n] = n + 1;
+      }
    }
 
    //Total number of bytes that have been written
@@ -920,11 +974,14 @@ error_t sshFormatOpenSshEd448PrivateKey(const EddsaPrivateKey *privateKey,
    length = 0;
 
    //Format 'checkint' fields
-   STORE32BE(0x12345678, p);
-   STORE32BE(0x12345678, p + sizeof(uint32_t));
+   if(p != NULL)
+   {
+      STORE32BE(0x12345678, p);
+      STORE32BE(0x12345678, p + sizeof(uint32_t));
+   }
 
    //Point to the next field
-   p += 2 * sizeof(uint32_t);
+   p = SSH_INC_POINTER(p, 2 * sizeof(uint32_t));
    length += 2 * sizeof(uint32_t);
 
    //Format key format identifier
@@ -934,39 +991,48 @@ error_t sshFormatOpenSshEd448PrivateKey(const EddsaPrivateKey *privateKey,
       return error;
 
    //Point to the next field
-   p += n;
+   p = SSH_INC_POINTER(p, n);
    length += n;
 
    //Format Ed448 public key
-   error = eddsaExportPublicKey(&privateKey->q, p + 4, &n);
+   error = eddsaExportPublicKey(&privateKey->q,
+      SSH_INC_POINTER(p, sizeof(uint32_t)), &n);
    //Any error to report?
    if(error)
       return error;
 
    //The octet string value is preceded by a uint32 containing its length
-   STORE32BE(n, p);
+   if(p != NULL)
+   {
+      STORE32BE(n, p);
+   }
 
    //Point to the next field
-   p += sizeof(uint32_t) + n;
+   p = SSH_INC_POINTER(p, sizeof(uint32_t) + n);
    length += sizeof(uint32_t) + n;
 
    //Format Ed448 private key
-   error = eddsaExportPrivateKey(privateKey, p + 4, &m);
+   error = eddsaExportPrivateKey(privateKey,
+      SSH_INC_POINTER(p, sizeof(uint32_t)), &m);
    //Any error to report?
    if(error)
       return error;
 
    //Concatenate the Ed448 public key
-   error = eddsaExportPublicKey(&privateKey->q, p + 4 + m, &n);
+   error = eddsaExportPublicKey(&privateKey->q,
+      SSH_INC_POINTER(p, sizeof(uint32_t) + m), &n);
    //Any error to report?
    if(error)
       return error;
 
    //The octet string value is preceded by a uint32 containing its length
-   STORE32BE(m + n, p);
+   if(p != NULL)
+   {
+      STORE32BE(m + n, p);
+   }
 
    //Point to the next field
-   p += sizeof(uint32_t) + m + n;
+   p = SSH_INC_POINTER(p, sizeof(uint32_t) + m + n);
    length += sizeof(uint32_t) + m + n;
 
    //The private key is followed by a comment
@@ -976,13 +1042,16 @@ error_t sshFormatOpenSshEd448PrivateKey(const EddsaPrivateKey *privateKey,
       return error;
 
    //Point to the next field
-   p += n;
+   p = SSH_INC_POINTER(p, n);
    length += n;
 
    //The padding size is determined by the 'ciphername' field
    for(n = 0; (length % 8) != 0; n++, length++)
    {
-      p[n] = n + 1;
+      if(p != NULL)
+      {
+         p[n] = n + 1;
+      }
    }
 
    //Total number of bytes that have been written

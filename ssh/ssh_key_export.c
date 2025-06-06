@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.5.0
+ * @version 2.5.2
  **/
 
 //Switch to the appropriate trace level
@@ -47,9 +47,9 @@
 /**
  * @brief Export an RSA public key to SSH public key file format
  * @param[in] publicKey RSA public key
- * @param[out] output Buffer where to store the SSH public key file
+ * @param[out] output Buffer where to store the SSH public key file (optional parameter)
  * @param[out] written Length of the resulting SSH public key file
- * @param[in] format Desired output format (SSH2 or OpenSSH)
+ * @param[in] format Desired output format (SSH2 or OpenSSH format)
  * @return Error code
  **/
 
@@ -71,7 +71,7 @@ error_t sshExportRsaPublicKey(const RsaPublicKey *publicKey,
       return error;
 
    //Convert the host key structure to the desired format
-   error = sshEncodePublicKeyFile(output, n, output, &n, format);
+   error = sshEncodePublicKeyFile("ssh-rsa", output, n, output, &n, format);
    //Any error to report?
    if(error)
       return error;
@@ -91,9 +91,9 @@ error_t sshExportRsaPublicKey(const RsaPublicKey *publicKey,
 /**
  * @brief Export a DSA public key to SSH public key file format
  * @param[in] publicKey DSA public key
- * @param[out] output Buffer where to store the SSH public key file
+ * @param[out] output Buffer where to store the SSH public key file (optional parameter)
  * @param[out] written Length of the resulting SSH public key file
- * @param[in] format Desired output format (SSH2 or OpenSSH)
+ * @param[in] format Desired output format (SSH2 or OpenSSH format)
  * @return Error code
  **/
 
@@ -115,7 +115,7 @@ error_t sshExportDsaPublicKey(const DsaPublicKey *publicKey,
       return error;
 
    //Convert the host key structure to the desired format
-   error = sshEncodePublicKeyFile(output, n, output, &n, format);
+   error = sshEncodePublicKeyFile("ssh-dss", output, n, output, &n, format);
    //Any error to report?
    if(error)
       return error;
@@ -135,9 +135,9 @@ error_t sshExportDsaPublicKey(const DsaPublicKey *publicKey,
 /**
  * @brief Export an ECDSA public key to SSH public key file format
  * @param[in] publicKey ECDSA public key
- * @param[out] output Buffer where to store the SSH public key file
+ * @param[out] output Buffer where to store the SSH public key file (optional parameter)
  * @param[out] written Length of the resulting SSH public key file
- * @param[in] format Desired output format (SSH2 or OpenSSH)
+ * @param[in] format Desired output format (SSH2 or OpenSSH format)
  * @return Error code
  **/
 
@@ -147,10 +147,37 @@ error_t sshExportEcdsaPublicKey(const EcPublicKey *publicKey,
 #if (SSH_ECDSA_SIGN_SUPPORT == ENABLED)
    error_t error;
    size_t n;
+   const char_t *keyFormatId;
 
    //Check parameters
    if(publicKey == NULL || written == NULL)
       return ERROR_INVALID_PARAMETER;
+
+   //Invalid ECDSA public key?
+   if(publicKey->curve == NULL)
+      return ERROR_UNSUPPORTED_ELLIPTIC_CURVE;
+
+   //Check elliptic curve
+   if(osStrcmp(publicKey->curve->name, "secp256r1") == 0)
+   {
+      //Select NIST P-256 elliptic curve
+      keyFormatId = "ecdsa-sha2-nistp256";
+   }
+   else if(osStrcmp(publicKey->curve->name, "secp384r1") == 0)
+   {
+      //Select NIST P-384 elliptic curve
+      keyFormatId = "ecdsa-sha2-nistp384";
+   }
+   else if(osStrcmp(publicKey->curve->name, "secp521r1") == 0)
+   {
+      //Select NIST P-521 elliptic curve
+      keyFormatId = "ecdsa-sha2-nistp521";
+   }
+   else
+   {
+      //Unknown host key algorithm
+      return ERROR_UNSUPPORTED_SIGNATURE_ALGO;
+   }
 
    //Format ECDSA host key structure
    error = sshFormatEcdsaPublicKey(publicKey, (uint8_t *) output, &n);
@@ -159,7 +186,7 @@ error_t sshExportEcdsaPublicKey(const EcPublicKey *publicKey,
       return error;
 
    //Convert the host key structure to the desired format
-   error = sshEncodePublicKeyFile(output, n, output, &n, format);
+   error = sshEncodePublicKeyFile(keyFormatId, output, n, output, &n, format);
    //Any error to report?
    if(error)
       return error;
@@ -179,9 +206,9 @@ error_t sshExportEcdsaPublicKey(const EcPublicKey *publicKey,
 /**
  * @brief Export a Ed25519 public key to SSH public key file format
  * @param[in] publicKey Ed25519 public key
- * @param[out] output Buffer where to store the SSH public key file
+ * @param[out] output Buffer where to store the SSH public key file (optional parameter)
  * @param[out] written Length of the resulting SSH public key file
- * @param[in] format Desired output format (SSH2 or OpenSSH)
+ * @param[in] format Desired output format (SSH2 or OpenSSH format)
  * @return Error code
  **/
 
@@ -204,7 +231,7 @@ error_t sshExportEd25519PublicKey(const EddsaPublicKey *publicKey,
       return error;
 
    //Convert the host key structure to the desired format
-   error = sshEncodePublicKeyFile(output, n, output, &n, format);
+   error = sshEncodePublicKeyFile("ssh-ed25519", output, n, output, &n, format);
    //Any error to report?
    if(error)
       return error;
@@ -224,9 +251,9 @@ error_t sshExportEd25519PublicKey(const EddsaPublicKey *publicKey,
 /**
  * @brief Export a Ed448 public key to SSH public key file format
  * @param[in] publicKey Ed448 public key
- * @param[out] output Buffer where to store the SSH public key file
+ * @param[out] output Buffer where to store the SSH public key file (optional parameter)
  * @param[out] written Length of the resulting SSH public key file
- * @param[in] format Desired output format (SSH2 or OpenSSH)
+ * @param[in] format Desired output format (SSH2 or OpenSSH format)
  * @return Error code
  **/
 
@@ -248,7 +275,7 @@ error_t sshExportEd448PublicKey(const EddsaPublicKey *publicKey,
       return error;
 
    //Convert the host key structure to the desired format
-   error = sshEncodePublicKeyFile(output, n, output, &n, format);
+   error = sshEncodePublicKeyFile("ssh-ed448", output, n, output, &n, format);
    //Any error to report?
    if(error)
       return error;
@@ -270,7 +297,7 @@ error_t sshExportEd448PublicKey(const EddsaPublicKey *publicKey,
  * @param[in] privateKey RSA private key
  * @param[out] output Buffer where to store the SSH private key file
  * @param[out] written Length of the resulting SSH private key file
- * @param[in] format Desired output format (OpenSSH only is supported)
+ * @param[in] format Desired output format (OpenSSH format only)
  * @return Error code
  **/
 
@@ -280,7 +307,8 @@ error_t sshExportRsaPrivateKey(const RsaPrivateKey *privateKey,
    error_t error;
 
    //Check output format
-   if(format == SSH_PRIVATE_KEY_FORMAT_OPENSSH)
+   if(format == SSH_PRIVATE_KEY_FORMAT_OPENSSH ||
+      format == SSH_PRIVATE_KEY_FORMAT_DEFAULT)
    {
       //Export RSA private key file (OpenSSH format)
       error = sshExportOpenSshRsaPrivateKey(privateKey, output, written);
@@ -301,7 +329,7 @@ error_t sshExportRsaPrivateKey(const RsaPrivateKey *privateKey,
  * @param[in] privateKey DSA private key
  * @param[out] output Buffer where to store the SSH private key file
  * @param[out] written Length of the resulting SSH private key file
- * @param[in] format Desired output format (OpenSSH only is supported)
+ * @param[in] format Desired output format (OpenSSH format only)
  * @return Error code
  **/
 
@@ -311,7 +339,8 @@ error_t sshExportDsaPrivateKey(const DsaPrivateKey *privateKey,
    error_t error;
 
    //Check output format
-   if(format == SSH_PRIVATE_KEY_FORMAT_OPENSSH)
+   if(format == SSH_PRIVATE_KEY_FORMAT_OPENSSH ||
+      format == SSH_PRIVATE_KEY_FORMAT_DEFAULT)
    {
       //Export DSA private key file (OpenSSH format)
       error = sshExportOpenSshDsaPrivateKey(privateKey, output, written);
@@ -332,7 +361,7 @@ error_t sshExportDsaPrivateKey(const DsaPrivateKey *privateKey,
  * @param[in] privateKey ECDSA private key
  * @param[out] output Buffer where to store the SSH private key file
  * @param[out] written Length of the resulting SSH private key file
- * @param[in] format Desired output format (OpenSSH only is supported)
+ * @param[in] format Desired output format (OpenSSH format only)
  * @return Error code
  **/
 
@@ -342,7 +371,8 @@ error_t sshExportEcdsaPrivateKey(const EcPrivateKey *privateKey,
    error_t error;
 
    //Check output format
-   if(format == SSH_PRIVATE_KEY_FORMAT_OPENSSH)
+   if(format == SSH_PRIVATE_KEY_FORMAT_OPENSSH ||
+      format == SSH_PRIVATE_KEY_FORMAT_DEFAULT)
    {
       //Export ECDSA private key file (OpenSSH format)
       error = sshExportOpenSshEcdsaPrivateKey(privateKey, output, written);
@@ -363,7 +393,7 @@ error_t sshExportEcdsaPrivateKey(const EcPrivateKey *privateKey,
  * @param[in] privateKey Ed25519 private key
  * @param[out] output Buffer where to store the SSH private key file
  * @param[out] written Length of the resulting SSH private key file
- * @param[in] format Desired output format (OpenSSH only is supported)
+ * @param[in] format Desired output format (OpenSSH format only)
  * @return Error code
  **/
 
@@ -373,7 +403,8 @@ error_t sshExportEd25519PrivateKey(const EddsaPrivateKey *privateKey,
    error_t error;
 
    //Check output format
-   if(format == SSH_PRIVATE_KEY_FORMAT_OPENSSH)
+   if(format == SSH_PRIVATE_KEY_FORMAT_OPENSSH ||
+      format == SSH_PRIVATE_KEY_FORMAT_DEFAULT)
    {
       //Export Ed25519 private key file (OpenSSH format)
       error = sshExportOpenSshEd25519PrivateKey(privateKey, output, written);
@@ -394,7 +425,7 @@ error_t sshExportEd25519PrivateKey(const EddsaPrivateKey *privateKey,
  * @param[in] privateKey Ed448 private key
  * @param[out] output Buffer where to store the SSH private key file
  * @param[out] written Length of the resulting SSH private key file
- * @param[in] format Desired output format (OpenSSH only is supported)
+ * @param[in] format Desired output format (OpenSSH format only)
  * @return Error code
  **/
 
@@ -404,7 +435,8 @@ error_t sshExportEd448PrivateKey(const EddsaPrivateKey *privateKey,
    error_t error;
 
    //Check output format
-   if(format == SSH_PRIVATE_KEY_FORMAT_OPENSSH)
+   if(format == SSH_PRIVATE_KEY_FORMAT_OPENSSH ||
+      format == SSH_PRIVATE_KEY_FORMAT_DEFAULT)
    {
       //Export Ed448 private key file (OpenSSH format)
       error = sshExportOpenSshEd448PrivateKey(privateKey, output, written);
@@ -449,7 +481,7 @@ error_t sshExportOpenSshRsaPrivateKey(const RsaPrivateKey *privateKey,
       return error;
 
    //Point to the next field
-   p += n;
+   p = SSH_INC_POINTER(p, n);
    length += n;
 
    //The pair of numbers (n, e) form the RSA public key
@@ -457,26 +489,34 @@ error_t sshExportOpenSshRsaPrivateKey(const RsaPrivateKey *privateKey,
    publicKey.e = privateKey->e;
 
    //Format 'publickey' field
-   error = sshFormatRsaPublicKey(&publicKey, p + sizeof(uint32_t), &n);
+   error = sshFormatRsaPublicKey(&publicKey,
+      SSH_INC_POINTER(p, sizeof(uint32_t)), &n);
    //Any error to report?
    if(error)
       return error;
 
    //The octet string value is preceded by a uint32 containing its length
-   STORE32BE(n, p);
+   if(p != NULL)
+   {
+      STORE32BE(n, p);
+   }
 
    //Point to the next field
-   p += sizeof(uint32_t) + n;
+   p = SSH_INC_POINTER(p, sizeof(uint32_t) + n);
    length += sizeof(uint32_t) + n;
 
    //Format 'encrypted' field
-   error = sshFormatOpenSshRsaPrivateKey(privateKey, p + sizeof(uint32_t), &n);
+   error = sshFormatOpenSshRsaPrivateKey(privateKey,
+      SSH_INC_POINTER(p, sizeof(uint32_t)), &n);
    //Any error to report?
    if(error)
       return error;
 
    //The octet string value is preceded by a uint32 containing its length
-   STORE32BE(n, p);
+   if(p != NULL)
+   {
+      STORE32BE(n, p);
+   }
 
    //Total length of the private key structure
    length += sizeof(uint32_t) + n;
@@ -528,7 +568,7 @@ error_t sshExportOpenSshDsaPrivateKey(const DsaPrivateKey *privateKey,
       return error;
 
    //Point to the next field
-   p += n;
+   p = SSH_INC_POINTER(p, n);
    length += n;
 
    //These four parameters (p, q, g and y) form the DSA public key
@@ -536,26 +576,34 @@ error_t sshExportOpenSshDsaPrivateKey(const DsaPrivateKey *privateKey,
    publicKey.y = privateKey->y;
 
    //Format 'publickey' field
-   error = sshFormatDsaPublicKey(&publicKey, p + sizeof(uint32_t), &n);
+   error = sshFormatDsaPublicKey(&publicKey,
+      SSH_INC_POINTER(p, sizeof(uint32_t)), &n);
    //Any error to report?
    if(error)
       return error;
 
    //The octet string value is preceded by a uint32 containing its length
-   STORE32BE(n, p);
+   if(p != NULL)
+   {
+      STORE32BE(n, p);
+   }
 
    //Point to the next field
-   p += sizeof(uint32_t) + n;
+   p = SSH_INC_POINTER(p, sizeof(uint32_t) + n);
    length += sizeof(uint32_t) + n;
 
    //Format 'encrypted' field
-   error = sshFormatOpenSshDsaPrivateKey(privateKey, p + sizeof(uint32_t), &n);
+   error = sshFormatOpenSshDsaPrivateKey(privateKey,
+      SSH_INC_POINTER(p, sizeof(uint32_t)), &n);
    //Any error to report?
    if(error)
       return error;
 
    //The octet string value is preceded by a uint32 containing its length
-   STORE32BE(n, p);
+   if(p != NULL)
+   {
+      STORE32BE(n, p);
+   }
 
    //Total length of the private key structure
    length += sizeof(uint32_t) + n;
@@ -606,31 +654,38 @@ error_t sshExportOpenSshEcdsaPrivateKey(const EcPrivateKey *privateKey,
       return error;
 
    //Point to the next field
-   p += n;
+   p = SSH_INC_POINTER(p, n);
    length += n;
 
    //Format 'publickey' field
-   error = sshFormatEcdsaPublicKey(&privateKey->q, p + sizeof(uint32_t), &n);
+   error = sshFormatEcdsaPublicKey(&privateKey->q,
+      SSH_INC_POINTER(p, sizeof(uint32_t)), &n);
    //Any error to report?
    if(error)
       return error;
 
    //The octet string value is preceded by a uint32 containing its length
-   STORE32BE(n, p);
+   if(p != NULL)
+   {
+      STORE32BE(n, p);
+   }
 
    //Point to the next field
-   p += sizeof(uint32_t) + n;
+   p = SSH_INC_POINTER(p, sizeof(uint32_t) + n);
    length += sizeof(uint32_t) + n;
 
    //Format 'encrypted' field
    error = sshFormatOpenSshEcdsaPrivateKey(privateKey,
-      p + sizeof(uint32_t), &n);
+      SSH_INC_POINTER(p, sizeof(uint32_t)), &n);
    //Any error to report?
    if(error)
       return error;
 
    //The octet string value is preceded by a uint32 containing its length
-   STORE32BE(n, p);
+   if(p != NULL)
+   {
+      STORE32BE(n, p);
+   }
 
    //Total length of the private key structure
    length += sizeof(uint32_t) + n;
@@ -681,31 +736,38 @@ error_t sshExportOpenSshEd25519PrivateKey(const EddsaPrivateKey *privateKey,
       return error;
 
    //Point to the next field
-   p += n;
+   p = SSH_INC_POINTER(p, n);
    length += n;
 
    //Format 'publickey' field
-   error = sshFormatEd25519PublicKey(&privateKey->q, p + sizeof(uint32_t), &n);
+   error = sshFormatEd25519PublicKey(&privateKey->q,
+      SSH_INC_POINTER(p, sizeof(uint32_t)), &n);
    //Any error to report?
    if(error)
       return error;
 
    //The octet string value is preceded by a uint32 containing its length
-   STORE32BE(n, p);
+   if(p != NULL)
+   {
+      STORE32BE(n, p);
+   }
 
    //Point to the next field
-   p += sizeof(uint32_t) + n;
+   p = SSH_INC_POINTER(p, sizeof(uint32_t) + n);
    length += sizeof(uint32_t) + n;
 
    //Format 'encrypted' field
    error = sshFormatOpenSshEd25519PrivateKey(privateKey,
-      p + sizeof(uint32_t), &n);
+      SSH_INC_POINTER(p, sizeof(uint32_t)), &n);
    //Any error to report?
    if(error)
       return error;
 
    //The octet string value is preceded by a uint32 containing its length
-   STORE32BE(n, p);
+   if(p != NULL)
+   {
+      STORE32BE(n, p);
+   }
 
    //Total length of the private key structure
    length += sizeof(uint32_t) + n;
@@ -756,31 +818,38 @@ error_t sshExportOpenSshEd448PrivateKey(const EddsaPrivateKey *privateKey,
       return error;
 
    //Point to the next field
-   p += n;
+   p = SSH_INC_POINTER(p, n);
    length += n;
 
    //Format 'publickey' field
-   error = sshFormatEd448PublicKey(&privateKey->q, p + sizeof(uint32_t), &n);
+   error = sshFormatEd448PublicKey(&privateKey->q,
+      SSH_INC_POINTER(p, sizeof(uint32_t)), &n);
    //Any error to report?
    if(error)
       return error;
 
    //The octet string value is preceded by a uint32 containing its length
-   STORE32BE(n, p);
+   if(p != NULL)
+   {
+      STORE32BE(n, p);
+   }
 
    //Point to the next field
-   p += sizeof(uint32_t) + n;
+   p = SSH_INC_POINTER(p, sizeof(uint32_t) + n);
    length += sizeof(uint32_t) + n;
 
    //Format 'encrypted' field
    error = sshFormatOpenSshEd448PrivateKey(privateKey,
-      p + sizeof(uint32_t), &n);
+      SSH_INC_POINTER(p, sizeof(uint32_t)), &n);
    //Any error to report?
    if(error)
       return error;
 
    //The octet string value is preceded by a uint32 containing its length
-   STORE32BE(n, p);
+   if(p != NULL)
+   {
+      STORE32BE(n, p);
+   }
 
    //Total length of the private key structure
    length += sizeof(uint32_t) + n;
@@ -805,15 +874,16 @@ error_t sshExportOpenSshEd448PrivateKey(const EddsaPrivateKey *privateKey,
 
 /**
  * @brief Encode SSH public key file (SSH2 or OpenSSH format)
+ * @param[in] keyFormatId Key format identifier
  * @param[in] input Host key structure to encode
  * @param[in] inputLen Length of the host key structure to encode
  * @param[out] output SSH public key file (optional parameter)
  * @param[out] outputLen Length of the SSH public key file
- * @param[in] format Desired output format (SSH2 or OpenSSH)
+ * @param[in] format Desired output format (SSH2 or OpenSSH format)
  **/
 
-error_t sshEncodePublicKeyFile(const void *input, size_t inputLen,
-   char_t *output, size_t *outputLen, SshPublicKeyFormat format)
+error_t sshEncodePublicKeyFile(const char_t *keyFormatId, const void *input,
+   size_t inputLen, char_t *output, size_t *outputLen, SshPublicKeyFormat format)
 {
    error_t error;
 
@@ -823,10 +893,12 @@ error_t sshEncodePublicKeyFile(const void *input, size_t inputLen,
       //Encode SSH public key file (SSH2 format)
       error = sshEncodeSsh2PublicKeyFile(input, inputLen, output, outputLen);
    }
-   else if(format == SSH_PUBLIC_KEY_FORMAT_OPENSSH)
+   else if(format == SSH_PUBLIC_KEY_FORMAT_OPENSSH ||
+      format == SSH_PUBLIC_KEY_FORMAT_DEFAULT)
    {
       //Encode SSH public key file (OpenSSH format)
-      error = sshEncodeOpenSshPublicKeyFile(input, inputLen, output, outputLen);
+      error = sshEncodeOpenSshPublicKeyFile(keyFormatId, input, inputLen,
+         output, outputLen);
    }
    else
    {
@@ -853,7 +925,11 @@ error_t sshEncodeSsh2PublicKeyFile(const void *input, size_t inputLen,
    size_t n;
 
    //Check parameters
-   if(input == NULL || outputLen == NULL)
+   if(outputLen == NULL)
+      return ERROR_INVALID_PARAMETER;
+
+   //Sanity check
+   if(input == NULL && output != NULL)
       return ERROR_INVALID_PARAMETER;
 
    //Each line in the body must not be longer than 72 8-bit bytes excluding
@@ -890,36 +966,29 @@ error_t sshEncodeSsh2PublicKeyFile(const void *input, size_t inputLen,
 
 /**
  * @brief Encode SSH public key file (OpenSSH format)
+ * @param[in] keyFormatId Key format identifier
  * @param[in] input Host key structure to encode
  * @param[in] inputLen Length of the host key structure to encode
  * @param[out] output SSH public key file (optional parameter)
  * @param[out] outputLen Length of the SSH public key file
  **/
 
-error_t sshEncodeOpenSshPublicKeyFile(const void *input, size_t inputLen,
-   char_t *output, size_t *outputLen)
+error_t sshEncodeOpenSshPublicKeyFile(const char_t *keyFormatId,
+   const void *input, size_t inputLen, char_t *output, size_t *outputLen)
 {
-   error_t error;
    size_t n;
-   SshString keyFormatId;
-   uint8_t identifier[40];
+   size_t keyFormatIdLen;
 
    //Check parameters
-   if(input == NULL || outputLen == NULL)
+   if(keyFormatId == NULL || outputLen == NULL)
       return ERROR_INVALID_PARAMETER;
 
-   //Parse host key structure
-   error = sshParseHostKey(input, inputLen, &keyFormatId);
-   //Any error to report?
-   if(error)
-      return error;
-
    //Sanity check
-   if(keyFormatId.length > sizeof(identifier))
-      return ERROR_WRONG_IDENTIFIER;
+   if(input == NULL && output != NULL)
+      return ERROR_INVALID_PARAMETER;
 
-   //Save key format identifier
-   osMemcpy(identifier, keyFormatId.value, keyFormatId.length);
+   //Get the length of the key format identifier
+   keyFormatIdLen = osStrlen(keyFormatId);
 
    //Encode the host key structure using Base64
    base64Encode(input, inputLen, output, &n);
@@ -929,15 +998,15 @@ error_t sshEncodeOpenSshPublicKeyFile(const void *input, size_t inputLen,
    if(output != NULL)
    {
       //Make room for the identifier string
-      osMemmove(output + keyFormatId.length + 1, output, n + 1);
+      osMemmove(output + keyFormatIdLen + 1, output, n + 1);
       //Copy identifier string
-      osMemcpy(output, identifier, keyFormatId.length);
+      osMemcpy(output, keyFormatId, keyFormatIdLen);
       //The identifier must be followed by a whitespace character
-      output[keyFormatId.length] = ' ';
+      output[keyFormatIdLen] = ' ';
    }
 
    //Consider the length of the identifier string
-   n += keyFormatId.length + 1;
+   n += keyFormatIdLen + 1;
 
    //Total number of bytes that have been written
    *outputLen = n;
@@ -961,7 +1030,11 @@ error_t sshEncodeOpenSshPrivateKeyFile(const void *input, size_t inputLen,
    size_t n;
 
    //Check parameters
-   if(input == NULL || outputLen == NULL)
+   if(outputLen == NULL)
+      return ERROR_INVALID_PARAMETER;
+
+   //Sanity check
+   if(input == NULL && output != NULL)
       return ERROR_INVALID_PARAMETER;
 
    //Encode the private key structure using Base64

@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.5.0
+ * @version 2.5.2
  **/
 
 //Switch to the appropriate trace level
@@ -228,6 +228,7 @@ error_t sshVerifyRsaSignature(const SshString *publicKeyAlgo,
 #if (SSH_SHA1_SUPPORT == ENABLED)
    //RSA with SHA-1 public key algorithm?
    if(sshCompareString(publicKeyAlgo, "ssh-rsa") ||
+      sshCompareString(publicKeyAlgo, "ssh-rsa-cert") ||
       sshCompareString(publicKeyAlgo, "ssh-rsa-cert-v01@openssh.com"))
    {
       //Select the relevant hash algorithm
@@ -506,6 +507,7 @@ error_t sshVerifyEcdsaSignature(const SshString *publicKeyAlgo,
 #if (SSH_NISTP256_SUPPORT == ENABLED && SSH_SHA256_SUPPORT == ENABLED)
    //ECDSA with NIST P-256 public key algorithm?
    if(sshCompareString(publicKeyAlgo, "ecdsa-sha2-nistp256") ||
+      sshCompareString(publicKeyAlgo, "ecdsa-sha2-nistp256-cert") ||
       sshCompareString(publicKeyAlgo, "ecdsa-sha2-nistp256-cert-v01@openssh.com"))
    {
       //Select the relevant hash algorithm
@@ -516,6 +518,7 @@ error_t sshVerifyEcdsaSignature(const SshString *publicKeyAlgo,
 #if (SSH_NISTP384_SUPPORT == ENABLED && SSH_SHA384_SUPPORT == ENABLED)
    //ECDSA with NIST P-384 public key algorithm?
    if(sshCompareString(publicKeyAlgo, "ecdsa-sha2-nistp384") ||
+      sshCompareString(publicKeyAlgo, "ecdsa-sha2-nistp384-cert") ||
       sshCompareString(publicKeyAlgo, "ecdsa-sha2-nistp384-cert-v01@openssh.com"))
    {
       //Select the relevant hash algorithm
@@ -526,6 +529,7 @@ error_t sshVerifyEcdsaSignature(const SshString *publicKeyAlgo,
 #if (SSH_NISTP521_SUPPORT == ENABLED && SSH_SHA512_SUPPORT == ENABLED)
    //ECDSA with NIST P-521 public key algorithm?
    if(sshCompareString(publicKeyAlgo, "ecdsa-sha2-nistp521") ||
+      sshCompareString(publicKeyAlgo, "ecdsa-sha2-nistp521-cert") ||
       sshCompareString(publicKeyAlgo, "ecdsa-sha2-nistp521-cert-v01@openssh.com"))
    {
       //Select the relevant hash algorithm
@@ -689,7 +693,7 @@ error_t sshVerifyEd25519Signature(const SshString *publicKeyAlgo,
    {
       SshCertificate cert;
 
-      //Parse Ed25519 certificate structure
+      //Parse EdDSA certificate structure
       error = sshParseCertificate(publicKeyBlob->value, publicKeyBlob->length,
          &cert);
 
@@ -697,7 +701,7 @@ error_t sshVerifyEd25519Signature(const SshString *publicKeyAlgo,
       if(!error)
       {
          //The Ed25519 public key consists of 32 octets
-         ed25519PublicKey = cert.publicKey.ed25519PublicKey.q.value;
+         ed25519PublicKey = cert.publicKey.eddsaPublicKey.q.value;
       }
    }
    else
@@ -781,7 +785,7 @@ error_t sshVerifyEd448Signature(const SshString *publicKeyAlgo,
 {
 #if (SSH_ED448_SIGN_SUPPORT == ENABLED)
    error_t error;
-   SshEddsaHostKey hostKey;
+   const uint8_t *ed448PublicKey;
    uint_t numMessageChunks;
    DataChunk messageChunks[3];
    uint8_t temp[4];
@@ -790,9 +794,40 @@ error_t sshVerifyEd448Signature(const SshString *publicKeyAlgo,
    if(signatureBlob->length != ED448_SIGNATURE_LEN)
       return ERROR_INVALID_SIGNATURE;
 
-   //Parse Ed448 host key structure
-   error = sshParseEd448HostKey(publicKeyBlob->value, publicKeyBlob->length,
-      &hostKey);
+#if (SSH_CERT_SUPPORT == ENABLED)
+   //Ed448 certificate?
+   if(sshIsCertPublicKeyAlgo(publicKeyAlgo))
+   {
+      SshCertificate cert;
+
+      //Parse EdDSA certificate structure
+      error = sshParseCertificate(publicKeyBlob->value, publicKeyBlob->length,
+         &cert);
+
+      //Check status
+      if(!error)
+      {
+         //The Ed448 public key consists of 57 octets
+         ed448PublicKey = cert.publicKey.eddsaPublicKey.q.value;
+      }
+   }
+   else
+#endif
+   //Ed448 public key?
+   {
+      SshEddsaHostKey hostKey;
+
+      //Parse Ed448 host key structure
+      error = sshParseEd448HostKey(publicKeyBlob->value,
+         publicKeyBlob->length, &hostKey);
+
+      //Check status
+      if(!error)
+      {
+         //The Ed448 public key consists of 57 octets
+         ed448PublicKey = hostKey.q.value;
+      }
+   }
 
    //Check status
    if(!error)
@@ -828,7 +863,7 @@ error_t sshVerifyEd448Signature(const SshString *publicKeyAlgo,
       }
 
       //Verify Ed448 signature (PureEdDSA mode)
-      error = ed448VerifySignatureEx(hostKey.q.value, messageChunks,
+      error = ed448VerifySignatureEx(ed448PublicKey, messageChunks,
          numMessageChunks, NULL, 0, 0, signatureBlob->value);
    }
 

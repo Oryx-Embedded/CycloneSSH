@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.5.0
+ * @version 2.5.2
  **/
 
 #ifndef _SSH_CERT_PARSE_H
@@ -87,13 +87,13 @@ typedef struct
 
 
 /**
- * @brief Ed25519 public key
+ * @brief EdDSA public key
  **/
 
 typedef struct
 {
    SshBinaryString q;
-} SshEd25519CertPublicKey;
+} SshEddsaCertPublicKey;
 
 
 /**
@@ -105,7 +105,7 @@ typedef union
    SshRsaCertPublicKey rsaPublicKey;
    SshDsaCertPublicKey dsaPublicKey;
    SshEcdsaCertPublicKey ecdsaPublicKey;
-   SshEd25519CertPublicKey ed25519PublicKey;
+   SshEddsaCertPublicKey eddsaPublicKey;
 } SshCertPublicKey;
 
 
@@ -145,8 +145,8 @@ error_t sshParseDsaCertPublicKey(const uint8_t *data, size_t length,
 error_t sshParseEcdsaCertPublicKey(const uint8_t *data, size_t length,
    size_t *consumed, SshEcdsaCertPublicKey *publicKey);
 
-error_t sshParseEd25519CertPublicKey(const uint8_t *data, size_t length,
-   size_t *consumed, SshEd25519CertPublicKey *publicKey);
+error_t sshParseEddsaCertPublicKey(const uint8_t *data, size_t length,
+   size_t *consumed, SshEddsaCertPublicKey *publicKey);
 
 error_t sshParseValidPrincipals(const uint8_t *data, size_t length,
    SshBinaryString *validPrincipals);

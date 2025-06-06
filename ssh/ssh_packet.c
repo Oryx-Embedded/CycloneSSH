@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.5.0
+ * @version 2.5.2
  **/
 
 //Switch to the appropriate trace level
@@ -128,8 +128,8 @@ error_t sshSendPacket(SshConnection *connection, uint8_t *payload,
    }
 
    //The padding should consist of random bytes
-   error = context->prngAlgo->read(context->prngContext, payload + payloadLen,
-      paddingLen);
+   error = context->prngAlgo->generate(context->prngContext,
+      payload + payloadLen, paddingLen);
 
    //Check status code
    if(!error)

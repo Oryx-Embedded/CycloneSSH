@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.5.0
+ * @version 2.5.2
  **/
 
 //Switch to the appropriate trace level
@@ -900,7 +900,8 @@ error_t sshFormatHostKey(SshConnection *connection, uint8_t *p,
 #endif
 #if (SSH_RSA_SIGN_SUPPORT == ENABLED && SSH_CERT_SUPPORT == ENABLED)
       //RSA certificate?
-      if(sshCompareAlgo(hostKey->keyFormatId, "ssh-rsa-cert-v01@openssh.com"))
+      if(sshCompareAlgo(hostKey->keyFormatId, "ssh-rsa-cert") ||
+         sshCompareAlgo(hostKey->keyFormatId, "ssh-rsa-cert-v01@openssh.com"))
       {
          //Extract RSA certificate
          error = sshImportCertificate(hostKey->publicKey, hostKey->publicKeyLen,
@@ -935,7 +936,8 @@ error_t sshFormatHostKey(SshConnection *connection, uint8_t *p,
 #endif
 #if (SSH_DSA_SIGN_SUPPORT == ENABLED && SSH_CERT_SUPPORT == ENABLED)
       //DSA certificate?
-      if(sshCompareAlgo(hostKey->keyFormatId, "ssh-dss-cert-v01@openssh.com"))
+      if(sshCompareAlgo(hostKey->keyFormatId, "ssh-dss-cert") ||
+         sshCompareAlgo(hostKey->keyFormatId, "ssh-dss-cert-v01@openssh.com"))
       {
          //Extract DSA certificate
          error = sshImportCertificate(hostKey->publicKey, hostKey->publicKeyLen,
@@ -972,7 +974,10 @@ error_t sshFormatHostKey(SshConnection *connection, uint8_t *p,
 #endif
 #if (SSH_ECDSA_SIGN_SUPPORT == ENABLED && SSH_CERT_SUPPORT == ENABLED)
       //ECDSA certificate?
-      if(sshCompareAlgo(hostKey->keyFormatId, "ecdsa-sha2-nistp256-cert-v01@openssh.com") ||
+      if(sshCompareAlgo(hostKey->keyFormatId, "ecdsa-sha2-nistp256-cert") ||
+         sshCompareAlgo(hostKey->keyFormatId, "ecdsa-sha2-nistp384-cert") ||
+         sshCompareAlgo(hostKey->keyFormatId, "ecdsa-sha2-nistp521-cert") ||
+         sshCompareAlgo(hostKey->keyFormatId, "ecdsa-sha2-nistp256-cert-v01@openssh.com") ||
          sshCompareAlgo(hostKey->keyFormatId, "ecdsa-sha2-nistp384-cert-v01@openssh.com") ||
          sshCompareAlgo(hostKey->keyFormatId, "ecdsa-sha2-nistp521-cert-v01@openssh.com"))
       {
@@ -1009,9 +1014,10 @@ error_t sshFormatHostKey(SshConnection *connection, uint8_t *p,
 #endif
 #if (SSH_ED25519_SIGN_SUPPORT == ENABLED && SSH_CERT_SUPPORT == ENABLED)
       //Ed25519 certificate?
-      if(sshCompareAlgo(hostKey->keyFormatId, "ssh-ed25519-cert-v01@openssh.com"))
+      if(sshCompareAlgo(hostKey->keyFormatId, "ssh-ed25519-cert") ||
+         sshCompareAlgo(hostKey->keyFormatId, "ssh-ed25519-cert-v01@openssh.com"))
       {
-         //Extract Ed25519 certificate
+         //Extract EdDSA certificate
          error = sshImportCertificate(hostKey->publicKey, hostKey->publicKeyLen,
             p, written);
       }
@@ -1039,6 +1045,16 @@ error_t sshFormatHostKey(SshConnection *connection, uint8_t *p,
 
          //Free previously allocated resources
          eddsaFreePublicKey(&eddsaPublicKey);
+      }
+      else
+#endif
+#if (SSH_ED448_SIGN_SUPPORT == ENABLED && SSH_CERT_SUPPORT == ENABLED)
+      //Ed448 certificate?
+      if(sshCompareAlgo(hostKey->keyFormatId, "ssh-ed448-cert"))
+      {
+         //Extract EdDSA certificate
+         error = sshImportCertificate(hostKey->publicKey, hostKey->publicKeyLen,
+            p, written);
       }
       else
 #endif
@@ -1083,7 +1099,8 @@ const EcCurve *sshGetCurve(const SshString *keyFormatId,
 #endif
 #if (SSH_NISTP256_SUPPORT == ENABLED && SSH_CERT_SUPPORT == ENABLED)
    //NIST P-256 elliptic curve?
-   if(sshCompareString(keyFormatId, "ecdsa-sha2-nistp256-cert-v01@openssh.com") &&
+   if((sshCompareString(keyFormatId, "ecdsa-sha2-nistp256-cert") ||
+      sshCompareString(keyFormatId, "ecdsa-sha2-nistp256-cert-v01@openssh.com")) &&
       sshCompareString(curveName, "nistp256"))
    {
       curve = SECP256R1_CURVE;
@@ -1101,7 +1118,8 @@ const EcCurve *sshGetCurve(const SshString *keyFormatId,
 #endif
 #if (SSH_NISTP384_SUPPORT == ENABLED && SSH_CERT_SUPPORT == ENABLED)
    //NIST P-384 elliptic curve?
-   if(sshCompareString(keyFormatId, "ecdsa-sha2-nistp384-cert-v01@openssh.com") &&
+   if((sshCompareString(keyFormatId, "ecdsa-sha2-nistp384-cert") ||
+      sshCompareString(keyFormatId, "ecdsa-sha2-nistp384-cert-v01@openssh.com")) &&
       sshCompareString(curveName, "nistp384"))
    {
       curve = SECP384R1_CURVE;
@@ -1119,7 +1137,8 @@ const EcCurve *sshGetCurve(const SshString *keyFormatId,
 #endif
 #if (SSH_NISTP521_SUPPORT == ENABLED && SSH_CERT_SUPPORT == ENABLED)
    //NIST P-521 elliptic curve?
-   if(sshCompareString(keyFormatId, "ecdsa-sha2-nistp521-cert-v01@openssh.com") &&
+   if((sshCompareString(keyFormatId, "ecdsa-sha2-nistp521-cert") ||
+      sshCompareString(keyFormatId, "ecdsa-sha2-nistp521-cert-v01@openssh.com")) &&
       sshCompareString(curveName, "nistp521"))
    {
       curve = SECP521R1_CURVE;
@@ -1384,12 +1403,17 @@ error_t sshFormatString(const char_t *value, uint8_t *p, size_t *written)
    //Retrieve the length of the string
    n = osStrlen(value);
 
-   //A string is stored as a uint32 containing its length and zero or more
-   //bytes that are the value of the string
-   STORE32BE(n, p);
+   //If the output parameter is NULL, then the function calculates the length
+   //of the string without copying any data
+   if(p != NULL)
+   {
+      //A string is stored as a uint32 containing its length and zero or more
+      //bytes that are the value of the string
+      STORE32BE(n, p);
 
-   //Copy the value of the string
-   osMemcpy(p + sizeof(uint32_t), value, n);
+      //Copy the value of the string
+      osMemcpy(p + sizeof(uint32_t), value, n);
+   }
 
    //Total number of bytes that have been written
    *written = sizeof(uint32_t) + n;
@@ -1485,6 +1509,9 @@ error_t sshFormatMpint(const Mpi *value, uint8_t *p, size_t *written)
    error_t error;
    size_t n;
 
+   //Initialize status code
+   error = NO_ERROR;
+
    //Retrieve the length of the multiple precision integer
    n = mpiGetBitLength(value);
 
@@ -1496,16 +1523,25 @@ error_t sshFormatMpint(const Mpi *value, uint8_t *p, size_t *written)
       n = (n / 8) + 1;
    }
 
-   //The value of the multiple precision integer is encoded MSB first.
-   //Unnecessary leading bytes with the value 0 must not be included
-   error = mpiExport(value, p + 4, n, MPI_FORMAT_BIG_ENDIAN);
+   //If the output parameter is NULL, then the function calculates the length
+   //of the mpint representation without copying any data
+   if(p != NULL)
+   {
+      //The value of the multiple precision integer is encoded MSB first.
+      //Unnecessary leading bytes with the value 0 must not be included
+      error = mpiExport(value, p + sizeof(uint32_t), n, MPI_FORMAT_BIG_ENDIAN);
+
+      //Check status code
+      if(!error)
+      {
+         //The integer is preceded by a uint32 containing its length
+         STORE32BE(n, p);
+      }
+   }
 
    //Check status code
    if(!error)
    {
-      //The integer is preceded by a uint32 containing its length
-      STORE32BE(n, p);
-
       //Total number of bytes that have been written
       *written = sizeof(uint32_t) + n;
    }
@@ -1527,8 +1563,12 @@ error_t sshFormatMpint(const Mpi *value, uint8_t *p, size_t *written)
 error_t sshConvertScalarToMpint(const uint32_t *value, uint_t length,
    uint8_t *p, size_t *written)
 {
+#if (SSH_ECDSA_SIGN_SUPPORT == ENABLED)
    error_t error;
    size_t n;
+
+   //Initialize status code
+   error = NO_ERROR;
 
    //Retrieve the length of the multiple precision integer
    n = ecScalarGetBitLength(value, length);
@@ -1541,22 +1581,36 @@ error_t sshConvertScalarToMpint(const uint32_t *value, uint_t length,
       n = (n / 8) + 1;
    }
 
-   //The value of the multiple precision integer is encoded MSB first.
-   //Unnecessary leading bytes with the value 0 must not be included
-   error = ecScalarExport(value, length, p + 4, n, EC_SCALAR_FORMAT_BIG_ENDIAN);
+   //If the output parameter is NULL, then the function calculates the length
+   //of the mpint representation without copying any data
+   if(p != NULL)
+   {
+      //The value of the multiple precision integer is encoded MSB first.
+      //Unnecessary leading bytes with the value 0 must not be included
+      error = ecScalarExport(value, length, p + sizeof(uint32_t), n,
+         EC_SCALAR_FORMAT_BIG_ENDIAN);
+
+      //Check status code
+      if(!error)
+      {
+         //The integer is preceded by a uint32 containing its length
+         STORE32BE(n, p);
+      }
+   }
 
    //Check status code
    if(!error)
    {
-      //The integer is preceded by a uint32 containing its length
-      STORE32BE(n, p);
-
       //Total number of bytes that have been written
       *written = sizeof(uint32_t) + n;
    }
 
    //Return status code
    return error;
+#else
+   //Not implemented
+   return ERROR_NOT_IMPLEMENTED;
+#endif
 }
 
 /**

@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.5.0
+ * @version 2.5.2
  **/
 
 //Switch to the appropriate trace level
@@ -78,8 +78,8 @@ error_t sshSendKexInit(SshConnection *connection)
    else
    {
       //Generate a random cookie
-      error = context->prngAlgo->read(context->prngContext, connection->cookie,
-         SSH_COOKIE_SIZE);
+      error = context->prngAlgo->generate(context->prngContext,
+         connection->cookie, SSH_COOKIE_SIZE);
 
       //Debug message
       TRACE_DEBUG("  cookie =\r\n");
@@ -843,8 +843,8 @@ error_t sshParseKexInit(SshConnection *connection, const uint8_t *message,
    if(!connection->kexInitSent)
    {
       //Generate a random cookie
-      error = context->prngAlgo->read(context->prngContext, connection->cookie,
-         SSH_COOKIE_SIZE);
+      error = context->prngAlgo->generate(context->prngContext,
+         connection->cookie, SSH_COOKIE_SIZE);
       //Any error to report?
       if(error)
          return error;

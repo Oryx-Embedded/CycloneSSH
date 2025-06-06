@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.5.0
+ * @version 2.5.2
  **/
 
 //Switch to the appropriate trace level
@@ -1222,7 +1222,7 @@ error_t scpServerGetPath(ScpServerSession *session, const SshString *path,
    pathCanonicalize(fullPath);
    pathRemoveSlash(fullPath);
 
-   //Calculate the length of the home directory
+   //Calculate the length of the root directory
    n = osStrlen(session->rootDir);
 
    //If the server implementation limits access to certain parts of the file
@@ -1237,10 +1237,10 @@ error_t scpServerGetPath(ScpServerSession *session, const SshString *path,
 
 
 /**
- * @brief Strip root dir from specified pathname
+ * @brief Strip root directory from specified pathname
  * @param[in] session Handle referencing an SCP session
  * @param[in] path input pathname
- * @return Resulting pathname with root dir stripped
+ * @return Resulting pathname with root directory stripped
  **/
 
 const char_t *scpServerStripRootDir(ScpServerSession *session,
@@ -1258,7 +1258,7 @@ const char_t *scpServerStripRootDir(ScpServerSession *session,
    //Retrieve the length of the specified pathname
    m = osStrlen(path);
 
-   //Strip the root dir from the specified pathname
+   //Strip the root directory from the specified pathname
    if(n <= 1)
    {
       return path;

@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.5.0
+ * @version 2.5.2
  **/
 
 //Switch to the appropriate trace level
@@ -71,7 +71,7 @@ error_t sftpServerGetRealPath(SftpServerSession *session,
       return error;
 
    //Strip the root directory from the pathname
-   p = sftpServerStripRootDir(session, context->path);
+   p = sftpServerStripUserRootDir(session, context->path);
 
    //The name structure contains the name in canonical form
    name->filename.value = p;
@@ -203,7 +203,7 @@ error_t sftpServerGetFileStatEx(SftpServerSession *session,
    if(fileObject != NULL)
    {
       //Get full path name
-      path.value = sftpServerStripRootDir(session, fileObject->path);
+      path.value = sftpServerStripUserRootDir(session, fileObject->path);
       path.length = osStrlen(path.value);
 
       //Retrieve the attributes of the specified file

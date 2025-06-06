@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.5.0
+ * @version 2.5.2
  **/
 
 //Switch to the appropriate trace level
@@ -831,15 +831,8 @@ error_t sshParseKexDhGexInit(SshConnection *connection, const uint8_t *message,
       return error;
 
    //Load client's ephemeral public key
-   error = mpiImport(&connection->dhContext.yb, publicKey.value,
+   error = dhImportPeerPublicKey(&connection->dhContext, publicKey.value,
       publicKey.length, MPI_FORMAT_BIG_ENDIAN);
-   //Any error to report?
-   if(error)
-      return error;
-
-   //Ensure the public key is acceptable
-   error = dhCheckPublicKey(&connection->dhContext,
-      &connection->dhContext.yb);
    //Any error to report?
    if(error)
       return error;
@@ -969,15 +962,8 @@ error_t sshParseKexDhGexReply(SshConnection *connection, const uint8_t *message,
       return error;
 
    //Load server's ephemeral public key
-   error = mpiImport(&connection->dhContext.yb, publicKey.value,
+   error = dhImportPeerPublicKey(&connection->dhContext, publicKey.value,
       publicKey.length, MPI_FORMAT_BIG_ENDIAN);
-   //Any error to report?
-   if(error)
-      return error;
-
-   //Ensure the public key is acceptable
-   error = dhCheckPublicKey(&connection->dhContext.params,
-      &connection->dhContext.yb);
    //Any error to report?
    if(error)
       return error;

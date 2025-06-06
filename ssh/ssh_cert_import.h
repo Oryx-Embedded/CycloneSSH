@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.5.0
+ * @version 2.5.2
  **/
 
 #ifndef _SSH_CERT_IMPORT_H
@@ -58,6 +58,9 @@ error_t sshImportEcdsaCertPublicKey(EcPublicKey *publicKey,
    const SshCertificate *cert);
 
 error_t sshImportEd25519CertPublicKey(EddsaPublicKey *publicKey,
+   const SshCertificate *cert);
+
+error_t sshImportEd448CertPublicKey(EddsaPublicKey *publicKey,
    const SshCertificate *cert);
 
 const char_t *sshGetCertType(const char_t *input, size_t length);

@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.5.0
+ * @version 2.5.2
  **/
 
 //Switch to the appropriate trace level
@@ -866,7 +866,7 @@ uint_t sftpServerGetFilePermissions(SftpServerSession *session,
    if(osStrncmp(path, session->rootDir, n) == 0)
    {
       //Strip root directory from the pathname
-      path = sftpServerStripRootDir(session, path);
+      path = sftpServerStripRootDir(context, path);
 
       //Invoke user-defined callback, if any
       if(context->getFilePermCallback != NULL)
@@ -929,7 +929,9 @@ error_t sftpServerGetPath(SftpServerSession *session, const SshString *path,
 
    //Append a slash character to the root directory
    if(fullPath[0] != '\0')
+   {
       pathAddSlash(fullPath, maxLen);
+   }
 
    //Retrieve the length of the path name
    n = osStrlen(fullPath);
@@ -947,7 +949,7 @@ error_t sftpServerGetPath(SftpServerSession *session, const SshString *path,
    pathCanonicalize(fullPath);
    pathRemoveSlash(fullPath);
 
-   //Calculate the length of the home directory
+   //Calculate the length of the root directory
    n = osStrlen(session->rootDir);
 
    //If the server implementation limits access to certain parts of the file
@@ -962,13 +964,13 @@ error_t sftpServerGetPath(SftpServerSession *session, const SshString *path,
 
 
 /**
- * @brief Strip root dir from specified pathname
- * @param[in] session Handle referencing an SFTP session
+ * @brief Strip root directory from specified pathname
+ * @param[in] context Pointer to the SFTP server context
  * @param[in] path input pathname
- * @return Resulting pathname with root dir stripped
+ * @return Resulting pathname with root directory stripped
  **/
 
-const char_t *sftpServerStripRootDir(SftpServerSession *session,
+const char_t *sftpServerStripRootDir(SftpServerContext *context,
    const char_t *path)
 {
    //Default directory
@@ -979,11 +981,49 @@ const char_t *sftpServerStripRootDir(SftpServerSession *session,
    size_t n;
 
    //Retrieve the length of the root directory
+   n = osStrlen(context->rootDir);
+   //Retrieve the length of the specified pathname
+   m = osStrlen(path);
+
+   //Strip the root directory from the specified pathname
+   if(n <= 1)
+   {
+      return path;
+   }
+   else if(n < m)
+   {
+      return path + n;
+   }
+   else
+   {
+      return defaultDir;
+   }
+}
+
+
+/**
+ * @brief Strip user's root directory from specified pathname
+ * @param[in] session Handle referencing an SFTP session
+ * @param[in] path input pathname
+ * @return Resulting pathname with user's root directory stripped
+ **/
+
+const char_t *sftpServerStripUserRootDir(SftpServerSession *session,
+   const char_t *path)
+{
+   //Default directory
+   static const char_t defaultDir[] = "/";
+
+   //Local variables
+   size_t m;
+   size_t n;
+
+   //Retrieve the length of the user's root directory
    n = osStrlen(session->rootDir);
    //Retrieve the length of the specified pathname
    m = osStrlen(path);
 
-   //Strip the root dir from the specified pathname
+   //Strip the user's root directory from the specified pathname
    if(n <= 1)
    {
       return path;

@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.5.0
+ * @version 2.5.2
  **/
 
 //Switch to the appropriate trace level
@@ -676,7 +676,8 @@ error_t sshSelectCipherAlgo(SshEncryptionEngine *encryptionEngine,
 #endif
 #if (SSH_AES_128_SUPPORT == ENABLED && SSH_GCM_CIPHER_SUPPORT == ENABLED)
    //AES-GCM with 128-bit key encryption algorithm?
-   if(sshCompareAlgo(encAlgo, "aes128-gcm@openssh.com"))
+   if(sshCompareAlgo(encAlgo, "aes128-gcm") ||
+      sshCompareAlgo(encAlgo, "aes128-gcm@openssh.com"))
    {
       //AEAD algorithms offer both encryption and authentication
       encryptionEngine->cipherMode = CIPHER_MODE_GCM;
@@ -687,7 +688,8 @@ error_t sshSelectCipherAlgo(SshEncryptionEngine *encryptionEngine,
 #endif
 #if (SSH_AES_256_SUPPORT == ENABLED && SSH_GCM_CIPHER_SUPPORT == ENABLED)
    //AES-GCM with 256-bit key encryption algorithm?
-   if(sshCompareAlgo(encAlgo, "aes256-gcm@openssh.com"))
+   if(sshCompareAlgo(encAlgo, "aes256-gcm") ||
+      sshCompareAlgo(encAlgo, "aes256-gcm@openssh.com"))
    {
       //AEAD algorithms offer both encryption and authentication
       encryptionEngine->cipherMode = CIPHER_MODE_GCM;
@@ -742,7 +744,8 @@ error_t sshSelectCipherAlgo(SshEncryptionEngine *encryptionEngine,
 #endif
 #if (SSH_CHACHA20_POLY1305_SUPPORT == ENABLED)
    //ChaCha20Poly1305 encryption algorithm?
-   if(sshCompareAlgo(encAlgo, "chacha20-poly1305@openssh.com"))
+   if(sshCompareAlgo(encAlgo, "chacha20-poly1305") ||
+      sshCompareAlgo(encAlgo, "chacha20-poly1305@openssh.com"))
    {
       //AEAD algorithms offer both encryption and authentication
       encryptionEngine->cipherMode = CIPHER_MODE_CHACHA20_POLY1305;
@@ -781,7 +784,8 @@ error_t sshSelectHashAlgo(SshEncryptionEngine *encryptionEngine,
 
 #if (SSH_AES_128_SUPPORT == ENABLED && SSH_GCM_CIPHER_SUPPORT == ENABLED)
    //AES-GCM with 128-bit key authenticated encryption algorithm?
-   if(sshCompareAlgo(encAlgo, "aes128-gcm@openssh.com"))
+   if(sshCompareAlgo(encAlgo, "aes128-gcm") ||
+      sshCompareAlgo(encAlgo, "aes128-gcm@openssh.com"))
    {
       //AEAD algorithms offer both encryption and authentication
       encryptionEngine->hashAlgo = NULL;
@@ -792,7 +796,8 @@ error_t sshSelectHashAlgo(SshEncryptionEngine *encryptionEngine,
 #endif
 #if (SSH_AES_256_SUPPORT == ENABLED && SSH_GCM_CIPHER_SUPPORT == ENABLED)
    //AES-GCM with 256-bit key authenticated encryption algorithm?
-   if(sshCompareAlgo(encAlgo, "aes256-gcm@openssh.com"))
+   if(sshCompareAlgo(encAlgo, "aes256-gcm") ||
+      sshCompareAlgo(encAlgo, "aes256-gcm@openssh.com"))
    {
       //AEAD algorithms offer both encryption and authentication
       encryptionEngine->hashAlgo = NULL;
@@ -847,7 +852,8 @@ error_t sshSelectHashAlgo(SshEncryptionEngine *encryptionEngine,
 #endif
 #if (SSH_CHACHA20_POLY1305_SUPPORT == ENABLED)
    //ChaCha20Poly1305 authenticated encryption algorithm?
-   if(sshCompareAlgo(encAlgo, "chacha20-poly1305@openssh.com"))
+   if(sshCompareAlgo(encAlgo, "chacha20-poly1305") ||
+      sshCompareAlgo(encAlgo, "chacha20-poly1305@openssh.com"))
    {
       //AEAD algorithms offer both encryption and authentication
       encryptionEngine->hashAlgo = NULL;

@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.5.0
+ * @version 2.5.2
  **/
 
 //Switch to the appropriate trace level
@@ -80,7 +80,8 @@ error_t sshParseCertificate(const uint8_t *data, size_t length,
 
 #if (SSH_RSA_SIGN_SUPPORT == ENABLED)
    //RSA certificate?
-   if(sshCompareString(&cert->keyFormatId, "ssh-rsa-cert-v01@openssh.com"))
+   if(sshCompareString(&cert->keyFormatId, "ssh-rsa-cert") ||
+      sshCompareString(&cert->keyFormatId, "ssh-rsa-cert-v01@openssh.com"))
    {
       //Parse RSA public key
       error = sshParseRsaCertPublicKey(data, length, &n,
@@ -90,7 +91,8 @@ error_t sshParseCertificate(const uint8_t *data, size_t length,
 #endif
 #if (SSH_DSA_SIGN_SUPPORT == ENABLED)
    //DSA certificate?
-   if(sshCompareString(&cert->keyFormatId, "ssh-dss-cert-v01@openssh.com"))
+   if(sshCompareString(&cert->keyFormatId, "ssh-dss-cert") ||
+      sshCompareString(&cert->keyFormatId, "ssh-dss-cert-v01@openssh.com"))
    {
       //Parse DSA public key
       error = sshParseDsaCertPublicKey(data, length, &n,
@@ -100,7 +102,10 @@ error_t sshParseCertificate(const uint8_t *data, size_t length,
 #endif
 #if (SSH_ECDSA_SIGN_SUPPORT == ENABLED)
    //ECDSA certificate?
-   if(sshCompareString(&cert->keyFormatId, "ecdsa-sha2-nistp256-cert-v01@openssh.com") ||
+   if(sshCompareString(&cert->keyFormatId, "ecdsa-sha2-nistp256-cert") ||
+      sshCompareString(&cert->keyFormatId, "ecdsa-sha2-nistp384-cert") ||
+      sshCompareString(&cert->keyFormatId, "ecdsa-sha2-nistp521-cert") ||
+      sshCompareString(&cert->keyFormatId, "ecdsa-sha2-nistp256-cert-v01@openssh.com") ||
       sshCompareString(&cert->keyFormatId, "ecdsa-sha2-nistp384-cert-v01@openssh.com") ||
       sshCompareString(&cert->keyFormatId, "ecdsa-sha2-nistp521-cert-v01@openssh.com"))
    {
@@ -112,11 +117,22 @@ error_t sshParseCertificate(const uint8_t *data, size_t length,
 #endif
 #if (SSH_ED25519_SIGN_SUPPORT == ENABLED)
    //Ed25519 certificate?
-   if(sshCompareString(&cert->keyFormatId, "ssh-ed25519-cert-v01@openssh.com"))
+   if(sshCompareString(&cert->keyFormatId, "ssh-ed25519-cert") ||
+      sshCompareString(&cert->keyFormatId, "ssh-ed25519-cert-v01@openssh.com"))
    {
       //Parse Ed25519 public key
-      error = sshParseEd25519CertPublicKey(data, length, &n,
-         &cert->publicKey.ed25519PublicKey);
+      error = sshParseEddsaCertPublicKey(data, length, &n,
+         &cert->publicKey.eddsaPublicKey);
+   }
+   else
+#endif
+#if (SSH_ED448_SIGN_SUPPORT == ENABLED)
+   //Ed448 certificate?
+   if(sshCompareString(&cert->keyFormatId, "ssh-ed448-cert"))
+   {
+      //Parse Ed448 public key
+      error = sshParseEddsaCertPublicKey(data, length, &n,
+         &cert->publicKey.eddsaPublicKey);
    }
    else
 #endif
@@ -430,7 +446,7 @@ error_t sshParseEcdsaCertPublicKey(const uint8_t *data, size_t length,
 
 
 /**
- * @brief Parse an Ed25519 public key
+ * @brief Parse an EdDSA public key
  * @param[in] data Pointer to the input data to parse
  * @param[in] length Number of bytes available in the input data
  * @param[in] consumed Number of bytes that have been consumed
@@ -438,16 +454,16 @@ error_t sshParseEcdsaCertPublicKey(const uint8_t *data, size_t length,
  * @return Error code
  **/
 
-error_t sshParseEd25519CertPublicKey(const uint8_t *data, size_t length,
-   size_t *consumed, SshEd25519CertPublicKey *publicKey)
+error_t sshParseEddsaCertPublicKey(const uint8_t *data, size_t length,
+   size_t *consumed, SshEddsaCertPublicKey *publicKey)
 {
-#if (SSH_ED25519_SIGN_SUPPORT == ENABLED)
+#if (SSH_ED25519_SIGN_SUPPORT == ENABLED || SSH_ED448_SIGN_SUPPORT == ENABLED)
    error_t error;
 
    //Total number of bytes that have been consumed
    *consumed = 0;
 
-   //Parse Ed25519 public key value
+   //Parse EdDSA public key value
    error = sshParseBinaryString(data, length, &publicKey->q);
    //Any error to report?
    if(error)

@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.5.0
+ * @version 2.5.2
  **/
 
 //Switch to the appropriate trace level
@@ -53,22 +53,31 @@
 static const char_t *const sshCertTypes[] =
 {
 #if (SSH_RSA_SIGN_SUPPORT == ENABLED)
+   "ssh-rsa-cert",
    "ssh-rsa-cert-v01@openssh.com",
 #endif
 #if (SSH_DSA_SIGN_SUPPORT == ENABLED)
+   "ssh-dss-cert",
    "ssh-dss-cert-v01@openssh.com",
 #endif
 #if (SSH_ECDSA_SIGN_SUPPORT == ENABLED && SSH_NISTP256_SUPPORT == ENABLED)
+   "ecdsa-sha2-nistp256-cert",
    "ecdsa-sha2-nistp256-cert-v01@openssh.com",
 #endif
 #if (SSH_ECDSA_SIGN_SUPPORT == ENABLED && SSH_NISTP384_SUPPORT == ENABLED)
+   "ecdsa-sha2-nistp384-cert",
    "ecdsa-sha2-nistp384-cert-v01@openssh.com",
 #endif
 #if (SSH_ECDSA_SIGN_SUPPORT == ENABLED && SSH_NISTP521_SUPPORT == ENABLED)
+   "ecdsa-sha2-nistp521-cert",
    "ecdsa-sha2-nistp521-cert-v01@openssh.com",
 #endif
 #if (SSH_ED25519_SIGN_SUPPORT == ENABLED)
+   "ssh-ed25519-cert",
    "ssh-ed25519-cert-v01@openssh.com",
+#endif
+#if (SSH_ED448_SIGN_SUPPORT == ENABLED)
+   "ssh-ed448-cert"
 #endif
 };
 
@@ -148,8 +157,11 @@ error_t sshImportRsaCertPublicKey(RsaPublicKey *publicKey,
    uint_t k;
 
    //Unexpected key format identifier?
-   if(!sshCompareString(&cert->keyFormatId, "ssh-rsa-cert-v01@openssh.com"))
+   if(!sshCompareString(&cert->keyFormatId, "ssh-rsa-cert") &&
+      !sshCompareString(&cert->keyFormatId, "ssh-rsa-cert-v01@openssh.com"))
+   {
       return ERROR_WRONG_IDENTIFIER;
+   }
 
    //Import RSA public exponent
    error = mpiImport(&publicKey->e, cert->publicKey.rsaPublicKey.e.value,
@@ -196,8 +208,11 @@ error_t sshImportDsaCertPublicKey(DsaPublicKey *publicKey,
    size_t k;
 
    //Unexpected key format identifier?
-   if(!sshCompareString(&cert->keyFormatId, "ssh-dss-cert-v01@openssh.com"))
+   if(!sshCompareString(&cert->keyFormatId, "ssh-dss-cert") &&
+      !sshCompareString(&cert->keyFormatId, "ssh-dss-cert-v01@openssh.com"))
+   {
       return ERROR_WRONG_IDENTIFIER;
+   }
 
    //Import DSA prime modulus
    error = mpiImport(&publicKey->params.p, cert->publicKey.dsaPublicKey.p.value,
@@ -258,7 +273,10 @@ error_t sshImportEcdsaCertPublicKey(EcPublicKey *publicKey,
    const EcCurve *curve;
 
    //Check key format identifier
-   if(sshCompareString(&cert->keyFormatId, "ecdsa-sha2-nistp256-cert-v01@openssh.com") ||
+   if(sshCompareString(&cert->keyFormatId, "ecdsa-sha2-nistp256-cert") ||
+      sshCompareString(&cert->keyFormatId, "ecdsa-sha2-nistp384-cert") ||
+      sshCompareString(&cert->keyFormatId, "ecdsa-sha2-nistp521-cert") ||
+      sshCompareString(&cert->keyFormatId, "ecdsa-sha2-nistp256-cert-v01@openssh.com") ||
       sshCompareString(&cert->keyFormatId, "ecdsa-sha2-nistp384-cert-v01@openssh.com") ||
       sshCompareString(&cert->keyFormatId, "ecdsa-sha2-nistp521-cert-v01@openssh.com"))
    {
@@ -311,12 +329,49 @@ error_t sshImportEd25519CertPublicKey(EddsaPublicKey *publicKey,
    error_t error;
 
    //Check key format identifier
-   if(sshCompareString(&cert->keyFormatId, "ssh-ed25519-cert-v01@openssh.com"))
+   if(sshCompareString(&cert->keyFormatId, "ssh-ed25519-cert") ||
+      sshCompareString(&cert->keyFormatId, "ssh-ed25519-cert-v01@openssh.com"))
    {
       //Import Ed25519 public key
       error = eddsaImportPublicKey(publicKey, ED25519_CURVE,
-         cert->publicKey.ed25519PublicKey.q.value,
-         cert->publicKey.ed25519PublicKey.q.length);
+         cert->publicKey.eddsaPublicKey.q.value,
+         cert->publicKey.eddsaPublicKey.q.length);
+   }
+   else
+   {
+      //Unexpected key format identifier
+      error = ERROR_WRONG_IDENTIFIER;
+   }
+
+   //Return status code
+   return error;
+#else
+   //Not implemented
+   return ERROR_NOT_IMPLEMENTED;
+#endif
+}
+
+
+/**
+ * @brief Import an Ed448 public key from a certificate
+ * @param[out] publicKey Pointer to the EdDSA public key
+ * @param[in] cert Pointer to the certificate structure
+ * @return Error code
+ **/
+
+error_t sshImportEd448CertPublicKey(EddsaPublicKey *publicKey,
+   const SshCertificate *cert)
+{
+#if (SSH_ED448_SIGN_SUPPORT == ENABLED)
+   error_t error;
+
+   //Check key format identifier
+   if(sshCompareString(&cert->keyFormatId, "ssh-ed448-cert"))
+   {
+      //Import Ed448 public key
+      error = eddsaImportPublicKey(publicKey, ED448_CURVE,
+         cert->publicKey.eddsaPublicKey.q.value,
+         cert->publicKey.eddsaPublicKey.q.length);
    }
    else
    {

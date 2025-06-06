@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.5.0
+ * @version 2.5.2
  **/
 
 #ifndef _SSH_ALGORITHMS_H
@@ -86,6 +86,7 @@ bool_t sshIsRsaKexAlgo(const char_t *kexAlgo);
 bool_t sshIsDhKexAlgo(const char_t *kexAlgo);
 bool_t sshIsDhGexKexAlgo(const char_t *kexAlgo);
 bool_t sshIsEcdhKexAlgo(const char_t *kexAlgo);
+bool_t sshIsMlkemKexAlgo(const char_t *kexAlgo);
 bool_t sshIsHybridKexAlgo(const char_t *kexAlgo);
 
 bool_t sshIsCertPublicKeyAlgo(const SshString *publicKeyAlgo);

@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.5.0
+ * @version 2.5.2
  **/
 
 //Switch to the appropriate trace level
@@ -38,7 +38,7 @@
 #include "ssh/ssh_key_decrypt.h"
 #include "ssh/ssh_misc.h"
 #include "encoding/base64.h"
-#include "pkix/pem_import.h"
+#include "pkix/pem_key_import.h"
 #include "ecc/ec_misc.h"
 #include "debug.h"
 
@@ -1504,6 +1504,12 @@ error_t sshDecodeSsh2PublicKeyFile(const char_t *input, size_t inputLen,
 
    //Advance the pointer over the marker
    i += 31;
+
+   //Skip CR and LF control characters
+   while(input[i] == '\r' || input[i] == '\n')
+   {
+      i++;
+   }
 
    //The last line of a conforming key file must be an end marker (refer to
    //RFC 4716, section 3.2)

@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.5.0
+ * @version 2.5.2
  **/
 
 #ifndef _SSH_KEY_EXPORT_H
@@ -50,6 +50,7 @@ extern "C" {
 
 typedef enum
 {
+   SSH_PUBLIC_KEY_FORMAT_DEFAULT = 0, ///<Default public key format
    SSH_PUBLIC_KEY_FORMAT_SSH2    = 1, ///<SSH2 public key format
    SSH_PUBLIC_KEY_FORMAT_OPENSSH = 2  ///<OpenSSH public key format
 } SshPublicKeyFormat;
@@ -61,7 +62,8 @@ typedef enum
 
 typedef enum
 {
-   SSH_PRIVATE_KEY_FORMAT_OPENSSH = 2 ///<OpenSSH private key format
+   SSH_PRIVATE_KEY_FORMAT_DEFAULT = 0, ///<Default private key format
+   SSH_PRIVATE_KEY_FORMAT_OPENSSH = 2  ///<OpenSSH private key format
 } SshPrivateKeyFormat;
 
 
@@ -111,14 +113,14 @@ error_t sshExportOpenSshEd25519PrivateKey(const EddsaPrivateKey *privateKey,
 error_t sshExportOpenSshEd448PrivateKey(const EddsaPrivateKey *privateKey,
    char_t *output, size_t *written);
 
-error_t sshEncodePublicKeyFile(const void *input, size_t inputLen,
-   char_t *output, size_t *outputLen, SshPublicKeyFormat format);
+error_t sshEncodePublicKeyFile(const char_t *keyFormatId, const void *input,
+   size_t inputLen, char_t *output, size_t *outputLen, SshPublicKeyFormat format);
 
 error_t sshEncodeSsh2PublicKeyFile(const void *input, size_t inputLen,
    char_t *output, size_t *outputLen);
 
-error_t sshEncodeOpenSshPublicKeyFile(const void *input, size_t inputLen,
-   char_t *output, size_t *outputLen);
+error_t sshEncodeOpenSshPublicKeyFile(const char_t *keyFormatId,
+   const void *input, size_t inputLen, char_t *output, size_t *outputLen);
 
 error_t sshEncodeOpenSshPrivateKeyFile(const void *input, size_t inputLen,
    char_t *output, size_t *outputLen);

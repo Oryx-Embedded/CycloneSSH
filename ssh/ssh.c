@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.5.0
+ * @version 2.5.2
  **/
 
 //Switch to the appropriate trace level
@@ -1712,7 +1712,8 @@ error_t sshLoadCertificate(SshContext *context, uint_t index,
 
 #if (SSH_RSA_SIGN_SUPPORT == ENABLED)
    //RSA certificate?
-   if(sshCompareAlgo(certType, "ssh-rsa-cert-v01@openssh.com"))
+   if(sshCompareAlgo(certType, "ssh-rsa-cert") ||
+      sshCompareAlgo(certType, "ssh-rsa-cert-v01@openssh.com"))
    {
       RsaPrivateKey rsaPrivateKey;
 
@@ -1735,7 +1736,8 @@ error_t sshLoadCertificate(SshContext *context, uint_t index,
 #endif
 #if (SSH_DSA_SIGN_SUPPORT == ENABLED)
    //DSA certificate?
-   if(sshCompareAlgo(certType, "ssh-dss-cert-v01@openssh.com"))
+   if(sshCompareAlgo(certType, "ssh-dss-cert") ||
+      sshCompareAlgo(certType, "ssh-dss-cert-v01@openssh.com"))
    {
       DsaPrivateKey dsaPrivateKey;
 
@@ -1758,7 +1760,10 @@ error_t sshLoadCertificate(SshContext *context, uint_t index,
 #endif
 #if (SSH_ECDSA_SIGN_SUPPORT == ENABLED)
    //ECDSA certificate?
-   if(sshCompareAlgo(certType, "ecdsa-sha2-nistp256-cert-v01@openssh.com") ||
+   if(sshCompareAlgo(certType, "ecdsa-sha2-nistp256-cert") ||
+      sshCompareAlgo(certType, "ecdsa-sha2-nistp384-cert") ||
+      sshCompareAlgo(certType, "ecdsa-sha2-nistp521-cert") ||
+      sshCompareAlgo(certType, "ecdsa-sha2-nistp256-cert-v01@openssh.com") ||
       sshCompareAlgo(certType, "ecdsa-sha2-nistp384-cert-v01@openssh.com") ||
       sshCompareAlgo(certType, "ecdsa-sha2-nistp521-cert-v01@openssh.com"))
    {
@@ -1783,7 +1788,8 @@ error_t sshLoadCertificate(SshContext *context, uint_t index,
 #endif
 #if (SSH_ED25519_SIGN_SUPPORT == ENABLED)
    //Ed25519 certificate?
-   if(sshCompareAlgo(certType, "ssh-ed25519-cert-v01@openssh.com"))
+   if(sshCompareAlgo(certType, "ssh-ed25519-cert") ||
+      sshCompareAlgo(certType, "ssh-ed25519-cert-v01@openssh.com"))
    {
       EddsaPrivateKey ed25519PrivateKey;
 
@@ -1801,6 +1807,29 @@ error_t sshLoadCertificate(SshContext *context, uint_t index,
 
       //Release previously allocated memory
       eddsaFreePrivateKey(&ed25519PrivateKey);
+   }
+   else
+#endif
+#if (SSH_ED448_SIGN_SUPPORT == ENABLED)
+   //Ed448 certificate?
+   if(sshCompareAlgo(certType, "ssh-ed448-cert"))
+   {
+      EddsaPrivateKey ed448PrivateKey;
+
+      //Initialize Ed448 private key
+      eddsaInitPrivateKey(&ed448PrivateKey);
+
+      //The private key can be omitted if a public-key hardware accelerator
+      //is used to generate signatures
+      if(privateKey != NULL)
+      {
+         //Check whether the EdDSA private key is valid
+         error = sshImportEd448PrivateKey(&ed448PrivateKey, privateKey,
+            privateKeyLen, password);
+      }
+
+      //Release previously allocated memory
+      eddsaFreePrivateKey(&ed448PrivateKey);
    }
    else
 #endif

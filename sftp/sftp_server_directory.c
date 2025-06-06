@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.5.0
+ * @version 2.5.2
  **/
 
 //Switch to the appropriate trace level
@@ -263,7 +263,7 @@ error_t sftpServerReadDir(SftpServerSession *session,
          perm = sftpServerGetFilePermissions(session, context->path);
 
          //Check access rights?
-         if((perm & SFTP_FILE_PERM_READ) != 0)
+         if((perm & SFTP_FILE_PERM_LIST) != 0)
          {
             //Copy the file name
             osStrcpy(context->path, dirEntry.name);

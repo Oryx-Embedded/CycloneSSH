@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.5.0
+ * @version 2.5.2
  **/
 
 //Switch to the appropriate trace level
@@ -188,8 +188,8 @@ error_t sshFormatKexEcdhInit(SshConnection *connection, uint8_t *p,
    *length += sizeof(uint8_t);
 
    //Format client's ephemeral public key (Q_C)
-   error = ecExportPublicKey(&connection->ecdhContext.da.q,
-      p + sizeof(uint32_t), &n, EC_PUBLIC_KEY_FORMAT_X963);
+   error = ecdhExportPublicKey(&connection->ecdhContext, p + sizeof(uint32_t),
+      &n, EC_PUBLIC_KEY_FORMAT_X963);
    //Any error to report?
    if(error)
       return error;
@@ -248,8 +248,8 @@ error_t sshFormatKexEcdhReply(SshConnection *connection, uint8_t *p,
    *length += sizeof(uint32_t) + n;
 
    //Format server's ephemeral public key (Q_S)
-   error = ecExportPublicKey(&connection->ecdhContext.da.q,
-      p + sizeof(uint32_t), &n, EC_PUBLIC_KEY_FORMAT_X963);
+   error = ecdhExportPublicKey(&connection->ecdhContext, p + sizeof(uint32_t),
+      &n, EC_PUBLIC_KEY_FORMAT_X963);
    //Any error to report?
    if(error)
       return error;
@@ -371,16 +371,8 @@ error_t sshParseKexEcdhInit(SshConnection *connection, const uint8_t *message,
       return error;
 
    //Load client's ephemeral public key
-   error = ecImportPublicKey(&connection->ecdhContext.qb,
-      connection->ecdhContext.curve, publicKey.value, publicKey.length,
-      EC_PUBLIC_KEY_FORMAT_X963);
-   //Any error to report?
-   if(error)
-      return error;
-
-   //Ensure the public key is acceptable
-   error = ecdhCheckPublicKey(&connection->ecdhContext,
-      &connection->ecdhContext.qb);
+   error = ecdhImportPeerPublicKey(&connection->ecdhContext, publicKey.value,
+      publicKey.length, EC_PUBLIC_KEY_FORMAT_X963);
    //Any error to report?
    if(error)
       return error;
@@ -517,16 +509,8 @@ error_t sshParseKexEcdhReply(SshConnection *connection, const uint8_t *message,
       return error;
 
    //Load server's ephemeral public key
-   error = ecImportPublicKey(&connection->ecdhContext.qb,
-      connection->ecdhContext.curve, publicKey.value, publicKey.length,
-      EC_PUBLIC_KEY_FORMAT_X963);
-   //Any error to report?
-   if(error)
-      return error;
-
-   //Ensure the public key is acceptable
-   error = ecdhCheckPublicKey(&connection->ecdhContext,
-      &connection->ecdhContext.qb);
+   error = ecdhImportPeerPublicKey(&connection->ecdhContext, publicKey.value,
+      publicKey.length, EC_PUBLIC_KEY_FORMAT_X963);
    //Any error to report?
    if(error)
       return error;
@@ -636,9 +620,6 @@ error_t sshSelectEcdhCurve(SshConnection *connection)
    error_t error;
    const EcCurve *curve;
 
-   //Initialize status code
-   error = NO_ERROR;
-
 #if (SSH_NISTP256_SUPPORT == ENABLED)
    //NIST P-256 elliptic curve?
    if(sshCompareAlgo(connection->kexAlgo, "ecdh-sha2-nistp256"))
@@ -689,7 +670,7 @@ error_t sshSelectEcdhCurve(SshConnection *connection)
    if(curve != NULL)
    {
       //Save ECDH domain parameters
-      connection->ecdhContext.curve = curve;
+      error = ecdhSetCurve(&connection->ecdhContext, curve);
    }
    else
    {
@@ -813,7 +794,7 @@ error_t sshDigestClientEcdhPublicKey(SshConnection *connection)
    if(buffer != NULL)
    {
       //Format client's ephemeral public key
-      error = ecExportPublicKey(&connection->ecdhContext.da.q, buffer, &n,
+      error = ecdhExportPublicKey(&connection->ecdhContext, buffer, &n,
          EC_PUBLIC_KEY_FORMAT_X963);
 
       //Check status code
