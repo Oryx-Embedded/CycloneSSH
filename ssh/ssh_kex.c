@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.6.4
+ * @version 2.6.6
  **/
 
 //Switch to the appropriate trace level
@@ -835,19 +835,39 @@ error_t sshParseKexInit(SshConnection *connection, const uint8_t *message,
    if(error)
       return error;
 
-   //Update exchange hash H with V_C (client's identification string)
-   error = sshUpdateExchangeHash(connection, connection->clientId,
-      osStrlen(connection->clientId));
-   //Any error to report?
-   if(error)
-      return error;
+   //Check whether SSH operates as a client or a server
+   if(connection->context->mode == SSH_OPERATION_MODE_CLIENT)
+   {
+      //Update exchange hash H with V_C (client's identification string)
+      error = sshUpdateExchangeHash(connection, CYCLONE_SSH_ID,
+         osStrlen(CYCLONE_SSH_ID));
+      //Any error to report?
+      if(error)
+         return error;
 
-   //Update exchange hash H with V_S (server's identification string)
-   error = sshUpdateExchangeHash(connection, connection->serverId,
-      osStrlen(connection->serverId));
-   //Any error to report?
-   if(error)
-      return error;
+      //Update exchange hash H with V_S (server's identification string)
+      error = sshUpdateExchangeHash(connection, connection->remoteId,
+         osStrlen(connection->remoteId));
+      //Any error to report?
+      if(error)
+         return error;
+   }
+   else
+   {
+      //Update exchange hash H with V_C (client's identification string)
+      error = sshUpdateExchangeHash(connection, connection->remoteId,
+         osStrlen(connection->remoteId));
+      //Any error to report?
+      if(error)
+         return error;
+
+      //Update exchange hash H with V_S (server's identification string)
+      error = sshUpdateExchangeHash(connection, CYCLONE_SSH_ID,
+         osStrlen(CYCLONE_SSH_ID));
+      //Any error to report?
+      if(error)
+         return error;
+   }
 
    //Check whether a key re-exchange has been initiated by the peer
    if(!connection->kexInitSent)

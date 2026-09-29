@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.6.4
+ * @version 2.6.6
  **/
 
 #ifndef _SSH_SERVER_H
@@ -58,6 +58,11 @@
    #define SSH_SERVER_TICK_INTERVAL 1000
 #elif (SSH_SERVER_TICK_INTERVAL < 100)
    #error SSH_SERVER_TICK_INTERVAL parameter is not valid
+#endif
+
+//Application specific context
+#ifndef SSH_SERVER_CONTEXT_PRIVATE
+   #define SSH_SERVER_CONTEXT_PRIVATE
 #endif
 
 //C++ guard
@@ -124,6 +129,7 @@ typedef struct
    uint16_t port;                                ///<SSH port number
    systime_t timeout;                            ///<Idle connection timeout
    SshContext sshContext;                        ///<SSH context
+   SSH_SERVER_CONTEXT_PRIVATE                    ///<Application specific context
 } SshServerContext;
 
 

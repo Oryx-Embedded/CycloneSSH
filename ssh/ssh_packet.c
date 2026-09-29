@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.6.4
+ * @version 2.6.6
  **/
 
 //Switch to the appropriate trace level
@@ -857,7 +857,7 @@ error_t sshDecryptPacket(SshConnection *connection, uint8_t *packet,
                }
 
                //The message is authenticated if and only if the tags match
-               error = (mask == 0) ? NO_ERROR : ERROR_FAILURE;
+               error = (mask == 0) ? NO_ERROR : ERROR_INVALID_TAG;
             }
          }
          else

@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.6.4
+ * @version 2.6.6
  **/
 
 //Switch to the appropriate trace level
@@ -67,6 +67,8 @@ error_t scpClientInit(ScpClientContext *context)
    context->state = SCP_CLIENT_STATE_DISCONNECTED;
    //Default timeout
    context->timeout = SCP_CLIENT_DEFAULT_TIMEOUT;
+   //Initialize exit status
+   context->exitStatus = 0;
 
    //Successful processing
    return NO_ERROR;
@@ -268,6 +270,9 @@ error_t scpClientOpenFileForWriting(ScpClientContext *context,
       //Check the state of the SCP client
       if(context->state == SCP_CLIENT_STATE_CONNECTED)
       {
+         //Initialize exit status
+         context->exitStatus = 0;
+
          //Allocate a new SSH channel
          channel = sshCreateChannel(connection);
 
@@ -533,6 +538,9 @@ error_t scpClientOpenFileForReading(ScpClientContext *context,
       //Check the state of the SCP client
       if(context->state == SCP_CLIENT_STATE_CONNECTED)
       {
+         //Initialize exit status
+         context->exitStatus = 0;
+
          //Allocate a new SSH channel
          channel = sshCreateChannel(connection);
 
@@ -1131,8 +1139,15 @@ error_t scpClientCloseFile(ScpClientContext *context)
          //Check SCP status code
          if(context->statusCode == SCP_OPCODE_OK)
          {
-            //A success directive has been received
-            error = NO_ERROR;
+            //Check the exit status of the SCP command
+            if(context->exitStatus == 0)
+            {
+               error = NO_ERROR;
+            }
+            else
+            {
+               error = ERROR_UNEXPECTED_STATUS;
+            }
          }
          else
          {

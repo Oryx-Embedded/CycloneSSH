@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.6.4
+ * @version 2.6.6
  **/
 
 //Switch to the appropriate trace level
@@ -68,10 +68,10 @@ error_t shellServerProcessWindowResize(ShellServerSession *session)
    newTermHeight = session->newTermHeight;
 
    //Check client's identification string
-   if(osStrstr(session->channel->connection->clientId, "Bitvise") != NULL ||
-      osStrstr(session->channel->connection->clientId, "PuTTY") != NULL ||
-      osStrstr(session->channel->connection->clientId, "SmartFTP") != NULL ||
-      osStrstr(session->channel->connection->clientId, "libssh2") != NULL)
+   if(osStrstr(session->channel->connection->remoteId, "Bitvise") != NULL ||
+      osStrstr(session->channel->connection->remoteId, "PuTTY") != NULL ||
+      osStrstr(session->channel->connection->remoteId, "SmartFTP") != NULL ||
+      osStrstr(session->channel->connection->remoteId, "libssh2") != NULL)
    {
       //Determine the current position of the cursor
       cursorPos = session->promptLen + session->bufferPos;
@@ -119,7 +119,7 @@ error_t shellServerProcessWindowResize(ShellServerSession *session)
          }
       }
    }
-   else if(osStrstr(session->channel->connection->clientId, "TTSSH") != NULL)
+   else if(osStrstr(session->channel->connection->remoteId, "TTSSH") != NULL)
    {
       //Clear screen
       osSprintf(buffer, VT100_CLEAR_ENTIRE_SCREEN VT100_HOME);

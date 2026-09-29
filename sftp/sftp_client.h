@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.6.4
+ * @version 2.6.6
  **/
 
 #ifndef _SFTP_CLIENT_H
@@ -96,6 +96,11 @@
    #define SFTP_CLIENT_MAX_PATH_LEN 128
 #elif (SFTP_CLIENT_MAX_PATH_LEN < 16)
    #error SFTP_CLIENT_MAX_PATH_LEN parameter is not valid
+#endif
+
+//Application specific context
+#ifndef SFTP_CLIENT_CONTEXT_PRIVATE
+   #define SFTP_CLIENT_CONTEXT_PRIVATE
 #endif
 
 //Forward declaration of SftpClientContext structure
@@ -171,6 +176,7 @@ struct _SftpClientContext
    SshContext sshContext;                           ///<SSH context
    SshConnection sshConnection;                     ///<SSH connection
    SshChannel sshChannel;                           ///<SSH channel
+   SFTP_CLIENT_CONTEXT_PRIVATE                      ///<Application specific context
 };
 
 

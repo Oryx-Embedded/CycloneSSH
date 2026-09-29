@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.6.4
+ * @version 2.6.6
  **/
 
 //Switch to the appropriate trace level
@@ -214,7 +214,7 @@ error_t sshDecryptOpenSshPrivateKey(const SshPrivateKeyHeader *privateKeyHeader,
       uint32_t checkInt2;
       size_t passwordLen;
       uint8_t k[48];
-      SshKdfOptions kdfOptions;
+      SshBcryptKdfOptions kdfOptions;
       AesContext *aesContext;
 
       //Sanity check
@@ -227,7 +227,7 @@ error_t sshDecryptOpenSshPrivateKey(const SshPrivateKeyHeader *privateKeyHeader,
          return ERROR_DECRYPTION_FAILED;
 
       //Parse KDF options
-      error = sshParseKdfOptions(privateKeyHeader->kdfOptions.value,
+      error = sshParseBcryptKdfOptions(privateKeyHeader->kdfOptions.value,
          privateKeyHeader->kdfOptions.length, &kdfOptions);
       //Any error to report?
       if(error)
@@ -237,7 +237,7 @@ error_t sshDecryptOpenSshPrivateKey(const SshPrivateKeyHeader *privateKeyHeader,
       passwordLen = osStrlen(password);
 
       //The KDF is used to derive a key, IV from the passphrase
-      error = sshKdf(password, passwordLen, kdfOptions.salt.value,
+      error = sshBcryptKdf(password, passwordLen, kdfOptions.salt.value,
          kdfOptions.salt.length, kdfOptions.rounds, k, 48);
 
       //Allocate a memory buffer to hold the AES context
@@ -311,8 +311,8 @@ error_t sshDecryptOpenSshPrivateKey(const SshPrivateKeyHeader *privateKeyHeader,
  * @brief
  **/
 
-error_t sshParseKdfOptions(const uint8_t *data, size_t length,
-   SshKdfOptions *kdfOptions)
+error_t sshParseBcryptKdfOptions(const uint8_t *data, size_t length,
+   SshBcryptKdfOptions *kdfOptions)
 {
    error_t error;
 
@@ -350,7 +350,7 @@ error_t sshParseKdfOptions(const uint8_t *data, size_t length,
  * @return Error code
  **/
 
-error_t sshKdf(const char *password, size_t passwordLen, const uint8_t *salt,
+error_t sshBcryptKdf(const char *password, size_t passwordLen, const uint8_t *salt,
    size_t saltLen, uint_t rounds, uint8_t *key, size_t keyLen)
 {
 #if (SSH_ENCRYPTED_KEY_SUPPORT == ENABLED)
@@ -423,7 +423,7 @@ error_t sshKdf(const char *password, size_t passwordLen, const uint8_t *salt,
             }
 
             //Apply KDF hash function
-            error = sshKdfHash(passwordHash, saltHash, u);
+            error = sshBcryptKdfHash(passwordHash, saltHash, u);
 
             //Compute T = U(1) xor U(2) xor ... xor U(c)
             for(k = 0; k < sizeof(t); k++)
@@ -470,7 +470,7 @@ error_t sshKdf(const char *password, size_t passwordLen, const uint8_t *salt,
  * @return Error code
  **/
 
-error_t sshKdfHash(uint8_t *password, uint8_t *salt, uint8_t *output)
+error_t sshBcryptKdfHash(uint8_t *password, uint8_t *salt, uint8_t *output)
 {
 #if (SSH_ENCRYPTED_KEY_SUPPORT == ENABLED)
    error_t error;

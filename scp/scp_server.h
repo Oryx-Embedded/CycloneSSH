@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.6.4
+ * @version 2.6.6
  **/
 
 #ifndef _SCP_SERVER_H
@@ -102,6 +102,16 @@
    #define SCP_SERVER_MAX_RECURSION_LEVEL 4
 #elif (SCP_SERVER_MAX_RECURSION_LEVEL < 1)
    #error SCP_SERVER_MAX_RECURSION_LEVEL parameter is not valid
+#endif
+
+//Application specific context
+#ifndef SCP_SERVER_CONTEXT_PRIVATE
+   #define SCP_SERVER_CONTEXT_PRIVATE
+#endif
+
+//Application specific context
+#ifndef SCP_SERVER_SESSION_PRIVATE
+   #define SCP_SERVER_SESSION_PRIVATE
 #endif
 
 //Forward declaration of ScpServerContext structure
@@ -221,6 +231,7 @@ struct _ScpServerSession
    size_t bufferPos;                                ///<Current position in the buffer
    size_t bufferLen;                                ///<Actual length of the buffer, in bytes
    error_t statusCode;                              ///<Status code
+   SCP_SERVER_SESSION_PRIVATE                       ///<Application specific context
 };
 
 
@@ -243,6 +254,7 @@ struct _ScpServerContext
    OsTaskId taskId;                                        ///<Task identifier
    SshChannelEventDesc eventDesc[SCP_SERVER_MAX_SESSIONS]; ///<The events the application is interested in
    char_t path[SCP_SERVER_MAX_PATH_LEN + 1];               ///<Path name
+   SCP_SERVER_CONTEXT_PRIVATE                              ///<Application specific context
 };
 
 

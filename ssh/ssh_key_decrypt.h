@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.6.4
+ * @version 2.6.6
  **/
 
 #ifndef _SSH_KEY_DECRYPT_H
@@ -49,7 +49,7 @@ typedef struct
 {
    SshBinaryString salt;
    uint32_t rounds;
-} SshKdfOptions;
+} SshBcryptKdfOptions;
 
 
 //SSH private key decryption related functions
@@ -60,13 +60,13 @@ error_t sshDecryptOpenSshPrivateKey(const SshPrivateKeyHeader *privateKeyHeader,
    const char_t *password, const uint8_t *ciphertext, uint8_t *plaintext,
    size_t length);
 
-error_t sshParseKdfOptions(const uint8_t *data, size_t length,
-   SshKdfOptions *kdfOptions);
+error_t sshParseBcryptKdfOptions(const uint8_t *data, size_t length,
+   SshBcryptKdfOptions *kdfOptions);
 
-error_t sshKdf(const char *password, size_t passwordLen, const uint8_t *salt,
+error_t sshBcryptKdf(const char *password, size_t passwordLen, const uint8_t *salt,
    size_t saltLen, uint_t rounds, uint8_t *key, size_t keyLen);
 
-error_t sshKdfHash(uint8_t *password, uint8_t *salt, uint8_t *output);
+error_t sshBcryptKdfHash(uint8_t *password, uint8_t *salt, uint8_t *output);
 
 //C++ guard
 #ifdef __cplusplus

@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.6.4
+ * @version 2.6.6
  **/
 
 #ifndef _SCP_CLIENT_MISC_H
@@ -42,6 +42,9 @@ extern "C" {
 //SCP client related functions
 void scpClientChangeState(ScpClientContext *context,
    ScpClientState newState);
+
+error_t scpClientChannelRequestCallback(SshChannel *channel,
+   const SshString *type, const uint8_t *data, size_t length, void *param);
 
 error_t scpClientOpenConnection(ScpClientContext *context);
 error_t scpClientEstablishConnection(ScpClientContext *context);

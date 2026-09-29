@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.6.4
+ * @version 2.6.6
  **/
 
 #ifndef _SHELL_SERVER_H
@@ -107,6 +107,16 @@
    #define SHELL_SERVER_DEFAULT_TERM_HEIGHT 60
 #elif (SHELL_SERVER_DEFAULT_TERM_HEIGHT < 1)
    #error SHELL_SERVER_DEFAULT_TERM_HEIGHT parameter is not valid
+#endif
+
+//Application specific context
+#ifndef SHELL_SERVER_CONTEXT_PRIVATE
+   #define SHELL_SERVER_CONTEXT_PRIVATE
+#endif
+
+//Application specific context
+#ifndef SHELL_SERVER_SESSION_PRIVATE
+   #define SHELL_SERVER_SESSION_PRIVATE
 #endif
 
 //Maximum length of multibyte escape sequences
@@ -222,9 +232,7 @@ struct _ShellServerSession
    bool_t windowResize;                              ///<Window resize event
    char_t escSeq[SHELL_SERVER_MAX_ESC_SEQ_LEN + 1];  ///<Multibyte escape sequence
    size_t escSeqLen;                                 ///<Length of the multibyte escape sequence
-#ifdef SHELL_SERVER_SESSION_PRIVATE_VARS
-   SHELL_SERVER_SESSION_PRIVATE_VARS                 ///<Application specific context
-#endif
+   SHELL_SERVER_SESSION_PRIVATE                      ///<Application specific context
 };
 
 
@@ -244,9 +252,7 @@ struct _ShellServerContext
    bool_t stop;                                              ///<Stop request
    OsEvent event;                                            ///<Event object used to poll the channels
    SshChannelEventDesc eventDesc[SHELL_SERVER_MAX_SESSIONS]; ///<The events the application is interested in
-#ifdef SHELL_SERVER_CONTEXT_PRIVATE_VARS
-   SHELL_SERVER_CONTEXT_PRIVATE_VARS                         ///<Application specific context
-#endif
+   SHELL_SERVER_CONTEXT_PRIVATE                              ///<Application specific context
 };
 
 

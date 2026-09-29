@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.6.4
+ * @version 2.6.6
  **/
 
 #ifndef _SFTP_SERVER_H
@@ -109,6 +109,16 @@
    #define SFTP_SERVER_MAX_PATH_LEN 255
 #elif (SFTP_SERVER_MAX_PATH_LEN < 7)
    #error SFTP_SERVER_MAX_PATH_LEN parameter is not valid
+#endif
+
+//Application specific context
+#ifndef SFTP_SERVER_CONTEXT_PRIVATE
+   #define SFTP_SERVER_CONTEXT_PRIVATE
+#endif
+
+//Application specific context
+#ifndef SFTP_SERVER_SESSION_PRIVATE
+   #define SFTP_SERVER_SESSION_PRIVATE
 #endif
 
 //Forward declaration of SftpServerContext structure
@@ -234,6 +244,7 @@ struct _SftpServerSession
    size_t bufferLen;                                 ///<Actual length of the buffer, in bytes
    size_t totalLen;
    uint32_t handle;                                  ///<File or directory handle
+   SFTP_SERVER_SESSION_PRIVATE                       ///<Application specific context
 };
 
 
@@ -258,6 +269,7 @@ struct _SftpServerContext
    OsTaskId taskId;                                         ///<Task identifier
    SshChannelEventDesc eventDesc[SFTP_SERVER_MAX_SESSIONS]; ///<The events the application is interested in
    char_t path[SFTP_SERVER_MAX_PATH_LEN + 1];               ///<Path name
+   SFTP_SERVER_CONTEXT_PRIVATE                              ///<Application specific context
 };
 
 

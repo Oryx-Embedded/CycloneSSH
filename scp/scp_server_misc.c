@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.6.4
+ * @version 2.6.6
  **/
 
 //Switch to the appropriate trace level
@@ -409,6 +409,16 @@ void scpServerCloseSession(ScpServerSession *session)
          fsCloseDir(session->dir[i]);
          session->dir[i] = NULL;
       }
+   }
+
+   //Set the exit status of the SCP command
+   if(session->statusCode == NO_ERROR)
+   {
+      sshSetExitStatus(session->channel, 0);
+   }
+   else
+   {
+      sshSetExitStatus(session->channel, 1);
    }
 
    //Close SSH channel

@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.6.4
+ * @version 2.6.6
  **/
 
 //Switch to the appropriate trace level
@@ -35,6 +35,7 @@
 #include "ssh/ssh.h"
 #include "ssh/ssh_key_material.h"
 #include "ssh/ssh_misc.h"
+#include "kdf/ssh_kdf.h"
 #include "debug.h"
 
 //Check SSH stack configuration
@@ -75,14 +76,18 @@ error_t sshInitEncryptionEngine(SshConnection *connection,
    if(encryptionEngine->cipherMode == CIPHER_MODE_STREAM)
    {
       //Compute encryption key
-      error = sshDeriveKey(connection, x + 2, encryptionEngine->encKey,
+      error = sshKdf(connection->hashAlgo, connection->k, connection->kLen,
+         connection->h, connection->hLen, connection->sessionId,
+         connection->sessionIdLen, x + 2, encryptionEngine->encKey,
          encryptionEngine->encKeyLen);
       //Any error to report?
       if(error)
          return error;
 
       //Compute integrity key
-      error = sshDeriveKey(connection, x + 4, encryptionEngine->macKey,
+      error = sshKdf(connection->hashAlgo, connection->k, connection->kLen,
+         connection->h, connection->hLen, connection->sessionId,
+         connection->sessionIdLen, x + 4, encryptionEngine->macKey,
          encryptionEngine->hashAlgo->digestSize);
       //Any error to report?
       if(error)
@@ -117,21 +122,27 @@ error_t sshInitEncryptionEngine(SshConnection *connection,
       encryptionEngine->cipherMode == CIPHER_MODE_CTR)
    {
       //Compute initial IV
-      error = sshDeriveKey(connection, x, encryptionEngine->iv,
+      error = sshKdf(connection->hashAlgo, connection->k, connection->kLen,
+         connection->h, connection->hLen, connection->sessionId,
+         connection->sessionIdLen, x, encryptionEngine->iv,
          encryptionEngine->cipherAlgo->blockSize);
       //Any error to report?
       if(error)
          return error;
 
       //Compute encryption key
-      error = sshDeriveKey(connection, x + 2, encryptionEngine->encKey,
+      error = sshKdf(connection->hashAlgo, connection->k, connection->kLen,
+         connection->h, connection->hLen, connection->sessionId,
+         connection->sessionIdLen, x + 2, encryptionEngine->encKey,
          encryptionEngine->encKeyLen);
       //Any error to report?
       if(error)
          return error;
 
       //Compute integrity key
-      error = sshDeriveKey(connection, x + 4, encryptionEngine->macKey,
+      error = sshKdf(connection->hashAlgo, connection->k, connection->kLen,
+         connection->h, connection->hLen, connection->sessionId,
+         connection->sessionIdLen, x + 4, encryptionEngine->macKey,
          encryptionEngine->hashAlgo->digestSize);
       //Any error to report?
       if(error)
@@ -154,13 +165,17 @@ error_t sshInitEncryptionEngine(SshConnection *connection,
    if(encryptionEngine->cipherMode == CIPHER_MODE_GCM)
    {
       //AES-GCM requires a 12-octet initial IV
-      error = sshDeriveKey(connection, x, encryptionEngine->iv, 12);
+      error = sshKdf(connection->hashAlgo, connection->k, connection->kLen,
+         connection->h, connection->hLen, connection->sessionId,
+         connection->sessionIdLen, x, encryptionEngine->iv, 12);
       //Any error to report?
       if(error)
          return error;
 
       //AES-GCM requires a encryption key of either 16 or 32 octets
-      error = sshDeriveKey(connection, x + 2, encryptionEngine->encKey,
+      error = sshKdf(connection->hashAlgo, connection->k, connection->kLen,
+         connection->h, connection->hLen, connection->sessionId,
+         connection->sessionIdLen, x + 2, encryptionEngine->encKey,
          encryptionEngine->encKeyLen);
       //Any error to report?
       if(error)
@@ -191,7 +206,9 @@ error_t sshInitEncryptionEngine(SshConnection *connection,
       //The cipher requires 512 bits of key material as output from the SSH
       //key exchange. This forms two 256 bit keys (K_1 and K_2), used by two
       //separate instances of ChaCha20
-      error = sshDeriveKey(connection, x + 2, encryptionEngine->encKey,
+      error = sshKdf(connection->hashAlgo, connection->k, connection->kLen,
+         connection->h, connection->hLen, connection->sessionId,
+         connection->sessionIdLen, x + 2, encryptionEngine->encKey,
          encryptionEngine->encKeyLen);
       //Any error to report?
       if(error)
@@ -1028,95 +1045,6 @@ error_t sshSelectHashAlgo(SshEncryptionEngine *encryptionEngine,
    {
       //Report an error
       return ERROR_UNSUPPORTED_HASH_ALGO;
-   }
-
-   //Return status code
-   return error;
-}
-
-
-/**
- * @brief Key derivation function
- * @param[in] connection Pointer to the SSH connection
- * @param[in] x A single character
- * @param[out] output Pointer to the output
- * @param[in] outputLen Desired output length
- * @return Error code
- **/
-
-error_t sshDeriveKey(SshConnection *connection, uint8_t x, uint8_t *output,
-   size_t outputLen)
-{
-   error_t error;
-   size_t i;
-   size_t n;
-   const HashAlgo *hashAlgo;
-   HashContext *hashContext;
-   uint8_t digest[SSH_MAX_HASH_DIGEST_SIZE];
-
-   //Each key exchange method specifies a hash function that is used in the key
-   //exchange. The same hash algorithm must be used in key derivation (refer to
-   //RFC 4253, section 7.2)
-   hashAlgo = connection->hashAlgo;
-
-   //Make sure the hash algorithm is valid
-   if(hashAlgo != NULL)
-   {
-      //Allocate a memory buffer to hold the hash context
-      hashContext = sshAllocMem(hashAlgo->contextSize);
-
-      //Successful memory allocation?
-      if(hashContext != NULL)
-      {
-         //Compute K(1) = HASH(K || H || X || session_id)
-         hashAlgo->init(hashContext);
-         hashAlgo->update(hashContext, connection->k, connection->kLen);
-         hashAlgo->update(hashContext, connection->h, connection->hLen);
-         hashAlgo->update(hashContext, &x, sizeof(x));
-         hashAlgo->update(hashContext, connection->sessionId, connection->sessionIdLen);
-         hashAlgo->final(hashContext, digest);
-
-         //Key data must be taken from the beginning of the hash output
-         for(n = 0; n < hashAlgo->digestSize && n < outputLen; n++)
-         {
-            output[n] = digest[n];
-         }
-
-         //If the key length needed is longer than the output of the HASH, the key
-         //is extended by computing HASH of the concatenation of K and H and the
-         //entire key so far, and appending the resulting bytes to the key
-         while(n < outputLen)
-         {
-            //Compute K(n + 1) = HASH(K || H || K(1) || ... || K(n))
-            hashAlgo->init(hashContext);
-            hashAlgo->update(hashContext, connection->k, connection->kLen);
-            hashAlgo->update(hashContext, connection->h, connection->hLen);
-            hashAlgo->update(hashContext, output, n);
-            hashAlgo->final(hashContext, digest);
-
-            //This process is repeated until enough key material is available
-            for(i = 0; i < hashAlgo->digestSize && n < outputLen; i++, n++)
-            {
-               output[n] = digest[i];
-            }
-         }
-
-         //Release hash context
-         sshFreeMem(hashContext);
-
-         //Successful processing
-         error = NO_ERROR;
-      }
-      else
-      {
-         //Failed to allocate memory
-         error = ERROR_OUT_OF_MEMORY;
-      }
-   }
-   else
-   {
-      //The hash algorithm is not valid
-      error = ERROR_FAILURE;
    }
 
    //Return status code

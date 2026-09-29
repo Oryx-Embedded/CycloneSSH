@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.6.4
+ * @version 2.6.6
  **/
 
 //Switch to the appropriate trace level
@@ -171,6 +171,13 @@ error_t sftpServerParseFxpOpen(SftpServerSession *session,
       //Too many files have been open
       error = sftpFormatFxpStatus(session, id, SSH_FX_FAILURE,
          "Too many open files");
+   }
+   else if(error == ERROR_ACCESS_DENIED)
+   {
+      //The authenticated user does not have sufficient permissions to perform
+      //the operation
+      error = sftpFormatFxpStatus(session, id, SSH_FX_PERMISSION_DENIED,
+         "Permission denied");
    }
    else
    {
@@ -511,6 +518,13 @@ error_t sftpServerParseFxpOpenDir(SftpServerSession *session,
       error = sftpFormatFxpStatus(session, id, SSH_FX_FAILURE,
          "Too many open files");
    }
+   else if(error == ERROR_ACCESS_DENIED)
+   {
+      //The authenticated user does not have sufficient permissions to perform
+      //the operation
+      error = sftpFormatFxpStatus(session, id, SSH_FX_PERMISSION_DENIED,
+         "Permission denied");
+   }
    else
    {
       //The specified path name does not exist
@@ -649,11 +663,18 @@ error_t sftpServerParseFxpRemove(SftpServerSession *session,
    error = sftpServerRemoveFile(session, &filename);
 
    //Check status code
-   if(!error)
+   if(error == NO_ERROR)
    {
       //When the operation is successful, the server responds with an
       //SSH_FXP_STATUS message with SSH_FX_OK status
       error = sftpFormatFxpStatus(session, id, SSH_FX_OK, "Success");
+   }
+   else if(error == ERROR_ACCESS_DENIED)
+   {
+      //The authenticated user does not have sufficient permissions to perform
+      //the operation
+      error = sftpFormatFxpStatus(session, id, SSH_FX_PERMISSION_DENIED,
+         "Permission denied");
    }
    else
    {
@@ -728,11 +749,18 @@ error_t sftpServerParseFxpMkDir(SftpServerSession *session,
    error = sftpServerCreateDir(session, &path, &attributes);
 
    //Check status code
-   if(!error)
+   if(error == NO_ERROR)
    {
       //When the operation is successful, the server responds with an
       //SSH_FXP_STATUS message with SSH_FX_OK status
       error = sftpFormatFxpStatus(session, id, SSH_FX_OK, "Success");
+   }
+   else if(error == ERROR_ACCESS_DENIED)
+   {
+      //The authenticated user does not have sufficient permissions to perform
+      //the operation
+      error = sftpFormatFxpStatus(session, id, SSH_FX_PERMISSION_DENIED,
+         "Permission denied");
    }
    else
    {
@@ -795,11 +823,18 @@ error_t sftpServerParseFxpRmDir(SftpServerSession *session,
    error = sftpServerRemoveDir(session, &path);
 
    //Check status code
-   if(!error)
+   if(error == NO_ERROR)
    {
       //When the operation is successful, the server responds with an
       //SSH_FXP_STATUS message with SSH_FX_OK status
       error = sftpFormatFxpStatus(session, id, SSH_FX_OK, "Success");
+   }
+   else if(error == ERROR_ACCESS_DENIED)
+   {
+      //The authenticated user does not have sufficient permissions to perform
+      //the operation
+      error = sftpFormatFxpStatus(session, id, SSH_FX_PERMISSION_DENIED,
+         "Permission denied");
    }
    else
    {
@@ -931,10 +966,17 @@ error_t sftpServerParseFxpStat(SftpServerSession *session,
    error = sftpServerGetFileStat(session, &path, &attributes);
 
    //Check status code
-   if(!error)
+   if(error == NO_ERROR)
    {
       //The server responds to this request with SSH_FXP_ATTRS
       error = sftpFormatFxpAttrs(session, id, &attributes);
+   }
+   else if(error == ERROR_ACCESS_DENIED)
+   {
+      //The authenticated user does not have sufficient permissions to perform
+      //the operation
+      error = sftpFormatFxpStatus(session, id, SSH_FX_PERMISSION_DENIED,
+         "Permission denied");
    }
    else
    {
@@ -997,10 +1039,17 @@ error_t sftpServerParseFxpFstat(SftpServerSession *session,
    error = sftpServerGetFileStatEx(session, &handle, &attributes);
 
    //Check status code
-   if(!error)
+   if(error == NO_ERROR)
    {
       //The server responds to this request with SSH_FXP_ATTRS
       error = sftpFormatFxpAttrs(session, id, &attributes);
+   }
+   else if(error == ERROR_ACCESS_DENIED)
+   {
+      //The authenticated user does not have sufficient permissions to perform
+      //the operation
+      error = sftpFormatFxpStatus(session, id, SSH_FX_PERMISSION_DENIED,
+         "Permission denied");
    }
    else
    {
@@ -1075,11 +1124,18 @@ error_t sftpServerParseFxpSetStat(SftpServerSession *session,
    error = sftpServerSetFileStat(session, &path, &attributes);
 
    //Check status code
-   if(!error)
+   if(error == NO_ERROR)
    {
       //When the operation is successful, the server responds with an
       //SSH_FXP_STATUS message with SSH_FX_OK status
       error = sftpFormatFxpStatus(session, id, SSH_FX_OK, "Success");
+   }
+   else if(error == ERROR_ACCESS_DENIED)
+   {
+      //The authenticated user does not have sufficient permissions to perform
+      //the operation
+      error = sftpFormatFxpStatus(session, id, SSH_FX_PERMISSION_DENIED,
+         "Permission denied");
    }
    else
    {
@@ -1154,11 +1210,18 @@ error_t sftpServerParseFxpSetFstat(SftpServerSession *session,
    error = sftpServerSetFileStatEx(session, &handle, &attributes);
 
    //Check status code
-   if(!error)
+   if(error == NO_ERROR)
    {
       //When the operation is successful, the server responds with an
       //SSH_FXP_STATUS message with SSH_FX_OK status
       error = sftpFormatFxpStatus(session, id, SSH_FX_OK, "Success");
+   }
+   else if(error == ERROR_ACCESS_DENIED)
+   {
+      //The authenticated user does not have sufficient permissions to perform
+      //the operation
+      error = sftpFormatFxpStatus(session, id, SSH_FX_PERMISSION_DENIED,
+         "Permission denied");
    }
    else
    {
@@ -1232,11 +1295,18 @@ error_t sftpServerParseFxpRename(SftpServerSession *session,
    error = sftpServerRenameFile(session, &oldPath, &newPath);
 
    //Check status code
-   if(!error)
+   if(error == NO_ERROR)
    {
       //When the operation is successful, the server responds with an
       //SSH_FXP_STATUS message with SSH_FX_OK status
       error = sftpFormatFxpStatus(session, id, SSH_FX_OK, "Success");
+   }
+   else if(error == ERROR_ACCESS_DENIED)
+   {
+      //The authenticated user does not have sufficient permissions to perform
+      //the operation
+      error = sftpFormatFxpStatus(session, id, SSH_FX_PERMISSION_DENIED,
+         "Permission denied");
    }
    else
    {

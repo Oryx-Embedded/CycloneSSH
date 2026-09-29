@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.6.4
+ * @version 2.6.6
  **/
 
 #ifndef _SCP_CLIENT_H
@@ -54,6 +54,11 @@
    #define SCP_CLIENT_BUFFER_SIZE 512
 #elif (SCP_CLIENT_BUFFER_SIZE < 256)
    #error SCP_CLIENT_BUFFER_SIZE parameter is not valid
+#endif
+
+//Application specific context
+#ifndef SCP_CLIENT_CONTEXT_PRIVATE
+   #define SCP_CLIENT_CONTEXT_PRIVATE
 #endif
 
 //Forward declaration of ScpClientContext structure
@@ -123,9 +128,11 @@ struct _ScpClientContext
    ScpOpcode statusCode;                     ///<Status code
    uint64_t fileSize;                        ///<Size of the file, in bytes
    uint64_t fileOffset;                      ///<Offset within the file
+   uint32_t exitStatus;                      ///<Exit status of the SCP command
    SshContext sshContext;                    ///<SSH context
    SshConnection sshConnection;              ///<SSH connection
    SshChannel sshChannel;                    ///<SSH channel
+   SCP_CLIENT_CONTEXT_PRIVATE                ///<Application specific context
 };
 
 

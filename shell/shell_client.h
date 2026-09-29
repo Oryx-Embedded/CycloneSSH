@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.6.4
+ * @version 2.6.6
  **/
 
 #ifndef _SHELL_CLIENT_H
@@ -53,6 +53,11 @@
    #define SHELL_CLIENT_BUFFER_SIZE 512
 #elif (SHELL_CLIENT_BUFFER_SIZE < 256)
    #error SHELL_CLIENT_BUFFER_SIZE parameter is not valid
+#endif
+
+//Application specific context
+#ifndef SHELL_CLIENT_CONTEXT_PRIVATE
+   #define SHELL_CLIENT_CONTEXT_PRIVATE
 #endif
 
 //Forward declaration of ShellClientContext structure
@@ -113,6 +118,7 @@ struct _ShellClientContext
    SshContext sshContext;                      ///<SSH context
    SshConnection sshConnection;                ///<SSH connection
    SshChannel sshChannel;                      ///<SSH channel
+   SHELL_CLIENT_CONTEXT_PRIVATE                ///<Application specific context
 };
 
 

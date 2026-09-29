@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.6.4
+ * @version 2.6.6
  **/
 
 //Switch to the appropriate trace level
@@ -62,6 +62,65 @@ void scpClientChangeState(ScpClientContext *context,
 
 
 /**
+ * @brief SSH channel request callback
+ * @param[in] channel Handle referencing an SSH channel
+ * @param[in] type Request type
+ * @param[in] data Request-specific data
+ * @param[in] length Length of the request-specific data, in bytes
+ * @param[in] param Pointer to the shell client context
+ * @return Error code
+ **/
+
+error_t scpClientChannelRequestCallback(SshChannel *channel,
+   const SshString *type, const uint8_t *data, size_t length, void *param)
+{
+   error_t error;
+   ScpClientContext *context;
+
+   //Debug message
+   TRACE_INFO("SCP client: SSH channel request callback...\r\n");
+
+   //Point to the SCP client context
+   context = (ScpClientContext *) param;
+
+   //Check request type
+   if(sshCompareString(type, "exit-status"))
+   {
+      SshExitStatusParams requestParams;
+
+      //When the command running at the other end terminates, a message can be
+      //sent to return the exit status of the command (refer to RFC 4254,
+      //section 6.10)
+      error = sshParseExitStatusParams(data, length, &requestParams);
+
+      //Check status code
+      if(!error)
+      {
+         //Matching channel?
+         if(channel == &context->sshChannel)
+         {
+            //Save exit status
+            context->exitStatus = requestParams.exitStatus;
+         }
+         else
+         {
+            //Unknown channel
+            error = ERROR_UNKNOWN_REQUEST;
+         }
+      }
+   }
+   else
+   {
+      //The request is not supported
+      error = ERROR_UNKNOWN_REQUEST;
+   }
+
+   //Return status code
+   return error;
+}
+
+
+/**
  * @brief Open SSH connection
  * @param[in] context Pointer to the SCP client context
  * @return Error code
@@ -82,6 +141,13 @@ error_t scpClientOpenConnection(ScpClientContext *context)
 
    //Select client operation mode
    error = sshSetOperationMode(&context->sshContext, SSH_OPERATION_MODE_CLIENT);
+   //Any error to report?
+   if(error)
+      return error;
+
+   //Register channel request processing callback
+   error = sshRegisterChannelRequestCallback(&context->sshContext,
+      scpClientChannelRequestCallback, context);
    //Any error to report?
    if(error)
       return error;

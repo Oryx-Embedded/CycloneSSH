@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.6.4
+ * @version 2.6.6
  **/
 
 //Switch to the appropriate trace level
@@ -1639,7 +1639,7 @@ error_t sshUnloadHostKey(SshContext *context, uint_t index)
          connection->state < SSH_CONN_STATE_OPEN)
       {
          //Check whether the key pair is currently in use
-         if(connection->hostKeyIndex == index)
+         if(connection->hostKeyIndex == (int_t) index)
          {
             //Terminate the connection immediately
             connection->disconnectRequest = TRUE;
@@ -1924,7 +1924,7 @@ error_t sshUnloadCertificate(SshContext *context, uint_t index)
          connection->state < SSH_CONN_STATE_OPEN)
       {
          //Check whether the certificate is currently in use
-         if(connection->hostKeyIndex == index)
+         if(connection->hostKeyIndex == (int_t) index)
          {
             //Terminate the connection immediately
             connection->disconnectRequest = TRUE;
@@ -2499,6 +2499,53 @@ error_t sshSetExitStatus(SshChannel *channel, int32_t exitStatus)
 
    //Successful processing
    return NO_ERROR;
+}
+
+
+/**
+ * @brief Abort channel
+ * @param[in] channel SSH channel handle
+ * @return Error code
+ **/
+
+error_t sshAbortChannel(SshChannel *channel)
+{
+   error_t error;
+
+   //Make sure the SSH channel handle is valid
+   if(channel == NULL)
+      return ERROR_INVALID_PARAMETER;
+
+   //Initialize status code
+   error = NO_ERROR;
+
+   //Acquire exclusive access to the SSH context
+   osAcquireMutex(&channel->context->mutex);
+
+   //Check channel state
+   if(channel->state == SSH_CHANNEL_STATE_OPEN)
+   {
+      //When either party wishes to terminate the channel, it sends
+      //SSH_MSG_CHANNEL_CLOSE
+      if(!channel->closeRequest)
+      {
+         //Request closure of the channel
+         channel->closeRequest = TRUE;
+         //Notify the SSH context that the channel should be closed
+         sshNotifyEvent(channel->context);
+      }
+   }
+   else
+   {
+      //Invalid channel state
+      error = ERROR_WRONG_STATE;
+   }
+
+   //Release exclusive access to the SSH context
+   osReleaseMutex(&channel->context->mutex);
+
+   //Return status code
+   return error;
 }
 
 

@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.6.4
+ * @version 2.6.6
  **/
 
 //Switch to the appropriate trace level
@@ -642,6 +642,9 @@ error_t sshImportRsaPrivateKey(RsaPrivateKey *privateKey, const char_t *input,
    if(privateKey == NULL)
       return ERROR_INVALID_PARAMETER;
 
+   //Initialize variable
+   data = NULL;
+
    //Retrieve the length of the private key structure
    error = sshDecodeOpenSshPrivateKeyFile(input, length, NULL, &n);
 
@@ -823,6 +826,9 @@ error_t sshImportDsaPrivateKey(DsaPrivateKey *privateKey, const char_t *input,
    if(privateKey == NULL)
       return ERROR_INVALID_PARAMETER;
 
+   //Initialize variable
+   data = NULL;
+
    //Retrieve the length of the private key structure
    error = sshDecodeOpenSshPrivateKeyFile(input, length, NULL, &n);
 
@@ -964,6 +970,9 @@ error_t sshImportEcdsaPrivateKey(EcPrivateKey *privateKey, const char_t *input,
    if(privateKey == NULL)
       return ERROR_INVALID_PARAMETER;
 
+   //Initialize variable
+   data = NULL;
+
    //Retrieve the length of the private key structure
    error = sshDecodeOpenSshPrivateKeyFile(input, length, NULL, &n);
 
@@ -1095,6 +1104,9 @@ error_t sshImportEd25519PrivateKey(EddsaPrivateKey *privateKey,
    if(privateKey == NULL)
       return ERROR_INVALID_PARAMETER;
 
+   //Initialize variable
+   data = NULL;
+
    //Retrieve the length of the private key structure
    error = sshDecodeOpenSshPrivateKeyFile(input, length, NULL, &n);
 
@@ -1210,6 +1222,9 @@ error_t sshImportEd448PrivateKey(EddsaPrivateKey *privateKey,
       return ERROR_INVALID_PARAMETER;
    if(privateKey == NULL)
       return ERROR_INVALID_PARAMETER;
+
+   //Initialize variable
+   data = NULL;
 
    //Retrieve the length of the private key structure
    error = sshDecodeOpenSshPrivateKeyFile(input, length, NULL, &n);

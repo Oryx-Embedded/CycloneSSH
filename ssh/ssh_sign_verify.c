@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.6.4
+ * @version 2.6.6
  **/
 
 //Switch to the appropriate trace level
@@ -681,8 +681,8 @@ error_t sshVerifyEd25519Signature(const SshString *publicKeyAlgo,
 #if (SSH_ED25519_SIGN_SUPPORT == ENABLED)
    error_t error;
    const uint8_t *ed25519PublicKey;
-   uint_t numMessageChunks;
-   DataChunk messageChunks[3];
+   uint_t messageNumFrags;
+   DataFrag messageFrags[3];
    uint8_t temp[4];
 
    //The Ed25519 signature shall consist of 32 octets
@@ -736,30 +736,30 @@ error_t sshVerifyEd25519Signature(const SshString *publicKeyAlgo,
 
          //Data to be signed is run through the EdDSA algorithm without
          //pre-hashing
-         messageChunks[0].buffer = temp;
-         messageChunks[0].length = sizeof(temp);
-         messageChunks[1].buffer = sessionId->value;
-         messageChunks[1].length = sessionId->length;
-         messageChunks[2].buffer = message->value;
-         messageChunks[2].length = message->length;
+         messageFrags[0].buffer = temp;
+         messageFrags[0].length = sizeof(temp);
+         messageFrags[1].buffer = sessionId->value;
+         messageFrags[1].length = sessionId->length;
+         messageFrags[2].buffer = message->value;
+         messageFrags[2].length = message->length;
 
-         //Number of data chunks representing the message to be signed
-         numMessageChunks = 3;
+         //Number of fragments representing the message to be signed
+         messageNumFrags = 3;
       }
       else
       {
          //Data to be signed is run through the EdDSA algorithm without
          //pre-hashing
-         messageChunks[0].buffer = message->value;
-         messageChunks[0].length = message->length;
+         messageFrags[0].buffer = message->value;
+         messageFrags[0].length = message->length;
 
          //The message fits in a single chunk
-         numMessageChunks = 1;
+         messageNumFrags = 1;
       }
 
       //Verify Ed25519 signature (PureEdDSA mode)
-      error = ed25519VerifySignatureEx(ed25519PublicKey, messageChunks,
-         numMessageChunks, NULL, 0, 0, signatureBlob->value);
+      error = ed25519VerifySignatureEx(ed25519PublicKey, messageFrags,
+         messageNumFrags, NULL, 0, 0, signatureBlob->value);
    }
 
    //Return status code
@@ -788,8 +788,8 @@ error_t sshVerifyEd448Signature(const SshString *publicKeyAlgo,
 #if (SSH_ED448_SIGN_SUPPORT == ENABLED)
    error_t error;
    const uint8_t *ed448PublicKey;
-   uint_t numMessageChunks;
-   DataChunk messageChunks[3];
+   uint_t messageNumFrags;
+   DataFrag messageFrags[3];
    uint8_t temp[4];
 
    //The Ed448 signature shall consist of 57 octets
@@ -843,30 +843,30 @@ error_t sshVerifyEd448Signature(const SshString *publicKeyAlgo,
 
          //Data to be signed is run through the EdDSA algorithm without
          //pre-hashing
-         messageChunks[0].buffer = temp;
-         messageChunks[0].length = sizeof(temp);
-         messageChunks[1].buffer = sessionId->value;
-         messageChunks[1].length = sessionId->length;
-         messageChunks[2].buffer = message->value;
-         messageChunks[2].length = message->length;
+         messageFrags[0].buffer = temp;
+         messageFrags[0].length = sizeof(temp);
+         messageFrags[1].buffer = sessionId->value;
+         messageFrags[1].length = sessionId->length;
+         messageFrags[2].buffer = message->value;
+         messageFrags[2].length = message->length;
 
-         //Number of data chunks representing the message to be signed
-         numMessageChunks = 3;
+         //Number of fragments representing the message to be signed
+         messageNumFrags = 3;
       }
       else
       {
          //Data to be signed is run through the EdDSA algorithm without
          //pre-hashing
-         messageChunks[0].buffer = message->value;
-         messageChunks[0].length = message->length;
+         messageFrags[0].buffer = message->value;
+         messageFrags[0].length = message->length;
 
          //The message fits in a single chunk
-         numMessageChunks = 1;
+         messageNumFrags = 1;
       }
 
       //Verify Ed448 signature (PureEdDSA mode)
-      error = ed448VerifySignatureEx(ed448PublicKey, messageChunks,
-         numMessageChunks, NULL, 0, 0, signatureBlob->value);
+      error = ed448VerifySignatureEx(ed448PublicKey, messageFrags,
+         messageNumFrags, NULL, 0, 0, signatureBlob->value);
    }
 
    //Return status code

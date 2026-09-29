@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.6.4
+ * @version 2.6.6
  **/
 
 //Switch to the appropriate trace level
@@ -428,7 +428,8 @@ error_t sftpClientFormatFxpWrite(SftpClientContext *context,
    context->requestType = (SftpPacketType) header->type;
 
    //Debug message
-   TRACE_INFO("Sending SSH_FXP_WRITE packet (%" PRIuSIZE " bytes)...\r\n", context->requestLen + dataLen);
+   TRACE_INFO("Sending SSH_FXP_WRITE packet (%" PRIuSIZE " bytes)...\r\n",
+      (size_t) (context->requestLen + dataLen));
    TRACE_VERBOSE_ARRAY("  ", context->buffer, context->requestLen);
 
    //Successful processing

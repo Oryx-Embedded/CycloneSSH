@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.6.4
+ * @version 2.6.6
  **/
 
 //Switch to the appropriate trace level
@@ -605,8 +605,8 @@ error_t sshGenerateEd25519Signature(SshConnection *connection,
    size_t n;
    const uint8_t *q;
    EddsaPrivateKey eddsaPrivateKey;
-   uint_t numMessageChunks;
-   DataChunk messageChunks[3];
+   uint_t messageNumFrags;
+   DataFrag messageFrags[3];
    uint8_t temp[4];
 
    //Initialize EdDSA private key
@@ -628,33 +628,33 @@ error_t sshGenerateEd25519Signature(SshConnection *connection,
 
          //Data to be signed is run through the EdDSA algorithm without
          //pre-hashing
-         messageChunks[0].buffer = temp;
-         messageChunks[0].length = sizeof(temp);
-         messageChunks[1].buffer = sessionId->value;
-         messageChunks[1].length = sessionId->length;
-         messageChunks[2].buffer = message->value;
-         messageChunks[2].length = message->length;
+         messageFrags[0].buffer = temp;
+         messageFrags[0].length = sizeof(temp);
+         messageFrags[1].buffer = sessionId->value;
+         messageFrags[1].length = sessionId->length;
+         messageFrags[2].buffer = message->value;
+         messageFrags[2].length = message->length;
 
-         //Number of data chunks representing the message to be signed
-         numMessageChunks = 3;
+         //Number of fragments representing the message to be signed
+         messageNumFrags = 3;
       }
       else
       {
          //Data to be signed is run through the EdDSA algorithm without
          //pre-hashing
-         messageChunks[0].buffer = message->value;
-         messageChunks[0].length = message->length;
+         messageFrags[0].buffer = message->value;
+         messageFrags[0].length = message->length;
 
          //The message fits in a single chunk
-         numMessageChunks = 1;
+         messageNumFrags = 1;
       }
 
       //The public key is optional
       q = (eddsaPrivateKey.q.curve != NULL) ? eddsaPrivateKey.q.q : NULL;
 
       //Generate Ed25519 signature (PureEdDSA mode)
-      error = ed25519GenerateSignatureEx(eddsaPrivateKey.d, q, messageChunks,
-         numMessageChunks, NULL, 0, 0, p + 4);
+      error = ed25519GenerateSignatureEx(eddsaPrivateKey.d, q, messageFrags,
+         messageNumFrags, NULL, 0, 0, p + 4);
    }
 
    //Check status code
@@ -702,8 +702,8 @@ error_t sshGenerateEd448Signature(SshConnection *connection,
    size_t n;
    const uint8_t *q;
    EddsaPrivateKey eddsaPrivateKey;
-   uint_t numMessageChunks;
-   DataChunk messageChunks[3];
+   uint_t messageNumFrags;
+   DataFrag messageFrags[3];
    uint8_t temp[4];
 
    //Initialize EdDSA private key
@@ -725,33 +725,33 @@ error_t sshGenerateEd448Signature(SshConnection *connection,
 
          //Data to be signed is run through the EdDSA algorithm without
          //pre-hashing
-         messageChunks[0].buffer = temp;
-         messageChunks[0].length = sizeof(temp);
-         messageChunks[1].buffer = sessionId->value;
-         messageChunks[1].length = sessionId->length;
-         messageChunks[2].buffer = message->value;
-         messageChunks[2].length = message->length;
+         messageFrags[0].buffer = temp;
+         messageFrags[0].length = sizeof(temp);
+         messageFrags[1].buffer = sessionId->value;
+         messageFrags[1].length = sessionId->length;
+         messageFrags[2].buffer = message->value;
+         messageFrags[2].length = message->length;
 
-         //Number of data chunks representing the message to be signed
-         numMessageChunks = 3;
+         //Number of fragments representing the message to be signed
+         messageNumFrags = 3;
       }
       else
       {
          //Data to be signed is run through the EdDSA algorithm without
          //pre-hashing
-         messageChunks[0].buffer = message->value;
-         messageChunks[0].length = message->length;
+         messageFrags[0].buffer = message->value;
+         messageFrags[0].length = message->length;
 
          //The message fits in a single chunk
-         numMessageChunks = 1;
+         messageNumFrags = 1;
       }
 
       //The public key is optional
       q = (eddsaPrivateKey.q.curve != NULL) ? eddsaPrivateKey.q.q : NULL;
 
       //Generate Ed448 signature (PureEdDSA mode)
-      error = ed448GenerateSignatureEx(eddsaPrivateKey.d, q, messageChunks,
-         numMessageChunks, NULL, 0, 0, p + 4);
+      error = ed448GenerateSignatureEx(eddsaPrivateKey.d, q, messageFrags,
+         messageNumFrags, NULL, 0, 0, p + 4);
    }
 
    //Check status code

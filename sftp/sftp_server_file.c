@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.6.4
+ * @version 2.6.6
  **/
 
 //Switch to the appropriate trace level
@@ -248,7 +248,7 @@ error_t sftpServerSetFileStat(SftpServerSession *session,
    //Retrieve permissions for the specified file
    perm = sftpServerGetFilePermissions(session, context->path);
    //Insufficient access rights?
-   if((perm & SFTP_FILE_PERM_READ) == 0)
+   if((perm & SFTP_FILE_PERM_WRITE) == 0)
       return ERROR_ACCESS_DENIED;
 
    //Modify file attributes

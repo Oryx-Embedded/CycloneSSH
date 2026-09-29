@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.6.4
+ * @version 2.6.6
  **/
 
 //Switch to the appropriate trace level
@@ -50,43 +50,25 @@
 
 error_t sshSendIdString(SshConnection *connection)
 {
-   size_t length;
+   size_t n;
 
-   //Check whether SSH operates as a client or a server
-   if(connection->context->mode == SSH_OPERATION_MODE_CLIENT)
-   {
-      //Format V_C (client's identification string)
-      length = osSprintf(connection->clientId, "SSH-2.0-CycloneSSH_%s",
-         CYCLONE_SSH_VERSION_STRING);
-
-      //Copy the resulting string
-      osMemcpy(connection->buffer, connection->clientId, length);
-   }
-   else
-   {
-      //Format V_S (server's identification string)
-      length = osSprintf(connection->serverId, "SSH-2.0-CycloneSSH_%s",
-         CYCLONE_SSH_VERSION_STRING);
-
-      //Copy the resulting string
-      osMemcpy(connection->buffer, connection->serverId, length);
-   }
-
-   //The identification string must be terminated by a single CR and a
-   //single LF character (refer to RFC 4253, section 4.2)
-   connection->buffer[length++] = '\r';
-   connection->buffer[length++] = '\n';
+   //The identification string must be terminated by a single CR and a single
+   //LF character (refer to RFC 4253, section 4.2)
+   n = osSprintf((char_t *) connection->buffer, "%s\r\n", CYCLONE_SSH_ID);
 
    //Save the length of the identification string
-   connection->txBufferLen = length;
+   connection->txBufferLen = n;
    connection->txBufferPos = 0;
 
    //Check whether SSH operates as a client or a server
    if(connection->context->mode == SSH_OPERATION_MODE_CLIENT)
    {
       //Debug message
-      TRACE_INFO("Sending client ID string (%" PRIuSIZE " bytes)...\r\n", length);
-      TRACE_INFO("  %s\r\n", connection->clientId);
+      TRACE_INFO("Sending client ID string (%" PRIuSIZE " bytes)...\r\n",
+         osStrlen(CYCLONE_SSH_ID));
+
+      //Dump identification string
+      TRACE_INFO("  %s\r\n", CYCLONE_SSH_ID);
 
       //Wait for the server's identification string
       connection->state = SSH_CONN_STATE_SERVER_ID;
@@ -94,8 +76,11 @@ error_t sshSendIdString(SshConnection *connection)
    else
    {
       //Debug message
-      TRACE_INFO("Sending server ID string (%" PRIuSIZE " bytes)...\r\n", length);
-      TRACE_INFO("  %s\r\n", connection->serverId);
+      TRACE_INFO("Sending server ID string (%" PRIuSIZE " bytes)...\r\n",
+         osStrlen(CYCLONE_SSH_ID));
+
+      //Dump identification string
+      TRACE_INFO("  %s\r\n", CYCLONE_SSH_ID);
 
       //Wait for the client's identification string
       connection->state = SSH_CONN_STATE_CLIENT_ID;
@@ -483,50 +468,44 @@ error_t sshParseIdString(SshConnection *connection, const uint8_t *id,
    if(length > SSH_MAX_ID_LEN)
       return ERROR_WRONG_IDENTIFIER;
 
+   //Copy the peer's identification string
+   osMemcpy(connection->remoteId, id, length);
+   //Properly terminate the string with a NULL character
+   connection->remoteId[length] = '\0';
+
    //Check whether SSH operates as a client or a server
    if(connection->context->mode == SSH_OPERATION_MODE_CLIENT)
    {
-      //Copy the server's identification string
-      osMemcpy(connection->serverId, id, length);
-      //Properly terminate the string with a NULL character
-      connection->serverId[length] = '\0';
-
       //Debug message
-      TRACE_INFO("Server ID string received (%" PRIuSIZE " bytes)...\r\n", length);
-      TRACE_INFO("  %s\r\n", connection->serverId);
+      TRACE_INFO("Server ID string received (%" PRIuSIZE " bytes)...\r\n",
+         length);
+   }
+   else
+   {
+      //Debug message
+      TRACE_INFO("Client ID string received (%" PRIuSIZE " bytes)...\r\n",
+         length);
+   }
 
-      //Clients using protocol 2.0 must be able to identify protocol version
-      //"1.99" as identical to "2.0" (refer to RFC 4253, section 5.1)
-      if(osStrncmp(connection->serverId, "SSH-2.0-", 8) != 0 &&
-         osStrncmp(connection->serverId, "SSH-1.99-", 9) != 0)
-      {
-         //The version advertised by the server is not supported
-         return ERROR_WRONG_IDENTIFIER;
-      }
+   //Dump identification string
+   TRACE_INFO("  %s\r\n", connection->remoteId);
 
-      //Key exchange begins by each side sending a KEXINIT message
+   //Clients using protocol 2.0 must be able to identify protocol version
+   //"1.99" as identical to "2.0" (refer to RFC 4253, section 5.1)
+   if(osStrncmp(connection->remoteId, "SSH-2.0-", 8) != 0 &&
+      osStrncmp(connection->remoteId, "SSH-1.99-", 9) != 0)
+   {
+      //The version advertised by the server is not supported
+      return ERROR_WRONG_IDENTIFIER;
+   }
+
+   //Key exchange begins by each side sending a KEXINIT message
+   if(connection->context->mode == SSH_OPERATION_MODE_CLIENT)
+   {
       connection->state = SSH_CONN_STATE_CLIENT_KEX_INIT;
    }
    else
    {
-      //Copy the client's identification string
-      osMemcpy(connection->clientId, id, length);
-      //Properly terminate the string with a NULL character
-      connection->clientId[length] = '\0';
-
-      //Debug message
-      TRACE_INFO("Client ID string received (%" PRIuSIZE " bytes)...\r\n", length);
-      TRACE_INFO("  %s\r\n", connection->clientId);
-
-      //Check protocol version
-      if(osStrncmp(connection->clientId, "SSH-2.0-", 8) != 0 &&
-         osStrncmp(connection->clientId, "SSH-1.99-", 9) != 0)
-      {
-         //The version advertised by the client is not supported
-         return ERROR_WRONG_IDENTIFIER;
-      }
-
-      //Key exchange begins by each side sending a KEXINIT message
       connection->state = SSH_CONN_STATE_SERVER_KEX_INIT;
    }
 

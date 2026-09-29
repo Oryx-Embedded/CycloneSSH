@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.6.4
+ * @version 2.6.6
  **/
 
 #ifndef _SHELL_CLIENT_MISC_H
@@ -44,8 +44,7 @@ void shellClientChangeState(ShellClientContext *context,
    ShellClientState newState);
 
 error_t shellClientChannelRequestCallback(SshChannel *channel,
-   const SshString *type, const uint8_t *data, size_t length,
-   void *param);
+   const SshString *type, const uint8_t *data, size_t length, void *param);
 
 error_t shellClientOpenConnection(ShellClientContext *context);
 error_t shellClientEstablishConnection(ShellClientContext *context);

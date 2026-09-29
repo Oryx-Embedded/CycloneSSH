@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.6.4
+ * @version 2.6.6
  **/
 
 //Switch to the appropriate trace level
@@ -934,10 +934,13 @@ error_t sshEncryptSharedSecret(SshConnection *connection,
          //Check status code
          if(!error)
          {
-            //Perform RSAES-OAEP encryption
+            //The encryption is performed according to the RSAES-OAEP scheme,
+            //with a mask generation function of MGF1-with-HASH, a hash of
+            //HASH, and an empty label (refer to RFC 4432, section 4)
             error  = rsaesOaepEncrypt(context->prngAlgo, context->prngContext,
-               &rsaPublicKey, connection->hashAlgo, "", connection->k,
-               connection->kLen, encryptedSecret, encryptedSecretLen);
+               &rsaPublicKey, connection->hashAlgo, connection->hashAlgo, NULL,
+               0, connection->k, connection->kLen, encryptedSecret,
+               encryptedSecretLen);
          }
       }
       else
@@ -998,9 +1001,9 @@ error_t sshDecryptSharedSecret(SshConnection *connection,
       if(!error)
       {
          //Perform RSAES-OAEP decryption
-         error = rsaesOaepDecrypt(&rsaPrivateKey, connection->hashAlgo, "",
-            encryptedSecret, encryptedSecretLen, connection->k,
-            SSH_MAX_SHARED_SECRET_LEN, &connection->kLen);
+         error = rsaesOaepDecrypt(&rsaPrivateKey, connection->hashAlgo,
+            connection->hashAlgo, NULL, 0, encryptedSecret, encryptedSecretLen,
+            connection->k, SSH_MAX_SHARED_SECRET_LEN, &connection->kLen);
       }
 
       //Check status code
