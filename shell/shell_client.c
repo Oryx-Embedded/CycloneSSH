@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.6.6
+ * @version 2.6.8
  **/
 
 //Switch to the appropriate trace level
@@ -55,7 +55,9 @@ error_t shellClientInit(ShellClientContext *context)
 {
    //Make sure the shell client context is valid
    if(context == NULL)
+   {
       return ERROR_INVALID_PARAMETER;
+   }
 
    //Clear shell client context
    osMemset(context, 0, sizeof(ShellClientContext));
@@ -87,7 +89,9 @@ error_t shellClientRegisterSshInitCallback(ShellClientContext *context,
 {
    //Check parameters
    if(context == NULL || callback == NULL)
+   {
       return ERROR_INVALID_PARAMETER;
+   }
 
    //Save callback function
    context->sshInitCallback = callback;
@@ -108,7 +112,9 @@ error_t shellClientSetTimeout(ShellClientContext *context, systime_t timeout)
 {
    //Make sure the shell client context is valid
    if(context == NULL)
+   {
       return ERROR_INVALID_PARAMETER;
+   }
 
    //Save timeout value
    context->timeout = timeout;
@@ -130,7 +136,9 @@ error_t shellClientBindToInterface(ShellClientContext *context,
 {
    //Make sure the shell client context is valid
    if(context == NULL)
+   {
       return ERROR_INVALID_PARAMETER;
+   }
 
    //Explicitly associate the shell client with the specified interface
    context->interface = interface;
@@ -155,7 +163,9 @@ error_t shellClientConnect(ShellClientContext *context,
 
    //Make sure the shell client context is valid
    if(context == NULL)
+   {
       return ERROR_INVALID_PARAMETER;
+   }
 
    //Initialize status code
    error = NO_ERROR;
@@ -247,7 +257,9 @@ error_t shellClientFormatCommand(ShellClientContext *context,
 
    //Check parameters
    if(context == NULL || command == NULL)
+   {
       return ERROR_INVALID_PARAMETER;
+   }
 
    //Initialize status code
    error = NO_ERROR;
@@ -258,7 +270,7 @@ error_t shellClientFormatCommand(ShellClientContext *context,
       //Check the state of the shell client
       if(context->state == SHELL_CLIENT_STATE_CONNECTED)
       {
-         size_t n;
+         int_t n;
          va_list args;
 
          //Initialize processing of a varying-length argument list
@@ -271,8 +283,8 @@ error_t shellClientFormatCommand(ShellClientContext *context,
          //End varying-length argument list processing
          va_end(args);
 
-         //Check the length of the resulting string
-         if(n < SHELL_CLIENT_BUFFER_SIZE)
+         //Check the return value
+         if(n >= 0 && n < SHELL_CLIENT_BUFFER_SIZE)
          {
             //Update shell client state
             shellClientChangeState(context, SHELL_CLIENT_STATE_CHANNEL_INIT);
@@ -328,7 +340,9 @@ error_t shellClientExecuteCommand(ShellClientContext *context,
 
    //Check parameters
    if(context == NULL || command == NULL)
+   {
       return ERROR_INVALID_PARAMETER;
+   }
 
    //Point to the SSH connection
    connection = &context->sshConnection;
@@ -536,11 +550,15 @@ error_t shellClientWriteStream(ShellClientContext *context, const void *data,
 
    //Make sure the shell client context is valid
    if(context == NULL)
+   {
       return ERROR_INVALID_PARAMETER;
+   }
 
    //Check parameters
    if(data == NULL && length != 0)
+   {
       return ERROR_INVALID_PARAMETER;
+   }
 
    //Initialize status code
    error = NO_ERROR;
@@ -665,7 +683,9 @@ error_t shellClientReadStream(ShellClientContext *context, void *data,
 
    //Check parameters
    if(context == NULL || data == NULL || received == NULL)
+   {
       return ERROR_INVALID_PARAMETER;
+   }
 
    //Initialize status code
    error = NO_ERROR;
@@ -751,7 +771,9 @@ error_t shellClientCloseStream(ShellClientContext *context)
 
    //Make sure the shell client context is valid
    if(context == NULL)
+   {
       return ERROR_INVALID_PARAMETER;
+   }
 
    //Initialize status code
    error = NO_ERROR;
@@ -878,7 +900,9 @@ error_t shellClientDisconnect(ShellClientContext *context)
 
    //Make sure the shell client context is valid
    if(context == NULL)
+   {
       return ERROR_INVALID_PARAMETER;
+   }
 
    //Initialize status code
    error = NO_ERROR;
@@ -975,7 +999,9 @@ error_t shellClientClose(ShellClientContext *context)
 {
    //Make sure the shell client context is valid
    if(context == NULL)
+   {
       return ERROR_INVALID_PARAMETER;
+   }
 
    //Close network connection
    shellClientCloseConnection(context);

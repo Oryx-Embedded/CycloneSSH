@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.6.6
+ * @version 2.6.8
  **/
 
 //Switch to the appropriate trace level
@@ -78,7 +78,9 @@ error_t sshVerifySignature(SshConnection *connection,
    error = sshParseString(p, n, &signFormatId);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    p += sizeof(uint32_t) + signFormatId.length;
@@ -88,7 +90,9 @@ error_t sshVerifySignature(SshConnection *connection,
    error = sshParseBinaryString(p, n, &signatureBlob);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    p += sizeof(uint32_t) + signatureBlob.length;
@@ -96,21 +100,27 @@ error_t sshVerifySignature(SshConnection *connection,
 
    //Malformed signature?
    if(n != 0)
+   {
       return ERROR_INVALID_MESSAGE;
+   }
 
    //Extract key format identifier from public key blob
    error = sshParseString(publicKeyBlob->value, publicKeyBlob->length,
       &keyFormatId);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Each public key algorithm is associated with a particular key format
    expectedKeyFormatId = sshGetKeyFormatId(publicKeyAlgo);
 
    //Inconsistent key format identifier?
    if(!sshCompareString(&keyFormatId, expectedKeyFormatId))
+   {
       return ERROR_INVALID_SIGNATURE;
+   }
 
    //Public key/certificate formats that do not explicitly specify a signature
    //format identifier must use the public key/certificate format identifier
@@ -119,7 +129,9 @@ error_t sshVerifySignature(SshConnection *connection,
 
    //Inconsistent signature format identifier?
    if(!sshCompareString(&signFormatId, expectedSignFormatId))
+   {
       return ERROR_INVALID_SIGNATURE;
+   }
 
 #if (SSH_SIGN_CALLBACK_SUPPORT == ENABLED)
    //Valid signature verification callback function?
@@ -223,7 +235,7 @@ error_t sshVerifyRsaSignature(const SshString *publicKeyAlgo,
    error_t error;
    const HashAlgo *hashAlgo;
    HashContext hashContext;
-   uint8_t digest[SSH_MAX_HASH_DIGEST_SIZE];
+   uint8_t digest[SSH_MAX_DIGEST_SIZE];
 
 #if (SSH_SHA1_SUPPORT == ENABLED)
    //RSA with SHA-1 public key algorithm?
@@ -504,7 +516,7 @@ error_t sshVerifyEcdsaSignature(const SshString *publicKeyAlgo,
    SshEcdsaSignature signature;
    const HashAlgo *hashAlgo;
    HashContext hashContext;
-   uint8_t digest[SSH_MAX_HASH_DIGEST_SIZE];
+   uint8_t digest[SSH_MAX_DIGEST_SIZE];
 
 #if (SSH_NISTP256_SUPPORT == ENABLED && SSH_SHA256_SUPPORT == ENABLED)
    //ECDSA with NIST P-256 public key algorithm?
@@ -687,7 +699,9 @@ error_t sshVerifyEd25519Signature(const SshString *publicKeyAlgo,
 
    //The Ed25519 signature shall consist of 32 octets
    if(signatureBlob->length != ED25519_SIGNATURE_LEN)
+   {
       return ERROR_INVALID_SIGNATURE;
+   }
 
 #if (SSH_CERT_SUPPORT == ENABLED)
    //Ed25519 certificate?
@@ -703,7 +717,14 @@ error_t sshVerifyEd25519Signature(const SshString *publicKeyAlgo,
       if(!error)
       {
          //The Ed25519 public key consists of 32 octets
-         ed25519PublicKey = cert.publicKey.eddsaPublicKey.q.value;
+         if(cert.publicKey.eddsaPublicKey.q.length == ED25519_PUBLIC_KEY_LEN)
+         {
+            ed25519PublicKey = cert.publicKey.eddsaPublicKey.q.value;
+         }
+         else
+         {
+            error = ERROR_INVALID_SYNTAX;
+         }
       }
    }
    else
@@ -794,7 +815,9 @@ error_t sshVerifyEd448Signature(const SshString *publicKeyAlgo,
 
    //The Ed448 signature shall consist of 57 octets
    if(signatureBlob->length != ED448_SIGNATURE_LEN)
+   {
       return ERROR_INVALID_SIGNATURE;
+   }
 
 #if (SSH_CERT_SUPPORT == ENABLED)
    //Ed448 certificate?
@@ -810,7 +833,14 @@ error_t sshVerifyEd448Signature(const SshString *publicKeyAlgo,
       if(!error)
       {
          //The Ed448 public key consists of 57 octets
-         ed448PublicKey = cert.publicKey.eddsaPublicKey.q.value;
+         if(cert.publicKey.eddsaPublicKey.q.length == ED448_PUBLIC_KEY_LEN)
+         {
+            ed448PublicKey = cert.publicKey.eddsaPublicKey.q.value;
+         }
+         else
+         {
+            error = ERROR_INVALID_SYNTAX;
+         }
       }
    }
    else

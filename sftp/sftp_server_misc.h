@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.6.6
+ * @version 2.6.8
  **/
 
 #ifndef _SFTP_SERVER_MISC_H
@@ -67,11 +67,26 @@ error_t sftpServerParsePacket(SftpServerSession *session,
 
 uint32_t sftpServerGenerateHandle(SftpServerSession *session);
 
+SftpFileObject *sftpServerAllocateFileObject(SftpServerSession *session);
+
+uint_t sftpServerCountFreeFileObjects(SftpServerContext *context);
+
+uint_t sftpServerCountUsedFileObjects(SftpServerContext *context,
+   SshConnection *connection);
+
+uint_t sftpServerCountReservedFileObjects(SftpServerContext *context,
+   SshConnection *connection);
+
+SshConnection *sftpServerGetConnection(SftpServerSession *session);
+
 uint_t sftpServerGetFilePermissions(SftpServerSession *session,
    const char_t *path);
 
 error_t sftpServerGetPath(SftpServerSession *session, const SshString *path,
    char_t *fullPath, size_t maxLen);
+
+bool_t sftpServerIsPathInRootDir(SftpServerSession *session,
+   const char_t *path);
 
 const char_t *sftpServerStripRootDir(SftpServerContext *context,
    const char_t *path);

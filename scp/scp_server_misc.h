@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.6.6
+ * @version 2.6.8
  **/
 
 #ifndef _SCP_SERVER_MISC_H
@@ -77,6 +77,9 @@ uint_t scpServerGetFilePermissions(ScpServerSession *session,
 
 error_t scpServerGetPath(ScpServerSession *session, const SshString *path,
    char_t *fullPath, size_t maxLen);
+
+bool_t scpServerIsPathInRootDir(ScpServerSession *session,
+   const char_t *path);
 
 const char_t *scpServerStripRootDir(ScpServerSession *session,
    const char_t *path);

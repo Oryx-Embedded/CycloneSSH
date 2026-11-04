@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.6.6
+ * @version 2.6.8
  **/
 
 //Switch to the appropriate trace level
@@ -157,7 +157,9 @@ error_t sshFormatExtInfo(SshConnection *connection, uint8_t *message,
       error = sshFormatServerSigAlgsExt(connection, p, &n);
       //Any error to report?
       if(error)
+      {
          return error;
+      }
 
       //Point to the next field
       p += n;
@@ -178,7 +180,9 @@ error_t sshFormatExtInfo(SshConnection *connection, uint8_t *message,
       error = sshFormatGlobalRequestsOkExt(connection, p, &n);
       //Any error to report?
       if(error)
+      {
          return error;
+      }
 
       //Point to the next field
       p += n;
@@ -219,7 +223,9 @@ error_t sshFormatServerSigAlgsExt(SshConnection *connection, uint8_t *p,
    error = sshFormatString("server-sig-algs", p, &n);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    p += n;
@@ -230,7 +236,9 @@ error_t sshFormatServerSigAlgsExt(SshConnection *connection, uint8_t *p,
    error = sshFormatPublicKeyAlgoList(connection->context, p, &n);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Total length of the extension
    *written += n;
@@ -265,7 +273,9 @@ error_t sshFormatGlobalRequestsOkExt(SshConnection *connection, uint8_t *p,
    error = sshFormatString("global-requests-ok", p, &n);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    p += n;
@@ -275,7 +285,9 @@ error_t sshFormatGlobalRequestsOkExt(SshConnection *connection, uint8_t *p,
    error = sshFormatString("", p, &n);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Total length of the extension
    *written += n;
@@ -314,7 +326,6 @@ error_t sshParseExtInfo(SshConnection *connection, const uint8_t *message,
       if(connection->state != SSH_CONN_STATE_SERVER_EXT_INFO_1 &&
          connection->state != SSH_CONN_STATE_SERVER_EXT_INFO_2)
       {
-         //Report an error
          return ERROR_UNEXPECTED_MESSAGE;
       }
    }
@@ -323,14 +334,15 @@ error_t sshParseExtInfo(SshConnection *connection, const uint8_t *message,
       //Check connection state
       if(connection->state != SSH_CONN_STATE_CLIENT_EXT_INFO)
       {
-         //Report an error
          return ERROR_UNEXPECTED_MESSAGE;
       }
    }
 
    //Sanity check
    if(length < sizeof(uint8_t))
+   {
       return ERROR_INVALID_MESSAGE;
+   }
 
    //Point to the first field of the message
    p = message + sizeof(uint8_t);
@@ -339,7 +351,9 @@ error_t sshParseExtInfo(SshConnection *connection, const uint8_t *message,
 
    //Malformed message?
    if(length < sizeof(uint32_t))
+   {
       return ERROR_INVALID_MESSAGE;
+   }
 
    //The nr-extensions field specifies the number of extensions
    nrExtensions = LOAD32BE(p);
@@ -355,7 +369,9 @@ error_t sshParseExtInfo(SshConnection *connection, const uint8_t *message,
       error = sshParseString(p, length, &extensionName);
       //Any error to report?
       if(error)
+      {
          return error;
+      }
 
       //Point to the next field
       p += sizeof(uint32_t) + extensionName.length;
@@ -365,7 +381,9 @@ error_t sshParseExtInfo(SshConnection *connection, const uint8_t *message,
       error = sshParseString(p, length, &extensionValue);
       //Any error to report?
       if(error)
+      {
          return error;
+      }
 
       //Point to the next field
       p += sizeof(uint32_t) + extensionValue.length;
@@ -403,12 +421,16 @@ error_t sshParseExtInfo(SshConnection *connection, const uint8_t *message,
 
       //Failed to parse extension?
       if(error)
+      {
          return error;
+      }
    }
 
    //Malformed message?
    if(length != 0)
+   {
       return ERROR_INVALID_MESSAGE;
+   }
 
    //Check whether SSH operates as a client or a server
    if(connection->context->mode == SSH_OPERATION_MODE_CLIENT)
@@ -457,34 +479,17 @@ error_t sshParseServerSigAlgsExt(SshConnection *connection, const char_t *p,
    if(connection->state == SSH_CONN_STATE_SERVER_EXT_INFO_1 ||
       connection->state == SSH_CONN_STATE_SERVER_EXT_INFO_2)
    {
-      uint_t i;
-      SshContext *context;
-      SshHostKey *hostKey;
       SshNameList publicKeyAlgoList;
-
-      //Point to the SSH context
-      context = connection->context;
 
       //In this extension, a server must enumerate all public key algorithms
       //it might accept during user authentication
       publicKeyAlgoList.value = p;
       publicKeyAlgoList.length = length;
 
-      //Loop through the client's host keys
-      for(i = 0; i < SSH_MAX_HOST_KEYS; i++)
-      {
-         //Point to the current host key
-         hostKey = &context->hostKeys[i];
-
-         //Valid host key?
-         if(hostKey->keyFormatId != NULL)
-         {
-            //Select the appropriate public key algorithm to use during user
-            //authentication, rather than resorting to trial and error
-            hostKey->publicKeyAlgo = sshSelectPublicKeyAlgo(context,
-               hostKey->keyFormatId, &publicKeyAlgoList);
-         }
-      }
+      //Save the public key algorithms accepted by the server, so that the
+      //client can select the appropriate algorithm to use during user
+      //authentication, rather than resorting to trial and error
+      connection->peerSigAlgos = sshGetPeerPublicKeyAlgos(&publicKeyAlgoList);
 
       //Successful processing
       error = NO_ERROR;

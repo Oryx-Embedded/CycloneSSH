@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.6.6
+ * @version 2.6.8
  **/
 
 #ifndef _SCP_SERVER_H
@@ -71,8 +71,8 @@
 
 //Size of buffer used for input/output operations
 #ifndef SCP_SERVER_BUFFER_SIZE
-   #define SCP_SERVER_BUFFER_SIZE 512
-#elif (SCP_SERVER_BUFFER_SIZE < 128)
+   #define SCP_SERVER_BUFFER_SIZE 1024
+#elif (SCP_SERVER_BUFFER_SIZE < 512)
    #error SCP_SERVER_BUFFER_SIZE parameter is not valid
 #endif
 

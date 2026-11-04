@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.6.6
+ * @version 2.6.8
  **/
 
 //Switch to the appropriate trace level
@@ -149,11 +149,15 @@ error_t sshParseRsaHostKey(const uint8_t *data, size_t length,
    error = sshParseString(data, length, &hostKey->keyFormatId);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Unexpected key format identifier?
    if(!sshCompareString(&hostKey->keyFormatId, "ssh-rsa"))
+   {
       return ERROR_WRONG_IDENTIFIER;
+   }
 
    //Point to the next field
    data += sizeof(uint32_t) + hostKey->keyFormatId.length;
@@ -163,7 +167,9 @@ error_t sshParseRsaHostKey(const uint8_t *data, size_t length,
    error = sshParseBinaryString(data, length, &hostKey->e);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    data += sizeof(uint32_t) + hostKey->e.length;
@@ -173,7 +179,9 @@ error_t sshParseRsaHostKey(const uint8_t *data, size_t length,
    error = sshParseBinaryString(data, length, &hostKey->n);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    data += sizeof(uint32_t) + hostKey->n.length;
@@ -181,7 +189,9 @@ error_t sshParseRsaHostKey(const uint8_t *data, size_t length,
 
    //Malformed host key?
    if(length != 0)
+   {
       return ERROR_INVALID_SYNTAX;
+   }
 
    //Successful processing
    return NO_ERROR;
@@ -210,11 +220,15 @@ error_t sshParseDsaHostKey(const uint8_t *data, size_t length,
    error = sshParseString(data, length, &hostKey->keyFormatId);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Unexpected key format identifier?
    if(!sshCompareString(&hostKey->keyFormatId, "ssh-dss"))
+   {
       return ERROR_WRONG_IDENTIFIER;
+   }
 
    //Point to the next field
    data += sizeof(uint32_t) + hostKey->keyFormatId.length;
@@ -224,7 +238,9 @@ error_t sshParseDsaHostKey(const uint8_t *data, size_t length,
    error = sshParseBinaryString(data, length, &hostKey->p);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    data += sizeof(uint32_t) + hostKey->p.length;
@@ -234,7 +250,9 @@ error_t sshParseDsaHostKey(const uint8_t *data, size_t length,
    error = sshParseBinaryString(data, length, &hostKey->q);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    data += sizeof(uint32_t) + hostKey->q.length;
@@ -244,7 +262,9 @@ error_t sshParseDsaHostKey(const uint8_t *data, size_t length,
    error = sshParseBinaryString(data, length, &hostKey->g);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    data += sizeof(uint32_t) + hostKey->g.length;
@@ -254,7 +274,9 @@ error_t sshParseDsaHostKey(const uint8_t *data, size_t length,
    error = sshParseBinaryString(data, length, &hostKey->y);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    data += sizeof(uint32_t) + hostKey->y.length;
@@ -262,7 +284,9 @@ error_t sshParseDsaHostKey(const uint8_t *data, size_t length,
 
    //Malformed host key?
    if(length != 0)
+   {
       return ERROR_INVALID_SYNTAX;
+   }
 
    //Successful processing
    return NO_ERROR;
@@ -291,7 +315,9 @@ error_t sshParseEcdsaHostKey(const uint8_t *data, size_t length,
    error = sshParseString(data, length, &hostKey->keyFormatId);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Unexpected key format identifier?
    if(!sshCompareString(&hostKey->keyFormatId, "ecdsa-sha2-nistp256") &&
@@ -309,7 +335,9 @@ error_t sshParseEcdsaHostKey(const uint8_t *data, size_t length,
    error = sshParseString(data, length, &hostKey->curveName);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    data += sizeof(uint32_t) + hostKey->curveName.length;
@@ -319,7 +347,9 @@ error_t sshParseEcdsaHostKey(const uint8_t *data, size_t length,
    error = sshParseBinaryString(data, length, &hostKey->q);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    data += sizeof(uint32_t) + hostKey->q.length;
@@ -327,7 +357,9 @@ error_t sshParseEcdsaHostKey(const uint8_t *data, size_t length,
 
    //Malformed message?
    if(length != 0)
+   {
       return ERROR_INVALID_MESSAGE;
+   }
 
    //Successful processing
    return NO_ERROR;
@@ -356,11 +388,15 @@ error_t sshParseEd25519HostKey(const uint8_t *data, size_t length,
    error = sshParseString(data, length, &hostKey->keyFormatId);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Unexpected key format identifier?
    if(!sshCompareString(&hostKey->keyFormatId, "ssh-ed25519"))
+   {
       return ERROR_WRONG_IDENTIFIER;
+   }
 
    //Point to the next field
    data += sizeof(uint32_t) + hostKey->keyFormatId.length;
@@ -370,11 +406,15 @@ error_t sshParseEd25519HostKey(const uint8_t *data, size_t length,
    error = sshParseBinaryString(data, length, &hostKey->key);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //The public key shall consist of 32 octets
    if(hostKey->key.length != ED25519_PUBLIC_KEY_LEN)
+   {
       return ERROR_INVALID_SYNTAX;
+   }
 
    //Point to the next field
    data += sizeof(uint32_t) + hostKey->key.length;
@@ -382,7 +422,9 @@ error_t sshParseEd25519HostKey(const uint8_t *data, size_t length,
 
    //Malformed host key?
    if(length != 0)
+   {
       return ERROR_INVALID_SYNTAX;
+   }
 
    //Successful processing
    return NO_ERROR;
@@ -411,11 +453,15 @@ error_t sshParseEd448HostKey(const uint8_t *data, size_t length,
    error = sshParseString(data, length, &hostKey->keyFormatId);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Unexpected key format identifier?
    if(!sshCompareString(&hostKey->keyFormatId, "ssh-ed448"))
+   {
       return ERROR_WRONG_IDENTIFIER;
+   }
 
    //Point to the next field
    data += sizeof(uint32_t) + hostKey->keyFormatId.length;
@@ -425,11 +471,15 @@ error_t sshParseEd448HostKey(const uint8_t *data, size_t length,
    error = sshParseBinaryString(data, length, &hostKey->key);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //The public key shall consist of 57 octets
    if(hostKey->key.length != ED448_PUBLIC_KEY_LEN)
+   {
       return ERROR_INVALID_SYNTAX;
+   }
 
    //Point to the next field
    data += sizeof(uint32_t) + hostKey->key.length;
@@ -437,7 +487,9 @@ error_t sshParseEd448HostKey(const uint8_t *data, size_t length,
 
    //Malformed host key?
    if(length != 0)
+   {
       return ERROR_INVALID_SYNTAX;
+   }
 
    //Successful processing
    return NO_ERROR;
@@ -468,7 +520,9 @@ error_t sshParseMldsaHostKey(const uint8_t *data, size_t length,
    error = sshParseString(data, length, &hostKey->keyFormatId);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Check key format identifier
    if(sshCompareString(&hostKey->keyFormatId, "ssh-mldsa-44"))
@@ -500,11 +554,15 @@ error_t sshParseMldsaHostKey(const uint8_t *data, size_t length,
    error = sshParseBinaryString(data, length, &hostKey->key);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Check the length of the public key
    if(hostKey->key.length != n)
+   {
       return ERROR_INVALID_SYNTAX;
+   }
 
    //Point to the next field
    data += sizeof(uint32_t) + hostKey->key.length;
@@ -512,7 +570,9 @@ error_t sshParseMldsaHostKey(const uint8_t *data, size_t length,
 
    //Malformed host key?
    if(length != 0)
+   {
       return ERROR_INVALID_SYNTAX;
+   }
 
    //Successful processing
    return NO_ERROR;
@@ -538,11 +598,15 @@ error_t sshParseOpenSshPrivateKeyHeader(const uint8_t *data, size_t length,
 
    //Malformed private key?
    if(length < SSH_AUTH_MAGIC_SIZE)
+   {
       return ERROR_INVALID_SYNTAX;
+   }
 
    //Check magic identifier
-   if(osMemcmp(data, "openssh-key-v1", SSH_AUTH_MAGIC_SIZE))
+   if(osMemcmp(data, "openssh-key-v1", SSH_AUTH_MAGIC_SIZE) != 0)
+   {
       return ERROR_WRONG_IDENTIFIER;
+   }
 
    //Point to the next field
    data += SSH_AUTH_MAGIC_SIZE;
@@ -552,7 +616,9 @@ error_t sshParseOpenSshPrivateKeyHeader(const uint8_t *data, size_t length,
    error = sshParseString(data, length, &privateKeyHeader->cipherName);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    data += sizeof(uint32_t) + privateKeyHeader->cipherName.length;
@@ -562,7 +628,9 @@ error_t sshParseOpenSshPrivateKeyHeader(const uint8_t *data, size_t length,
    error = sshParseString(data, length, &privateKeyHeader->kdfName);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    data += sizeof(uint32_t) + privateKeyHeader->kdfName.length;
@@ -572,7 +640,9 @@ error_t sshParseOpenSshPrivateKeyHeader(const uint8_t *data, size_t length,
    error = sshParseBinaryString(data, length, &privateKeyHeader->kdfOptions);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    data += sizeof(uint32_t) + privateKeyHeader->kdfOptions.length;
@@ -580,14 +650,18 @@ error_t sshParseOpenSshPrivateKeyHeader(const uint8_t *data, size_t length,
 
    //Malformed private key?
    if(length < sizeof(uint32_t))
+   {
       return ERROR_INVALID_SYNTAX;
+   }
 
    //Parse 'number of keys' field
    privateKeyHeader->numKeys = LOAD32BE(data);
 
    //The implementation supports only one public and private key
    if(privateKeyHeader->numKeys != 1)
+   {
       return ERROR_INVALID_SYNTAX;
+   }
 
    //Point to the next field
    data += sizeof(uint32_t);
@@ -597,7 +671,9 @@ error_t sshParseOpenSshPrivateKeyHeader(const uint8_t *data, size_t length,
    error = sshParseBinaryString(data, length, &privateKeyHeader->publicKey);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    data += sizeof(uint32_t) + privateKeyHeader->publicKey.length;
@@ -607,7 +683,9 @@ error_t sshParseOpenSshPrivateKeyHeader(const uint8_t *data, size_t length,
    error = sshParseBinaryString(data, length, &privateKeyHeader->encrypted);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    data += sizeof(uint32_t) + privateKeyHeader->encrypted.length;
@@ -615,7 +693,9 @@ error_t sshParseOpenSshPrivateKeyHeader(const uint8_t *data, size_t length,
 
    //Malformed private key?
    if(length != 0)
+   {
       return ERROR_INVALID_SYNTAX;
+   }
 
    //Successful processing
    return NO_ERROR;
@@ -638,7 +718,9 @@ error_t sshParseOpenSshRsaPrivateKey(const uint8_t *data, size_t length,
 
    //Malformed private key blob?
    if(length < sizeof(uint64_t))
+   {
       return ERROR_INVALID_SYNTAX;
+   }
 
    //Decode 'checkint' fields
    privateKey->checkInt1 = LOAD32BE(data);
@@ -648,7 +730,9 @@ error_t sshParseOpenSshRsaPrivateKey(const uint8_t *data, size_t length,
    //'checkint' fields so successful decryption can be quickly checked
    //by verifying that both checkint fields hold the same value
    if(privateKey->checkInt1 != privateKey->checkInt2)
+   {
       return ERROR_INVALID_SYNTAX;
+   }
 
    //Point to the next field
    data += sizeof(uint64_t);
@@ -658,11 +742,15 @@ error_t sshParseOpenSshRsaPrivateKey(const uint8_t *data, size_t length,
    error = sshParseString(data, length, &privateKey->keyFormatId);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Unexpected key format identifier?
    if(!sshCompareString(&privateKey->keyFormatId, "ssh-rsa"))
+   {
       return ERROR_WRONG_IDENTIFIER;
+   }
 
    //Point to the next field
    data += sizeof(uint32_t) + privateKey->keyFormatId.length;
@@ -672,7 +760,9 @@ error_t sshParseOpenSshRsaPrivateKey(const uint8_t *data, size_t length,
    error = sshParseBinaryString(data, length, &privateKey->n);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    data += sizeof(uint32_t) + privateKey->n.length;
@@ -682,7 +772,9 @@ error_t sshParseOpenSshRsaPrivateKey(const uint8_t *data, size_t length,
    error = sshParseBinaryString(data, length, &privateKey->e);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    data += sizeof(uint32_t) + privateKey->e.length;
@@ -692,7 +784,9 @@ error_t sshParseOpenSshRsaPrivateKey(const uint8_t *data, size_t length,
    error = sshParseBinaryString(data, length, &privateKey->d);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    data += sizeof(uint32_t) + privateKey->d.length;
@@ -702,7 +796,9 @@ error_t sshParseOpenSshRsaPrivateKey(const uint8_t *data, size_t length,
    error = sshParseBinaryString(data, length, &privateKey->qinv);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    data += sizeof(uint32_t) + privateKey->qinv.length;
@@ -712,7 +808,9 @@ error_t sshParseOpenSshRsaPrivateKey(const uint8_t *data, size_t length,
    error = sshParseBinaryString(data, length, &privateKey->p);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    data += sizeof(uint32_t) + privateKey->p.length;
@@ -722,7 +820,9 @@ error_t sshParseOpenSshRsaPrivateKey(const uint8_t *data, size_t length,
    error = sshParseBinaryString(data, length, &privateKey->q);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    data += sizeof(uint32_t) + privateKey->q.length;
@@ -732,7 +832,9 @@ error_t sshParseOpenSshRsaPrivateKey(const uint8_t *data, size_t length,
    error = sshParseString(data, length, &privateKey->comment);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    data += sizeof(uint32_t) + privateKey->comment.length;
@@ -763,7 +865,9 @@ error_t sshParseOpenSshDsaPrivateKey(const uint8_t *data, size_t length,
 
    //Malformed private key blob?
    if(length < sizeof(uint64_t))
+   {
       return ERROR_INVALID_SYNTAX;
+   }
 
    //Decode 'checkint' fields
    privateKey->checkInt1 = LOAD32BE(data);
@@ -773,7 +877,9 @@ error_t sshParseOpenSshDsaPrivateKey(const uint8_t *data, size_t length,
    //'checkint' fields so successful decryption can be quickly checked
    //by verifying that both checkint fields hold the same value
    if(privateKey->checkInt1 != privateKey->checkInt2)
+   {
       return ERROR_INVALID_SYNTAX;
+   }
 
    //Point to the next field
    data += sizeof(uint64_t);
@@ -783,11 +889,15 @@ error_t sshParseOpenSshDsaPrivateKey(const uint8_t *data, size_t length,
    error = sshParseString(data, length, &privateKey->keyFormatId);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Unexpected key format identifier?
    if(!sshCompareString(&privateKey->keyFormatId, "ssh-dss"))
+   {
       return ERROR_WRONG_IDENTIFIER;
+   }
 
    //Point to the next field
    data += sizeof(uint32_t) + privateKey->keyFormatId.length;
@@ -797,7 +907,9 @@ error_t sshParseOpenSshDsaPrivateKey(const uint8_t *data, size_t length,
    error = sshParseBinaryString(data, length, &privateKey->p);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    data += sizeof(uint32_t) + privateKey->p.length;
@@ -807,7 +919,9 @@ error_t sshParseOpenSshDsaPrivateKey(const uint8_t *data, size_t length,
    error = sshParseBinaryString(data, length, &privateKey->q);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    data += sizeof(uint32_t) + privateKey->q.length;
@@ -817,7 +931,9 @@ error_t sshParseOpenSshDsaPrivateKey(const uint8_t *data, size_t length,
    error = sshParseBinaryString(data, length, &privateKey->g);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    data += sizeof(uint32_t) + privateKey->g.length;
@@ -827,7 +943,9 @@ error_t sshParseOpenSshDsaPrivateKey(const uint8_t *data, size_t length,
    error = sshParseBinaryString(data, length, &privateKey->y);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    data += sizeof(uint32_t) + privateKey->y.length;
@@ -837,7 +955,9 @@ error_t sshParseOpenSshDsaPrivateKey(const uint8_t *data, size_t length,
    error = sshParseBinaryString(data, length, &privateKey->x);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    data += sizeof(uint32_t) + privateKey->x.length;
@@ -847,7 +967,9 @@ error_t sshParseOpenSshDsaPrivateKey(const uint8_t *data, size_t length,
    error = sshParseString(data, length, &privateKey->comment);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    data += sizeof(uint32_t) + privateKey->comment.length;
@@ -878,7 +1000,9 @@ error_t sshParseOpenSshEcdsaPrivateKey(const uint8_t *data, size_t length,
 
    //Malformed private key blob?
    if(length < sizeof(uint64_t))
+   {
       return ERROR_INVALID_SYNTAX;
+   }
 
    //Decode 'checkint' fields
    privateKey->checkInt1 = LOAD32BE(data);
@@ -888,7 +1012,9 @@ error_t sshParseOpenSshEcdsaPrivateKey(const uint8_t *data, size_t length,
    //'checkint' fields so successful decryption can be quickly checked
    //by verifying that both checkint fields hold the same value
    if(privateKey->checkInt1 != privateKey->checkInt2)
+   {
       return ERROR_INVALID_SYNTAX;
+   }
 
    //Point to the next field
    data += sizeof(uint64_t);
@@ -898,7 +1024,9 @@ error_t sshParseOpenSshEcdsaPrivateKey(const uint8_t *data, size_t length,
    error = sshParseString(data, length, &privateKey->keyFormatId);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Unexpected key format identifier?
    if(!sshCompareString(&privateKey->keyFormatId, "ecdsa-sha2-nistp256") &&
@@ -916,7 +1044,9 @@ error_t sshParseOpenSshEcdsaPrivateKey(const uint8_t *data, size_t length,
    error = sshParseString(data, length, &privateKey->curveName);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    data += sizeof(uint32_t) + privateKey->curveName.length;
@@ -926,7 +1056,9 @@ error_t sshParseOpenSshEcdsaPrivateKey(const uint8_t *data, size_t length,
    error = sshParseBinaryString(data, length, &privateKey->q);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    data += sizeof(uint32_t) + privateKey->q.length;
@@ -936,7 +1068,9 @@ error_t sshParseOpenSshEcdsaPrivateKey(const uint8_t *data, size_t length,
    error = sshParseBinaryString(data, length, &privateKey->d);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    data += sizeof(uint32_t) + privateKey->d.length;
@@ -946,7 +1080,9 @@ error_t sshParseOpenSshEcdsaPrivateKey(const uint8_t *data, size_t length,
    error = sshParseString(data, length, &privateKey->comment);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    data += sizeof(uint32_t) + privateKey->comment.length;
@@ -977,7 +1113,9 @@ error_t sshParseOpenSshEd25519PrivateKey(const uint8_t *data, size_t length,
 
    //Malformed private key blob?
    if(length < sizeof(uint64_t))
+   {
       return ERROR_INVALID_SYNTAX;
+   }
 
    //Decode 'checkint' fields
    privateKey->checkInt1 = LOAD32BE(data);
@@ -987,7 +1125,9 @@ error_t sshParseOpenSshEd25519PrivateKey(const uint8_t *data, size_t length,
    //'checkint' fields so successful decryption can be quickly checked
    //by verifying that both checkint fields hold the same value
    if(privateKey->checkInt1 != privateKey->checkInt2)
+   {
       return ERROR_INVALID_SYNTAX;
+   }
 
    //Point to the next field
    data += sizeof(uint64_t);
@@ -997,11 +1137,15 @@ error_t sshParseOpenSshEd25519PrivateKey(const uint8_t *data, size_t length,
    error = sshParseString(data, length, &privateKey->keyFormatId);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Unexpected key format identifier?
    if(!sshCompareString(&privateKey->keyFormatId, "ssh-ed25519"))
+   {
       return ERROR_WRONG_IDENTIFIER;
+   }
 
    //Point to the next field
    data += sizeof(uint32_t) + privateKey->keyFormatId.length;
@@ -1011,11 +1155,15 @@ error_t sshParseOpenSshEd25519PrivateKey(const uint8_t *data, size_t length,
    error = sshParseBinaryString(data, length, &privateKey->q);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //The public key shall consist of 32 octets
    if(privateKey->q.length != ED25519_PUBLIC_KEY_LEN)
+   {
       return ERROR_INVALID_SYNTAX;
+   }
 
    //Point to the next field
    data += sizeof(uint32_t) + privateKey->q.length;
@@ -1025,11 +1173,15 @@ error_t sshParseOpenSshEd25519PrivateKey(const uint8_t *data, size_t length,
    error = sshParseBinaryString(data, length, &privateKey->d);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //The private key shall consist of 64 octets
    if(privateKey->d.length != (ED25519_PRIVATE_KEY_LEN + ED25519_PUBLIC_KEY_LEN))
+   {
       return ERROR_INVALID_SYNTAX;
+   }
 
    //Point to the next field
    data += sizeof(uint32_t) + privateKey->d.length;
@@ -1039,7 +1191,9 @@ error_t sshParseOpenSshEd25519PrivateKey(const uint8_t *data, size_t length,
    error = sshParseString(data, length, &privateKey->comment);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    data += sizeof(uint32_t) + privateKey->comment.length;
@@ -1070,7 +1224,9 @@ error_t sshParseOpenSshEd448PrivateKey(const uint8_t *data, size_t length,
 
    //Malformed private key blob?
    if(length < sizeof(uint64_t))
+   {
       return ERROR_INVALID_SYNTAX;
+   }
 
    //Decode 'checkint' fields
    privateKey->checkInt1 = LOAD32BE(data);
@@ -1080,7 +1236,9 @@ error_t sshParseOpenSshEd448PrivateKey(const uint8_t *data, size_t length,
    //'checkint' fields so successful decryption can be quickly checked
    //by verifying that both checkint fields hold the same value
    if(privateKey->checkInt1 != privateKey->checkInt2)
+   {
       return ERROR_INVALID_SYNTAX;
+   }
 
    //Point to the next field
    data += sizeof(uint64_t);
@@ -1090,11 +1248,15 @@ error_t sshParseOpenSshEd448PrivateKey(const uint8_t *data, size_t length,
    error = sshParseString(data, length, &privateKey->keyFormatId);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Unexpected key format identifier?
    if(!sshCompareString(&privateKey->keyFormatId, "ssh-ed448"))
+   {
       return ERROR_WRONG_IDENTIFIER;
+   }
 
    //Point to the next field
    data += sizeof(uint32_t) + privateKey->keyFormatId.length;
@@ -1104,11 +1266,15 @@ error_t sshParseOpenSshEd448PrivateKey(const uint8_t *data, size_t length,
    error = sshParseBinaryString(data, length, &privateKey->q);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //The public key shall consist of 57 octets
    if(privateKey->q.length != ED448_PUBLIC_KEY_LEN)
+   {
       return ERROR_INVALID_SYNTAX;
+   }
 
    //Point to the next field
    data += sizeof(uint32_t) + privateKey->q.length;
@@ -1118,11 +1284,15 @@ error_t sshParseOpenSshEd448PrivateKey(const uint8_t *data, size_t length,
    error = sshParseBinaryString(data, length, &privateKey->d);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //The private key shall consist of 114 octets
    if(privateKey->d.length != (ED448_PRIVATE_KEY_LEN + ED448_PUBLIC_KEY_LEN))
+   {
       return ERROR_INVALID_SYNTAX;
+   }
 
    //Point to the next field
    data += sizeof(uint32_t) + privateKey->d.length;
@@ -1132,7 +1302,9 @@ error_t sshParseOpenSshEd448PrivateKey(const uint8_t *data, size_t length,
    error = sshParseString(data, length, &privateKey->comment);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    data += sizeof(uint32_t) + privateKey->comment.length;

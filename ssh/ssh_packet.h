@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.6.6
+ * @version 2.6.8
  **/
 
 #ifndef _SSH_PACKET_H
@@ -36,12 +36,12 @@
 
 //SSH packet header size
 #define SSH_PACKET_HEADER_SIZE 5
-//Minimum SSH packet size
-#define SSH_MIN_PACKET_SIZE 8
-//Default maximum packet size
-#define SSH_DEFAULT_MAX_PACKET_SIZE 32768
 //Size of SSH_MSG_CHANNEL_DATA message header
 #define SSH_CHANNEL_DATA_MSG_HEADER_SIZE 9
+//Default maximum packet size
+#define SSH_DEFAULT_MAX_PACKET_SIZE 32768
+//Minimum padding length
+#define SSH_MIN_PADDING_LEN 4
 
 //C++ guard
 #ifdef __cplusplus
@@ -69,11 +69,13 @@ error_t sshDecryptPacketLength(SshConnection *connection, uint8_t *packet);
 error_t sshParseMessage(SshConnection *connection, const uint8_t *message,
    size_t length);
 
-void sshAppendMessageAuthCode(SshEncryptionEngine *encryptionEngine,
+error_t sshGenerateMessageAuthCode(SshEncryptionEngine *encryptionEngine,
    uint8_t *packet, size_t length);
 
 error_t sshVerifyMessageAuthCode(SshEncryptionEngine *decryptionEngine,
    const uint8_t *packet, size_t length);
+
+size_t sshGetBlockSize(SshConnection *connection);
 
 void sshIncSequenceNumber(uint8_t *seqNum);
 void sshIncInvocationCounter(uint8_t *iv);

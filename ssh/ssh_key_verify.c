@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.6.6
+ * @version 2.6.8
  **/
 
 //Switch to the appropriate trace level
@@ -130,14 +130,18 @@ error_t sshVerifyClientHostKey(SshConnection *connection,
    error = sshParseHostKey(hostKey->value, hostKey->length, &keyFormatId);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Each host key algorithm is associated with a particular key format
    expectedKeyFormatId = sshGetKeyFormatId(publicKeyAlgo);
 
    //Check whether the supplied key is consistent with the host key algorithm
    if(!sshCompareString(&keyFormatId, expectedKeyFormatId))
+   {
       return ERROR_INVALID_KEY;
+   }
 
    //Invoke user-defined callback, if any
    if(context->publicKeyAuthCallback != NULL)
@@ -184,14 +188,18 @@ error_t sshVerifyServerHostKey(SshConnection *connection,
    error = sshParseHostKey(hostKey->value, hostKey->length, &keyFormatId);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Each host key algorithm is associated with a particular key format
    expectedKeyFormatId = sshGetKeyFormatId(publicKeyAlgo);
 
    //Check whether the supplied key is consistent with the host key algorithm
    if(!sshCompareString(&keyFormatId, expectedKeyFormatId))
+   {
       return ERROR_INVALID_KEY;
+   }
 
    //Invoke user-defined callback, if any
    if(context->hostKeyVerifyCallback != NULL)

@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.6.6
+ * @version 2.6.8
  **/
 
 //Switch to the appropriate trace level
@@ -295,7 +295,9 @@ error_t sshFormatServiceRequest(SshConnection *connection, uint8_t *p,
    error = sshFormatString("ssh-userauth", p, &n);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Total length of the message
    *length += n;
@@ -334,7 +336,9 @@ error_t sshFormatServiceAccept(SshConnection *connection,
    error = sshFormatString(serviceName, p, &n);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Total length of the message
    *length += n;
@@ -381,7 +385,9 @@ error_t sshFormatDisconnect(SshConnection *connection, uint32_t reasonCode,
    error = sshFormatString(description, p, &n);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    p += n;
@@ -391,7 +397,9 @@ error_t sshFormatDisconnect(SshConnection *connection, uint32_t reasonCode,
    error = sshFormatString("en", p, &n);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Total length of the message
    *length += n;
@@ -447,13 +455,17 @@ error_t sshParseIdString(SshConnection *connection, const uint8_t *id,
 {
    //Check the length of the client's identification string
    if(length < 2)
+   {
       return ERROR_WRONG_IDENTIFIER;
+   }
 
    //The identification string must be terminated by a single CR and a single
    //LF character (refer to RFC 4253, section 4.2). In practice, some SSH 2.0
    //implementations terminate the string with a LF character only
    if(id[length - 1] != '\n')
+   {
       return ERROR_WRONG_IDENTIFIER;
+   }
 
    //Trim the trailing LF character from the string
    length--;
@@ -464,9 +476,25 @@ error_t sshParseIdString(SshConnection *connection, const uint8_t *id,
       length--;
    }
 
+   //Client operation mode?
+   if(connection->context->mode == SSH_OPERATION_MODE_CLIENT)
+   {
+      //The server may send other lines of data before sending the version
+      //string. Such lines must not begin with "SSH-" (refer to RFC 4253,
+      //section 4.2)
+      if(length < 4 || osMemcmp(id, "SSH-", 4) != 0)
+      {
+         //The line is discarded and the client keeps waiting for the server's
+         //version string
+         return NO_ERROR;
+      }
+   }
+
    //Sanity check
    if(length > SSH_MAX_ID_LEN)
+   {
       return ERROR_WRONG_IDENTIFIER;
+   }
 
    //Copy the peer's identification string
    osMemcpy(connection->remoteId, id, length);
@@ -536,7 +564,9 @@ error_t sshParseServiceRequest(SshConnection *connection, const uint8_t *message
 
    //Check operation mode
    if(connection->context->mode != SSH_OPERATION_MODE_SERVER)
+   {
       return ERROR_UNEXPECTED_MESSAGE;
+   }
 
    //Check connection state
    if(connection->state != SSH_CONN_STATE_CLIENT_EXT_INFO &&
@@ -547,7 +577,9 @@ error_t sshParseServiceRequest(SshConnection *connection, const uint8_t *message
 
    //Sanity check
    if(length < sizeof(uint8_t))
+   {
       return ERROR_INVALID_MESSAGE;
+   }
 
    //Point to the first field of the message
    p = message + sizeof(uint8_t);
@@ -558,7 +590,9 @@ error_t sshParseServiceRequest(SshConnection *connection, const uint8_t *message
    error = sshParseString(p, length, &serviceName);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    p += sizeof(uint32_t) + serviceName.length;
@@ -566,7 +600,9 @@ error_t sshParseServiceRequest(SshConnection *connection, const uint8_t *message
 
    //Malformed message?
    if(length != 0)
+   {
       return ERROR_INVALID_MESSAGE;
+   }
 
    //The service is identified by a name
    if(sshCompareString(&serviceName, "ssh-userauth"))
@@ -614,7 +650,9 @@ error_t sshParseServiceAccept(SshConnection *connection, const uint8_t *message,
 
    //Check operation mode
    if(connection->context->mode != SSH_OPERATION_MODE_CLIENT)
+   {
       return ERROR_UNEXPECTED_MESSAGE;
+   }
 
    //Check connection state
    if(connection->state != SSH_CONN_STATE_SERVER_EXT_INFO_1 &&
@@ -625,7 +663,9 @@ error_t sshParseServiceAccept(SshConnection *connection, const uint8_t *message,
 
    //Sanity check
    if(length < sizeof(uint8_t))
+   {
       return ERROR_INVALID_MESSAGE;
+   }
 
    //Point to the first field of the message
    p = message + sizeof(uint8_t);
@@ -636,7 +676,9 @@ error_t sshParseServiceAccept(SshConnection *connection, const uint8_t *message,
    error = sshParseString(p, length, &serviceName);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    p += sizeof(uint32_t) + serviceName.length;
@@ -644,11 +686,15 @@ error_t sshParseServiceAccept(SshConnection *connection, const uint8_t *message,
 
    //Malformed message?
    if(length != 0)
+   {
       return ERROR_INVALID_MESSAGE;
+   }
 
    //Check service name
    if(!sshCompareString(&serviceName, "ssh-userauth"))
+   {
       return ERROR_INVALID_MESSAGE;
+   }
 
    //The authentication protocol is intended to be run over the SSH transport
    //layer protocol (refer to RFC 4252, section 1)
@@ -686,15 +732,18 @@ error_t sshParseIgnore(SshConnection *connection, const uint8_t *message,
    //Strict key exchange?
    if(!connection->newKeysReceived && connection->kexStrictReceived)
    {
-      //During initial KEX, terminate the connection if any unexpected or
-      //out-of-sequence packet is received
+      //When strict KEX is enabled, implementations must terminate the
+      //connection if they receive a non-KEX message during the initial key
+      //exchange
       return ERROR_UNEXPECTED_MESSAGE;
    }
 #endif
 
    //Sanity check
    if(length < sizeof(uint8_t))
+   {
       return ERROR_INVALID_MESSAGE;
+   }
 
    //Point to the first field of the message
    p = message + sizeof(uint8_t);
@@ -705,7 +754,9 @@ error_t sshParseIgnore(SshConnection *connection, const uint8_t *message,
    error = sshParseString(p, length, &data);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    p += sizeof(uint32_t) + data.length;
@@ -713,7 +764,9 @@ error_t sshParseIgnore(SshConnection *connection, const uint8_t *message,
 
    //Malformed message?
    if(length != 0)
+   {
       return ERROR_INVALID_MESSAGE;
+   }
 
    //All implementations must understand (and ignore) this message at any time
    //after receiving the identification string. This message can be used as an
@@ -747,15 +800,18 @@ error_t sshParseDebug(SshConnection *connection, const uint8_t *message,
    //Strict key exchange?
    if(!connection->newKeysReceived && connection->kexStrictReceived)
    {
-      //During initial KEX, terminate the connection if any unexpected or
-      //out-of-sequence packet is received
+      //When strict KEX is enabled, implementations must terminate the
+      //connection if they receive a non-KEX message during the initial key
+      //exchange
       return ERROR_UNEXPECTED_MESSAGE;
    }
 #endif
 
    //Sanity check
    if(length < sizeof(uint8_t))
+   {
       return ERROR_INVALID_MESSAGE;
+   }
 
    //Point to the first field of the message
    p = message + sizeof(uint8_t);
@@ -764,7 +820,9 @@ error_t sshParseDebug(SshConnection *connection, const uint8_t *message,
 
    //Malformed message?
    if(length < sizeof(uint8_t))
+   {
       return ERROR_INVALID_MESSAGE;
+   }
 
    //Decode always_display flag
    alwaysDisplay = p[0];
@@ -779,7 +837,9 @@ error_t sshParseDebug(SshConnection *connection, const uint8_t *message,
    error = sshParseString(p, length, &debugMessage);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    p += sizeof(uint32_t) + debugMessage.length;
@@ -789,7 +849,9 @@ error_t sshParseDebug(SshConnection *connection, const uint8_t *message,
    error = sshParseString(p, length, &languageTag);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    p += sizeof(uint32_t) + languageTag.length;
@@ -797,7 +859,9 @@ error_t sshParseDebug(SshConnection *connection, const uint8_t *message,
 
    //Malformed message?
    if(length != 0)
+   {
       return ERROR_INVALID_MESSAGE;
+   }
 
    //All implementations must understand this message, but they are allowed
    //to ignore it. This message is used to transmit information that may help
@@ -829,7 +893,9 @@ error_t sshParseDisconnect(SshConnection *connection, const uint8_t *message,
 
    //Sanity check
    if(length < sizeof(uint8_t))
+   {
       return ERROR_INVALID_MESSAGE;
+   }
 
    //Point to the first field of the message
    p = message + sizeof(uint8_t);
@@ -838,7 +904,9 @@ error_t sshParseDisconnect(SshConnection *connection, const uint8_t *message,
 
    //Malformed message?
    if(length < sizeof(uint32_t))
+   {
       return ERROR_INVALID_MESSAGE;
+   }
 
    //Get reason code
    reasonCode = LOAD32BE(p);
@@ -853,7 +921,9 @@ error_t sshParseDisconnect(SshConnection *connection, const uint8_t *message,
    error = sshParseString(p, length, &description);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    p += sizeof(uint32_t) + description.length;
@@ -863,7 +933,9 @@ error_t sshParseDisconnect(SshConnection *connection, const uint8_t *message,
    error = sshParseString(p, length, &languageTag);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    p += sizeof(uint32_t) + languageTag.length;
@@ -871,7 +943,9 @@ error_t sshParseDisconnect(SshConnection *connection, const uint8_t *message,
 
    //Malformed message?
    if(length != 0)
+   {
       return ERROR_INVALID_MESSAGE;
+   }
 
    //An SSH_MSG_DISCONNECT message has been successfully received
    connection->disconnectReceived = TRUE;
@@ -902,9 +976,22 @@ error_t sshParseUnimplemented(SshConnection *connection, const uint8_t *message,
    TRACE_INFO("SSH_MSG_UNIMPLEMENTED message received (%" PRIuSIZE " bytes)...\r\n", length);
    TRACE_VERBOSE_ARRAY("  ", message, length);
 
+#if (SSH_KEX_STRICT_SUPPORT == ENABLED)
+   //Strict key exchange?
+   if(!connection->newKeysReceived && connection->kexStrictReceived)
+   {
+      //When strict KEX is enabled, implementations must terminate the
+      //connection if they receive a non-KEX message during the initial key
+      //exchange
+      return ERROR_UNEXPECTED_MESSAGE;
+   }
+#endif
+
    //Sanity check
    if(length < sizeof(uint8_t))
+   {
       return ERROR_INVALID_MESSAGE;
+   }
 
    //Point to the first field of the message
    p = message + sizeof(uint8_t);
@@ -913,7 +1000,9 @@ error_t sshParseUnimplemented(SshConnection *connection, const uint8_t *message,
 
    //Malformed message?
    if(length != sizeof(uint32_t))
+   {
       return ERROR_INVALID_MESSAGE;
+   }
 
    //Get the packet sequence number of rejected message
    packetSeqNum = LOAD32BE(p);
@@ -942,10 +1031,24 @@ error_t sshParseUnrecognized(SshConnection *connection, const uint8_t *message,
    TRACE_INFO("Unrecognized message received (%" PRIuSIZE " bytes)...\r\n", length);
    TRACE_VERBOSE_ARRAY("  ", message, length);
 
-   //An implementation must respond to all unrecognized messages with an
-   //SSH_MSG_UNIMPLEMENTED message in the order in which the messages were
-   //received (refer to RFC 4253, section 11.4)
-   error = sshSendUnimplemented(connection, connection->decryptionEngine.seqNum);
+#if (SSH_KEX_STRICT_SUPPORT == ENABLED)
+   //Strict key exchange?
+   if(!connection->newKeysReceived && connection->kexStrictReceived)
+   {
+      //When strict KEX is enabled, implementations must terminate the
+      //connection if they receive a non-KEX message during the initial key
+      //exchange
+      error = ERROR_UNEXPECTED_MESSAGE;
+   }
+   else
+#endif
+   {
+      //An implementation must respond to all unrecognized messages with an
+      //SSH_MSG_UNIMPLEMENTED message in the order in which the messages were
+      //received (refer to RFC 4253, section 11.4)
+      error = sshSendUnimplemented(connection,
+         connection->decryptionEngine.seqNum);
+   }
 
    //Such messages must be otherwise ignored
    return error;

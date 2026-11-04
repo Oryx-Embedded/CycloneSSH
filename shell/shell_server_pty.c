@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.6.6
+ * @version 2.6.8
  **/
 
 //Switch to the appropriate trace level
@@ -54,7 +54,7 @@ error_t shellServerProcessWindowResize(ShellServerSession *session)
    uint_t x;
    uint_t y;
    uint_t cursorPos;
-   char_t buffer[32];
+   char_t buffer[30];
    size_t n = 0;
    size_t i;
    uint32_t newTermWidth;
@@ -263,6 +263,7 @@ error_t shellServerProcessChar(ShellServerSession *session)
             {
                error = shellServerProcessRightKey(session);
             }
+
             if(osStrcmp(session->escSeq, VT100_MOVE_CURSOR_UP) == 0)
             {
                error = shellServerProcessUpKey(session);
@@ -271,6 +272,7 @@ error_t shellServerProcessChar(ShellServerSession *session)
             {
                error = shellServerProcessDownKey(session);
             }
+
             if(osStrcmp(session->escSeq, VT100_PAGE_UP) == 0)
             {
                error = shellServerProcessPageUpKey(session);
@@ -355,7 +357,7 @@ error_t shellServerInsertChar(ShellServerSession *session, char_t c)
 {
    error_t error;
    uint_t cursorPos;
-   char_t buffer[16];
+   char_t buffer[7];
 
    //Initialize status code
    error = NO_ERROR;
@@ -436,7 +438,7 @@ error_t shellServerProcessBackspaceKey(ShellServerSession *session)
 {
    error_t error;
    uint_t cursorPos;
-   char_t buffer[16];
+   char_t buffer[20];
 
    //Initialize status code
    error = NO_ERROR;
@@ -515,7 +517,7 @@ error_t shellServerProcessBackspaceKey(ShellServerSession *session)
 error_t shellServerProcessDeleteKey(ShellServerSession *session)
 {
    error_t error;
-   char_t buffer[16];
+   char_t buffer[5];
 
    //Initialize status code
    error = NO_ERROR;
@@ -570,7 +572,7 @@ error_t shellServerProcessLeftKey(ShellServerSession *session)
 {
    error_t error;
    uint_t cursorPos;
-   char_t buffer[16];
+   char_t buffer[17];
 
    //Initialize status code
    error = NO_ERROR;
@@ -614,7 +616,7 @@ error_t shellServerProcessRightKey(ShellServerSession *session)
 {
    error_t error;
    uint_t cursorPos;
-   char_t buffer[16];
+   char_t buffer[4];
 
    //Initialize status code
    error = NO_ERROR;
@@ -806,7 +808,7 @@ error_t shellClearCommandLine(ShellServerSession *session)
    error_t error;
    uint_t y;
    uint_t cursorPos;
-   char_t buffer[32];
+   char_t buffer[18];
    size_t n;
 
    //Determine the current position of the cursor
@@ -857,33 +859,43 @@ error_t shellRestoreCommandLine(ShellServerSession *session,
    error_t error;
    uint_t cursorPos;
 
-   //Clear entire line
-   error = shellClearCommandLine(session);
-
-   //Check status code
-   if(!error)
+   //The command line must fit in the buffer, including the NULL terminator
+   //added when the command is executed
+   if(length < SHELL_SERVER_BUFFER_SIZE)
    {
-      //Restore command line
-      osMemcpy(session->buffer, commandLine, length);
-      session->bufferLen = length;
-      session->bufferPos = length;
+      //Clear entire line
+      error = shellClearCommandLine(session);
 
-      //Display command line
-      error = sshWriteChannel(session->channel, session->buffer,
-         session->bufferLen, NULL, 0);
-   }
-
-   //Check status code
-   if(!error)
-   {
-      //Determine the current position of the cursor
-      cursorPos = session->promptLen + session->bufferLen;
-
-      //Wrap to the next line if necessary
-      if((cursorPos % session->termWidth) == 0)
+      //Check status code
+      if(!error)
       {
-         error = sshWriteChannel(session->channel, " \r", 2, NULL, 0);
+         //Restore command line
+         osMemcpy(session->buffer, commandLine, length);
+         session->bufferLen = length;
+         session->bufferPos = length;
+
+         //Display command line
+         error = sshWriteChannel(session->channel, session->buffer,
+            session->bufferLen, NULL, 0);
       }
+
+      //Check status code
+      if(!error)
+      {
+         //Determine the current position of the cursor
+         cursorPos = session->promptLen + session->bufferLen;
+
+         //Wrap to the next line if necessary
+         if((cursorPos % session->termWidth) == 0)
+         {
+            error = sshWriteChannel(session->channel, " \r", 2, NULL, 0);
+         }
+      }
+   }
+   else
+   {
+      //A longer entry is not restored, rather than truncated
+      error = NO_ERROR;
    }
 
    //Return status code

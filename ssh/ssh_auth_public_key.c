@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.6.6
+ * @version 2.6.8
  **/
 
 //Switch to the appropriate trace level
@@ -113,6 +113,7 @@ error_t sshFormatPublicKeyAuthParams(SshConnection *connection,
    SshHostKey *hostKey;
    SshBinaryString sessionId;
    SshBinaryString tbsData;
+   const char_t *publicKeyAlgo;
 
    //Total number of bytes that have been written
    *written = 0;
@@ -121,7 +122,9 @@ error_t sshFormatPublicKeyAuthParams(SshConnection *connection,
    error = sshFormatString("publickey", p, &n);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the first method-specific field
    p += n;
@@ -138,17 +141,28 @@ error_t sshFormatPublicKeyAuthParams(SshConnection *connection,
    hostKey = sshGetHostKey(connection);
    //Invalid host key?
    if(hostKey == NULL)
+   {
       return ERROR_INVALID_KEY;
+   }
+
+   //Select the public key algorithm to use, depending on the algorithms
+   //accepted by the server
+   publicKeyAlgo = sshSelectPublicKeyAlgo(connection->context,
+      hostKey->keyFormatId, connection->peerSigAlgos);
 
    //Make sure the public key algorithm is valid
-   if(hostKey->publicKeyAlgo == NULL)
+   if(publicKeyAlgo == NULL)
+   {
       return ERROR_INVALID_KEY;
+   }
 
    //Format public key algorithm name
-   error = sshFormatString(hostKey->publicKeyAlgo, p, &n);
+   error = sshFormatString(publicKeyAlgo, p, &n);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Total length of the message
    p += n;
@@ -158,7 +172,9 @@ error_t sshFormatPublicKeyAuthParams(SshConnection *connection,
    error = sshFormatHostKey(connection, p + sizeof(uint32_t), &n);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //The octet string value is preceded by a uint32 containing its length
    STORE32BE(n, p);
@@ -180,11 +196,13 @@ error_t sshFormatPublicKeyAuthParams(SshConnection *connection,
       tbsData.length = messageLen + *written;
 
       //Compute the signature using the private key
-      error = sshGenerateSignature(connection, hostKey->publicKeyAlgo,
-         hostKey, &sessionId, &tbsData, p + sizeof(uint32_t), &n);
+      error = sshGenerateSignature(connection, publicKeyAlgo, hostKey,
+         &sessionId, &tbsData, p + sizeof(uint32_t), &n);
       //Any error to report?
       if(error)
+      {
          return error;
+      }
 
       //The octet string value is preceded by a uint32 containing its length
       STORE32BE(n, p);
@@ -235,7 +253,9 @@ error_t sshFormatUserAuthPkOk(SshConnection *connection,
       p, &n);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    p += n;
@@ -245,7 +265,9 @@ error_t sshFormatUserAuthPkOk(SshConnection *connection,
    error = sshFormatBinaryString(publicKey->value, publicKey->length, p, &n);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Total length of the message
    *length += n;
@@ -284,7 +306,9 @@ error_t sshParsePublicKeyAuthParams(SshConnection *connection,
 
    //Malformed message?
    if(length < sizeof(uint8_t))
+   {
       return ERROR_INVALID_MESSAGE;
+   }
 
    //Decode flag
    flag = p[0];
@@ -297,7 +321,9 @@ error_t sshParsePublicKeyAuthParams(SshConnection *connection,
    error = sshParseString(p, length, &publicKeyAlgo);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    p += sizeof(uint32_t) + publicKeyAlgo.length;
@@ -307,7 +333,9 @@ error_t sshParsePublicKeyAuthParams(SshConnection *connection,
    error = sshParseBinaryString(p, length, &publicKey);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    p += sizeof(uint32_t) + publicKey.length;
@@ -324,7 +352,9 @@ error_t sshParsePublicKeyAuthParams(SshConnection *connection,
       error = sshParseBinaryString(p, length, &signature);
       //Any error to report?
       if(error)
+      {
          return error;
+      }
 
       //Point to the next field
       p += sizeof(uint32_t) + signature.length;
@@ -339,7 +369,9 @@ error_t sshParsePublicKeyAuthParams(SshConnection *connection,
 
    //Malformed message?
    if(length != 0)
+   {
       return ERROR_INVALID_MESSAGE;
+   }
 
    //When the server receives this message, it must check whether the supplied
    //key is acceptable for authentication (refer to RFC 4252, section 7)
@@ -446,6 +478,8 @@ error_t sshParseUserAuthPkOk(SshConnection *connection,
 #if (SSH_CLIENT_SUPPORT == ENABLED)
    error_t error;
    const uint8_t *p;
+   const char_t *selectedAlgo;
+   SshHostKey *hostKey;
    SshString publicKeyAlgo;
    SshBinaryString publicKey;
 
@@ -455,7 +489,9 @@ error_t sshParseUserAuthPkOk(SshConnection *connection,
 
    //Check operation mode
    if(connection->context->mode != SSH_OPERATION_MODE_CLIENT)
+   {
       return ERROR_UNEXPECTED_MESSAGE;
+   }
 
    //Check connection state
    if(connection->state != SSH_CONN_STATE_SERVER_EXT_INFO_2 &&
@@ -466,7 +502,9 @@ error_t sshParseUserAuthPkOk(SshConnection *connection,
 
    //Sanity check
    if(length < sizeof(uint8_t))
+   {
       return ERROR_INVALID_MESSAGE;
+   }
 
    //Point to the first field of the message
    p = message + sizeof(uint8_t);
@@ -477,7 +515,9 @@ error_t sshParseUserAuthPkOk(SshConnection *connection,
    error = sshParseString(p, length, &publicKeyAlgo);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    p += sizeof(uint32_t) + publicKeyAlgo.length;
@@ -487,7 +527,9 @@ error_t sshParseUserAuthPkOk(SshConnection *connection,
    error = sshParseBinaryString(p, length, &publicKey);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    p += sizeof(uint32_t) + publicKey.length;
@@ -495,11 +537,34 @@ error_t sshParseUserAuthPkOk(SshConnection *connection,
 
    //Malformed message?
    if(length != 0)
+   {
       return ERROR_INVALID_MESSAGE;
+   }
 
    //Sanity check
    if(connection->publicKeyOk)
+   {
       return ERROR_UNEXPECTED_MESSAGE;
+   }
+
+   //Get the currently selected host key
+   hostKey = sshGetHostKey(connection);
+   //Invalid host key?
+   if(hostKey == NULL)
+   {
+      return ERROR_UNEXPECTED_MESSAGE;
+   }
+
+   //Retrieve the public key algorithm that was used in the request
+   selectedAlgo = sshSelectPublicKeyAlgo(connection->context,
+      hostKey->keyFormatId, connection->peerSigAlgos);
+
+   //The server must respond with the public key algorithm name from the
+   //request (refer to RFC 4252, section 7)
+   if(!sshCompareString(&publicKeyAlgo, selectedAlgo))
+   {
+      return ERROR_INVALID_MESSAGE;
+   }
 
 #if (SSH_CERT_SUPPORT == ENABLED)
    //Certificate-based authentication?
@@ -521,7 +586,9 @@ error_t sshParseUserAuthPkOk(SshConnection *connection,
 
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //The provided host key is acceptable
    connection->publicKeyOk = TRUE;

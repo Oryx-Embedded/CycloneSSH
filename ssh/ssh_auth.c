@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.6.6
+ * @version 2.6.8
  **/
 
 //Switch to the appropriate trace level
@@ -194,6 +194,9 @@ error_t sshSendUserAuthSuccess(SshConnection *connection)
    //Check status code
    if(!error)
    {
+      //User authentication is complete
+      connection->authenticated = TRUE;
+
       //Either party may later initiate a key re-exchange by sending a
       //SSH_MSG_KEXINIT message
       connection->kexInitSent = FALSE;
@@ -345,7 +348,9 @@ error_t sshFormatUserAuthBanner(SshConnection *connection,
    error = sshFormatString(banner, p, &n);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    p += n;
@@ -355,7 +360,9 @@ error_t sshFormatUserAuthBanner(SshConnection *connection,
    error = sshFormatString("en", p, &n);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Total length of the message
    *length += n;
@@ -397,7 +404,9 @@ error_t sshFormatUserAuthRequest(SshConnection *connection, uint8_t *message,
    error = sshFormatString(connection->context->username, p, &n);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    p += n;
@@ -407,7 +416,9 @@ error_t sshFormatUserAuthRequest(SshConnection *connection, uint8_t *message,
    error = sshFormatString("ssh-connection", p, &n);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    p += n;
@@ -476,7 +487,9 @@ error_t sshFormatNoneAuthParams(SshConnection *connection, uint8_t *p,
    error = sshFormatString("none", p, written);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //A "none" authentication request does not include any method specific fields
    return NO_ERROR;
@@ -533,7 +546,9 @@ error_t sshFormatUserAuthFailure(SshConnection *connection, uint8_t *p,
    error = sshFormatUserAuthMethods(connection, p, &n);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    p += n;
@@ -652,7 +667,9 @@ error_t sshParseUserAuthBanner(SshConnection *connection,
 
    //Check operation mode
    if(connection->context->mode != SSH_OPERATION_MODE_CLIENT)
+   {
       return ERROR_UNEXPECTED_MESSAGE;
+   }
 
    //The SSH server may send an SSH_MSG_USERAUTH_BANNER message at any time
    //after this authentication protocol starts and before authentication is
@@ -665,7 +682,9 @@ error_t sshParseUserAuthBanner(SshConnection *connection,
 
    //Sanity check
    if(length < sizeof(uint8_t))
+   {
       return ERROR_INVALID_MESSAGE;
+   }
 
    //Point to the first field of the message
    p = message + sizeof(uint8_t);
@@ -677,7 +696,9 @@ error_t sshParseUserAuthBanner(SshConnection *connection,
    error = sshParseString(p, length, &banner);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    p += sizeof(uint32_t) + banner.length;
@@ -687,7 +708,9 @@ error_t sshParseUserAuthBanner(SshConnection *connection,
    error = sshParseString(p, length, &languageTag);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    p += sizeof(uint32_t) + languageTag.length;
@@ -695,7 +718,9 @@ error_t sshParseUserAuthBanner(SshConnection *connection,
 
    //Malformed message?
    if(length != 0)
+   {
       return ERROR_INVALID_MESSAGE;
+   }
 
    //Successful processing
    return NO_ERROR;
@@ -730,7 +755,9 @@ error_t sshParseUserAuthRequest(SshConnection *connection,
 
    //Check operation mode
    if(connection->context->mode != SSH_OPERATION_MODE_SERVER)
+   {
       return ERROR_UNEXPECTED_MESSAGE;
+   }
 
    //Check connection state
    if(connection->state == SSH_CONN_STATE_USER_AUTH_REQUEST)
@@ -752,7 +779,9 @@ error_t sshParseUserAuthRequest(SshConnection *connection,
 
    //Sanity check
    if(length < sizeof(uint8_t))
+   {
       return ERROR_INVALID_MESSAGE;
+   }
 
    //Point to the first field of the message
    p = message + sizeof(uint8_t);
@@ -763,7 +792,15 @@ error_t sshParseUserAuthRequest(SshConnection *connection,
    error = sshParseString(p, length, &userName);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
+
+   //The user name must not contain any NULL character
+   if(osMemchr(userName.value, '\0', userName.length) != NULL)
+   {
+      return ERROR_INVALID_MESSAGE;
+   }
 
    //Point to the next field
    p += sizeof(uint32_t) + userName.length;
@@ -773,7 +810,9 @@ error_t sshParseUserAuthRequest(SshConnection *connection,
    error = sshParseString(p, length, &serviceName);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    p += sizeof(uint32_t) + serviceName.length;
@@ -783,7 +822,9 @@ error_t sshParseUserAuthRequest(SshConnection *connection,
    error = sshParseString(p, length, &methodName);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the method specific fields
    p += sizeof(uint32_t) + methodName.length;
@@ -867,7 +908,9 @@ error_t sshParseNoneAuthParams(SshConnection *connection,
 
    //Malformed message?
    if(length != 0)
+   {
       return ERROR_INVALID_MESSAGE;
+   }
 
    //Check the length of the user name
    if(userName->length <= SSH_MAX_USERNAME_LEN)
@@ -879,7 +922,7 @@ error_t sshParseNoneAuthParams(SshConnection *connection,
 
 #if (SSH_PASSWORD_AUTH_SUPPORT == ENABLED)
       //The server must always reject this request, unless the client is to be
-      //granted access without any authentication (refer to RFC 4552, section 4)
+      //granted access without any authentication (refer to RFC 4252, section 4)
       if(context->passwordAuthCallback != NULL)
       {
          //Manage authentication policy
@@ -936,7 +979,9 @@ error_t sshParseUserAuthSuccess(SshConnection *connection,
 
    //Check operation mode
    if(connection->context->mode != SSH_OPERATION_MODE_CLIENT)
+   {
       return ERROR_UNEXPECTED_MESSAGE;
+   }
 
    //Check connection state
    if(connection->state != SSH_CONN_STATE_SERVER_EXT_INFO_2 &&
@@ -948,7 +993,12 @@ error_t sshParseUserAuthSuccess(SshConnection *connection,
 
    //Malformed message?
    if(length != sizeof(uint8_t))
+   {
       return ERROR_INVALID_MESSAGE;
+   }
+
+   //User authentication is complete
+   connection->authenticated = TRUE;
 
    //Either party may later initiate a key re-exchange by sending a
    //SSH_MSG_KEXINIT message
@@ -992,7 +1042,9 @@ error_t sshParseUserAuthFailure(SshConnection *connection,
 
    //Check operation mode
    if(connection->context->mode != SSH_OPERATION_MODE_CLIENT)
+   {
       return ERROR_UNEXPECTED_MESSAGE;
+   }
 
    //Check connection state
    if(connection->state != SSH_CONN_STATE_SERVER_EXT_INFO_2 &&
@@ -1003,7 +1055,9 @@ error_t sshParseUserAuthFailure(SshConnection *connection,
 
    //Sanity check
    if(length < sizeof(uint8_t))
+   {
       return ERROR_INVALID_MESSAGE;
+   }
 
    //Point to the first field of the message
    p = message + sizeof(uint8_t);
@@ -1014,7 +1068,9 @@ error_t sshParseUserAuthFailure(SshConnection *connection,
    error = sshParseNameList(p, length, &authList);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    p += sizeof(uint32_t) + authList.length;
@@ -1022,7 +1078,9 @@ error_t sshParseUserAuthFailure(SshConnection *connection,
 
    //Malformed message?
    if(length != sizeof(uint8_t))
+   {
       return ERROR_INVALID_MESSAGE;
+   }
 
    //The value of partial success must be TRUE if the authentication request to
    //which this is a response was successful. It must be FALSE if the request

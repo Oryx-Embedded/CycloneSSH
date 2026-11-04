@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.6.6
+ * @version 2.6.8
  **/
 
 //Switch to the appropriate trace level
@@ -486,6 +486,18 @@ static const char_t *const sshSupportedEncAlgos[] =
 
 static const char_t *const sshSupportedMacAlgos[] =
 {
+#if (SSH_UMAC64_SUPPORT == ENABLED && SSH_ETM_SUPPORT == ENABLED)
+   "umac-64-etm@openssh.com",
+#endif
+#if (SSH_UMAC64_SUPPORT == ENABLED)
+   "umac-64@openssh.com",
+#endif
+#if (SSH_UMAC128_SUPPORT == ENABLED && SSH_ETM_SUPPORT == ENABLED)
+   "umac-128-etm@openssh.com",
+#endif
+#if (SSH_UMAC128_SUPPORT == ENABLED)
+   "umac-128@openssh.com",
+#endif
 #if (SSH_HMAC_SUPPORT == ENABLED && SSH_SHA256_SUPPORT == ENABLED && \
    SSH_ETM_SUPPORT == ENABLED)
    "hmac-sha2-256-etm@openssh.com",
@@ -1317,20 +1329,20 @@ const char_t *sshSelectCompressionAlgo(SshContext *context,
  * @brief Public key algorithm selection
  * @param[in] context Pointer to the SSH context
  * @param[in] keyFormatId Key format identifier
- * @param[in] peerAlgoList List of public key algorithms supported by the
- *   peer (optional parameter)
+ * @param[in] peerAlgos Public key algorithms supported by the peer (bitmap)
  * @return Name of the selected algorithm, if any
  **/
 
 const char_t *sshSelectPublicKeyAlgo(SshContext *context,
-   const char_t *keyFormatId, const SshNameList *peerAlgoList)
+   const char_t *keyFormatId, uint32_t peerAlgos)
 {
    uint_t i;
-   uint_t j;
-   SshString name;
+   const char_t *defaultAlgo;
    const char_t *selectedAlgo;
    const SshHostKeyAlgo *entry;
 
+   //Name of the default public key algorithm
+   defaultAlgo = NULL;
    //Name of the chosen public key algorithm
    selectedAlgo = NULL;
 
@@ -1344,30 +1356,14 @@ const char_t *sshSelectPublicKeyAlgo(SshContext *context,
       //Check key format identifier
       if(sshCompareAlgo(entry->keyFormatId, keyFormatId))
       {
-         //The parameter is optional
-         if(peerAlgoList != NULL)
+         //The first matching entry is the default public key algorithm
+         if(defaultAlgo == NULL)
          {
-            //Loop through the list of algorithms supported by the peer
-            for(j = 0; selectedAlgo == NULL; j++)
-            {
-               //Algorithm names are separated by commas
-               if(sshGetName(peerAlgoList, j, &name))
-               {
-                  //Compare algorithm names
-                  if(sshCompareString(&name, entry->publicKeyAlgo))
-                  {
-                     //Select current public key algorithm
-                     selectedAlgo = entry->publicKeyAlgo;
-                  }
-               }
-               else
-               {
-                  //The end of the list was reached
-                  break;
-               }
-            }
+            defaultAlgo = entry->publicKeyAlgo;
          }
-         else
+
+         //Check whether the current algorithm is supported by the peer
+         if(i < 32 && (peerAlgos & (1U << i)) != 0)
          {
             //Select current public key algorithm
             selectedAlgo = entry->publicKeyAlgo;
@@ -1375,8 +1371,57 @@ const char_t *sshSelectPublicKeyAlgo(SshContext *context,
       }
    }
 
+   //If the peer does not support any algorithm for this key format (or if
+   //the list of algorithms supported by the peer is unknown), then use the
+   //default public key algorithm
+   if(selectedAlgo == NULL)
+   {
+      selectedAlgo = defaultAlgo;
+   }
+
    //Return the name of the chosen public key algorithm, if any
    return selectedAlgo;
+}
+
+
+/**
+ * @brief Get the public key algorithms supported by the peer
+ * @param[in] peerAlgoList List of public key algorithms supported by the peer
+ * @return Bitmap of the public key algorithms supported by the peer
+ **/
+
+uint32_t sshGetPeerPublicKeyAlgos(const SshNameList *peerAlgoList)
+{
+   uint_t i;
+   uint_t j;
+   uint32_t peerAlgos;
+   SshString name;
+   const SshHostKeyAlgo *entry;
+
+   //Initialize bitmap
+   peerAlgos = 0;
+
+   //Loop through the list of supported algorithms
+   for(i = 0; i < arraysize(sshSupportedHostKeyAlgos) && i < 32; i++)
+   {
+      //Point to the current entry
+      entry = &sshSupportedHostKeyAlgos[i];
+
+      //Loop through the list of algorithms supported by the peer
+      for(j = 0; sshGetName(peerAlgoList, j, &name); j++)
+      {
+         //Compare algorithm names
+         if(sshCompareString(&name, entry->publicKeyAlgo))
+         {
+            //The current algorithm is supported by the peer
+            peerAlgos |= (1U << i);
+            break;
+         }
+      }
+   }
+
+   //Return the public key algorithms supported by the peer
+   return peerAlgos;
 }
 
 

@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.6.6
+ * @version 2.6.8
  **/
 
 //Switch to the appropriate trace level
@@ -111,18 +111,19 @@ error_t sshSendPacket(SshConnection *connection, uint8_t *payload,
       blockSize = 8;
    }
 
-   //Calculate the length of the padding string
+   //Calculate the length of the padding string (the block size is always a
+   //power of two)
    if(encryptionEngine->etm)
    {
-      paddingLen = blockSize - ((packetLen + blockSize - 4) % blockSize);
+      paddingLen = blockSize - ((packetLen - 4) & (blockSize - 1));
    }
    else
    {
-      paddingLen = blockSize - (packetLen % blockSize);
+      paddingLen = blockSize - (packetLen & (blockSize - 1));
    }
 
    //There must be at least four bytes of padding
-   if(paddingLen < 4)
+   if(paddingLen < SSH_MIN_PADDING_LEN)
    {
       paddingLen += blockSize;
    }
@@ -180,13 +181,9 @@ error_t sshReceivePacket(SshConnection *connection)
    error_t error;
    size_t n;
    size_t blockSize;
-   SshEncryptionEngine *decryptionEngine;
 
    //Initialize status code
    error = NO_ERROR;
-
-   //Point to the decryption engine
-   decryptionEngine = &connection->decryptionEngine;
 
    //Check the actual length of the packet
    if(connection->rxBufferLen < SSH_BUFFER_SIZE)
@@ -227,22 +224,10 @@ error_t sshReceivePacket(SshConnection *connection)
          //Check whether an SSH_MSG_NEWKEYS message has been received
          if(connection->newKeysReceived)
          {
-            //Stream or AEAD cipher?
-            if(decryptionEngine->cipherMode == CIPHER_MODE_STREAM ||
-               decryptionEngine->cipherMode == CIPHER_MODE_GCM ||
-               decryptionEngine->cipherMode == CIPHER_MODE_CHACHA20_POLY1305)
-            {
-               //The packet_length field is to be treated as additional
-               //authenticated data, not as plaintext
-               blockSize = sizeof(uint32_t);
-            }
-            else
-            {
-               //Implementations should decrypt the length after receiving the
-               //first 8 (or cipher block size, whichever is larger) bytes of
-               //a packet
-               blockSize = decryptionEngine->cipherAlgo->blockSize;
-            }
+            //Implementations should decrypt the length after receiving the
+            //first 8 (or cipher block size, whichever is larger) bytes of a
+            //packet (refer to RFC 4253, section 6)
+            blockSize = sshGetBlockSize(connection);
          }
          else
          {
@@ -271,13 +256,16 @@ error_t sshReceivePacket(SshConnection *connection)
                   //Check whether an SSH_MSG_NEWKEYS message has been received
                   if(connection->newKeysReceived)
                   {
-                     //When receiving a packet, the length must be decrypted first
-                     error = sshDecryptPacketLength(connection, connection->buffer);
+                     //When receiving a packet, the length must be decrypted
+                     //first
+                     error = sshDecryptPacketLength(connection,
+                        connection->buffer);
                   }
                   else
                   {
                      //The packet_length field is not encrypted
-                     error = sshParsePacketLength(connection, connection->buffer);
+                     error = sshParsePacketLength(connection,
+                        connection->buffer);
                   }
                }
             }
@@ -333,11 +321,17 @@ error_t sshParsePacket(SshConnection *connection, uint8_t *packet,
    size_t length)
 {
    error_t error;
-   size_t n;
+   size_t blockSize;
+   size_t packetLen;
    size_t paddingLen;
+   size_t alignedLen;
+   SshEncryptionEngine *decryptionEngine;
 
    //Initialize status code
    error = NO_ERROR;
+
+   //Point to the decryption engine
+   decryptionEngine = &connection->decryptionEngine;
 
    //Debug message
    TRACE_DEBUG("SSH packet received (%" PRIuSIZE " bytes)...\r\n", length);
@@ -350,47 +344,85 @@ error_t sshParsePacket(SshConnection *connection, uint8_t *packet,
       //algorithms
       error = sshDecryptPacket(connection, packet, &length);
    }
+   else
+   {
+#if (SSH_KEX_STRICT_SUPPORT == ENABLED)
+      //Implementations must ensure that the sequence number does not wrap (by
+      //incrementing past 2^32-1) at any time prior to the completion of the
+      //initial key exchange
+      if(connection->seqNumWrap)
+      {
+         error = ERROR_UNEXPECTED_MESSAGE;
+      }
+#endif
+   }
 
    //Check status code
    if(!error)
    {
-      //Check the length of the received packet
-      if(length >= SSH_MIN_PACKET_SIZE)
+      //The packet is considered malformed until it passes all the checks
+      error = ERROR_INVALID_MESSAGE;
+
+      //Valid SSH packet header?
+      if(length >= SSH_PACKET_HEADER_SIZE)
       {
          //Parse SSH packet header
-         n = LOAD32BE(packet);
+         packetLen = LOAD32BE(packet);
          paddingLen = packet[4];
 
-         //Sanity check
-         if(length == (n + sizeof(uint32_t)))
+         //Check the length of the packet and the length of the padding
+         if(packetLen == (length - sizeof(uint32_t)) &&
+            packetLen >= (paddingLen + sizeof(uint8_t)) &&
+            paddingLen >= SSH_MIN_PADDING_LEN)
          {
-            //Check the length of the padding string
-            if(n >= (paddingLen + sizeof(uint8_t)))
+            //Check whether an SSH_MSG_NEWKEYS message has been received
+            if(connection->newKeysReceived)
+            {
+               //The total length of the packet must be a multiple of the cipher
+               //block size or 8, whichever is larger
+               if(decryptionEngine->cipherAlgo != NULL)
+               {
+                  blockSize = MAX(decryptionEngine->cipherAlgo->blockSize, 8);
+               }
+               else
+               {
+                  blockSize = 8;
+               }
+
+               //When using an AEAD or an Encrypt-then-MAC algorithm, the
+               //packet_length field is not encrypted and is not part of the
+               //data to be aligned
+               if(decryptionEngine->cipherMode == CIPHER_MODE_GCM ||
+                  decryptionEngine->cipherMode == CIPHER_MODE_CHACHA20_POLY1305 ||
+                  decryptionEngine->etm)
+               {
+                  alignedLen = packetLen;
+               }
+               else
+               {
+                  alignedLen = packetLen + sizeof(uint32_t);
+               }
+            }
+            else
+            {
+               //The total length of the packet must be a multiple of 8
+               blockSize = 8;
+               alignedLen = packetLen + sizeof(uint32_t);
+            }
+
+            //Check whether the total length of the packet is a multiple of the
+            //block size (the block size is always a power of two)
+            if((alignedLen & (blockSize - 1)) == 0)
             {
                //Point to the payload
                packet += SSH_PACKET_HEADER_SIZE;
                //Retrieve the length of the payload
-               n -= paddingLen + sizeof(uint8_t);
+               packetLen -= paddingLen + sizeof(uint8_t);
 
                //Parse the received message
-               error = sshParseMessage(connection, packet, n);
-            }
-            else
-            {
-               //Invalid padding length
-               error = ERROR_INVALID_MESSAGE;
+               error = sshParseMessage(connection, packet, packetLen);
             }
          }
-         else
-         {
-            //Invalid length
-            error = ERROR_INVALID_MESSAGE;
-         }
-      }
-      else
-      {
-         //Invalid length
-         error = ERROR_INVALID_MESSAGE;
       }
    }
 
@@ -457,6 +489,18 @@ error_t sshParsePacket(SshConnection *connection, uint8_t *packet,
    //The sequence number is incremented after every packet
    sshIncSequenceNumber(connection->decryptionEngine.seqNum);
 
+#if (SSH_KEX_STRICT_SUPPORT == ENABLED)
+   //Check whether the sequence number has wrapped (by incrementing past 2^32-1)
+   if(LOAD32BE(connection->decryptionEngine.seqNum) == 0)
+   {
+      connection->seqNumWrap = TRUE;
+   }
+   else
+   {
+      connection->seqNumWrap = FALSE;
+   }
+#endif
+
    //Return status code
    return error;
 }
@@ -479,6 +523,9 @@ error_t sshEncryptPacket(SshConnection *connection, uint8_t *packet,
    size_t dataLen;
    SshEncryptionEngine *encryptionEngine;
 
+   //Initialize status code
+   error = NO_ERROR;
+
    //Point to the encryption engine
    encryptionEngine = &connection->encryptionEngine;
 
@@ -489,175 +536,177 @@ error_t sshEncryptPacket(SshConnection *connection, uint8_t *packet,
    TRACE_VERBOSE("Packet to be encrypted (%" PRIuSIZE " bytes):\r\n", n);
    TRACE_VERBOSE_ARRAY("  ", packet, n);
 
-#if (SSH_HMAC_SUPPORT == ENABLED)
    //MAC-then-encrypt mode?
-   if(encryptionEngine->hashAlgo != NULL && !encryptionEngine->etm)
+   if(encryptionEngine->macAlgo != MAC_ALGO_NONE && !encryptionEngine->etm)
    {
       //The packet_length field and the payload will be encrypted
       data = packet;
       dataLen = n;
 
       //Compute message authentication code
-      sshAppendMessageAuthCode(encryptionEngine, packet, n);
+      error = sshGenerateMessageAuthCode(encryptionEngine, packet, n);
    }
    else
-#endif
    {
       //Point to the plaintext data to be encrypted
       data = packet + sizeof(uint32_t);
       dataLen = n - sizeof(uint32_t);
    }
 
-#if (SSH_STREAM_CIPHER_SUPPORT == ENABLED)
-   //Stream cipher?
-   if(encryptionEngine->cipherMode == CIPHER_MODE_STREAM)
+   //Check status code
+   if(!error)
    {
-      const CipherAlgo *cipherAlgo;
+#if (SSH_STREAM_CIPHER_SUPPORT == ENABLED)
+      //Stream cipher?
+      if(encryptionEngine->cipherMode == CIPHER_MODE_STREAM)
+      {
+         const CipherAlgo *cipherAlgo;
 
-      //Cipher algorithm used to encrypt the packet
-      cipherAlgo = encryptionEngine->cipherAlgo;
+         //Cipher algorithm used to encrypt the packet
+         cipherAlgo = encryptionEngine->cipherAlgo;
 
-      //Encrypt the contents of the SSH packet
-      cipherAlgo->encryptStream(&encryptionEngine->cipherContext, data,
-         data, dataLen);
-
-      //Successful encryption
-      error = NO_ERROR;
-   }
-   else
+         //Encrypt the contents of the SSH packet
+         cipherAlgo->encryptStream(&encryptionEngine->cipherContext, data,
+            data, dataLen);
+      }
+      else
 #endif
 #if (SSH_CBC_CIPHER_SUPPORT == ENABLED)
-   //CBC cipher mode?
-   if(encryptionEngine->cipherMode == CIPHER_MODE_CBC)
-   {
-      //Perform CBC encryption
-      error = cbcEncrypt(encryptionEngine->cipherAlgo,
-         &encryptionEngine->cipherContext, encryptionEngine->iv, data,
-         data, dataLen);
-   }
-   else
+      //CBC cipher mode?
+      if(encryptionEngine->cipherMode == CIPHER_MODE_CBC)
+      {
+         //Perform CBC encryption
+         error = cbcEncrypt(encryptionEngine->cipherAlgo,
+            &encryptionEngine->cipherContext, encryptionEngine->iv, data,
+            data, dataLen);
+      }
+      else
 #endif
 #if (SSH_CTR_CIPHER_SUPPORT == ENABLED)
-   //CTR cipher mode?
-   if(encryptionEngine->cipherMode == CIPHER_MODE_CTR)
-   {
-      uint_t m;
+      //CTR cipher mode?
+      if(encryptionEngine->cipherMode == CIPHER_MODE_CTR)
+      {
+         uint_t m;
 
-      //Retrieve cipher block size, in bits
-      m = encryptionEngine->cipherAlgo->blockSize * 8;
+         //Retrieve cipher block size, in bits
+         m = encryptionEngine->cipherAlgo->blockSize * 8;
 
-      //Perform CTR encryption
-      error = ctrEncrypt(encryptionEngine->cipherAlgo,
-         &encryptionEngine->cipherContext, m, encryptionEngine->iv, data,
-         data, dataLen);
-   }
-   else
+         //Perform CTR encryption
+         error = ctrEncrypt(encryptionEngine->cipherAlgo,
+            &encryptionEngine->cipherContext, m, encryptionEngine->iv, data,
+            data, dataLen);
+      }
+      else
 #endif
 #if (SSH_GCM_CIPHER_SUPPORT == ENABLED || SSH_RFC5647_SUPPORT == ENABLED)
-   //GCM AEAD cipher?
-   if(encryptionEngine->cipherMode == CIPHER_MODE_GCM)
-   {
-      //When using AES-GCM, the packet_length field is to be treated as
-      //additional authenticated data, not as plaintext (refer to RFC 5647,
-      //section 7.3)
-      error = gcmEncrypt(&encryptionEngine->gcmContext, encryptionEngine->iv,
-         12, packet, 4, data, data, dataLen, packet + n,
-         encryptionEngine->macSize);
+      //GCM AEAD cipher?
+      if(encryptionEngine->cipherMode == CIPHER_MODE_GCM)
+      {
+         //When using AES-GCM, the packet_length field is to be treated as
+         //additional authenticated data, not as plaintext (refer to RFC 5647,
+         //section 7.3)
+         error = gcmEncrypt(&encryptionEngine->gcmContext, encryptionEngine->iv,
+            12, packet, 4, data, data, dataLen, packet + n,
+            encryptionEngine->macLen);
 
-      //The invocation counter is treated as a 64-bit integer and is
-      //incremented after each invocation of AES-GCM to process a binary
-      //packet (refer to RFC 5647, section 7.1)
-      sshIncInvocationCounter(encryptionEngine->iv);
-   }
-   else
+         //The invocation counter is treated as a 64-bit integer and is
+         //incremented after each invocation of AES-GCM to process a binary
+         //packet (refer to RFC 5647, section 7.1)
+         sshIncInvocationCounter(encryptionEngine->iv);
+      }
+      else
 #endif
 #if (SSH_CHACHA20_POLY1305_SUPPORT == ENABLED)
-   //ChaCha20Poly1305 AEAD cipher?
-   if(encryptionEngine->cipherMode == CIPHER_MODE_CHACHA20_POLY1305)
-   {
-      ChachaContext chachaContext;
-      Poly1305Context poly1305Context;
-      uint8_t nonce[8];
-      uint8_t key[32];
-
-      //The nonce consists of the packet sequence number encoded as a uint64
-      osMemset(nonce, 0, 4);
-      osMemcpy(nonce + 4, encryptionEngine->seqNum, 4);
-
-      //The ChaCha20 instance keyed by K_1 is a stream cipher that is used
-      //only to encrypt the 4 byte packet length field
-      error = chachaInit(&chachaContext, 20, encryptionEngine->encKey + 32, 32,
-         nonce, 8);
-
-      //Check status code
-      if(!error)
+      //ChaCha20Poly1305 AEAD cipher?
+      if(encryptionEngine->cipherMode == CIPHER_MODE_CHACHA20_POLY1305)
       {
-         //The packet_length field is encrypted using a zero block counter to
-         //obtain the ciphertext length
-         chachaCipher(&chachaContext, packet, packet, 4);
+         ChachaContext chachaContext;
+         Poly1305Context poly1305Context;
+         uint8_t nonce[8];
+         uint8_t key[32];
 
-         //The second ChaCha20 instance, keyed by K_2, is used in conjunction
-         //with Poly1305 to build an AEAD that is used to decrypt and
-         //authenticate the entire packet
-         error = chachaInit(&chachaContext, 20, encryptionEngine->encKey, 32,
-            nonce, sizeof(nonce));
+         //The nonce consists of the packet sequence number encoded as a uint64
+         osMemset(nonce, 0, 4);
+         osMemcpy(nonce + 4, encryptionEngine->seqNum, 4);
+
+         //The ChaCha20 instance keyed by K_1 is a stream cipher that is used
+         //only to encrypt the 4 byte packet length field
+         error = chachaInit(&chachaContext, 20, encryptionEngine->encKey + 32,
+            32, nonce, 8);
+
+         //Check status code
+         if(!error)
+         {
+            //The packet_length field is encrypted using a zero block counter to
+            //obtain the ciphertext length
+            chachaCipher(&chachaContext, packet, packet, 4);
+
+            //The second ChaCha20 instance, keyed by K_2, is used in conjunction
+            //with Poly1305 to build an AEAD that is used to decrypt and
+            //authenticate the entire packet
+            error = chachaInit(&chachaContext, 20, encryptionEngine->encKey, 32,
+               nonce, sizeof(nonce));
+         }
+
+         //Check status code
+         if(!error)
+         {
+            //Generate a Poly1305 key by taking the first 256 bits of ChaCha20
+            //stream output generated using K_2
+            chachaCipher(&chachaContext, NULL, key, 32);
+
+            //The other 256 bits of the ChaCha20 block are discarded
+            chachaCipher(&chachaContext, NULL, NULL, 32);
+
+            //Encrypt the packet payload
+            chachaCipher(&chachaContext, data, data, dataLen);
+
+            //Initialize the Poly1305 function with the key calculated above
+            poly1305Init(&poly1305Context, key);
+
+            //Compute MAC over the ciphertext of the packet length and the
+            //payload together
+            poly1305Update(&poly1305Context, packet, n);
+            poly1305Final(&poly1305Context, packet + n);
+
+            //Debug message
+            TRACE_VERBOSE("Write sequence number:\r\n");
+            TRACE_VERBOSE_ARRAY("  ", &encryptionEngine->seqNum, 4);
+            TRACE_VERBOSE("Computed MAC:\r\n");
+            TRACE_VERBOSE_ARRAY("  ", packet + n, encryptionEngine->macLen);
+         }
+
+         //Erase working state
+         chachaDeinit(&chachaContext);
+         poly1305Deinit(&poly1305Context);
+         cryptoZeroizeMem(key, sizeof(key));
       }
-
-      //Check status code
-      if(!error)
-      {
-         //Generate a Poly1305 key by taking the first 256 bits of ChaCha20
-         //stream output generated using K_2
-         chachaCipher(&chachaContext, NULL, key, 32);
-
-         //The other 256 bits of the ChaCha20 block are discarded
-         chachaCipher(&chachaContext, NULL, NULL, 32);
-
-         //Encrypt the packet payload
-         chachaCipher(&chachaContext, data, data, dataLen);
-
-         //Initialize the Poly1305 function with the key calculated above
-         poly1305Init(&poly1305Context, key);
-
-         //Compute MAC over the ciphertext of the packet length and the
-         //payload together
-         poly1305Update(&poly1305Context, packet, n);
-         poly1305Final(&poly1305Context, packet + n);
-
-         //Debug message
-         TRACE_VERBOSE("Write sequence number:\r\n");
-         TRACE_VERBOSE_ARRAY("  ", &encryptionEngine->seqNum, 4);
-         TRACE_VERBOSE("Computed MAC:\r\n");
-         TRACE_VERBOSE_ARRAY("  ", packet + n, encryptionEngine->macSize);
-      }
-   }
-   else
+      else
 #endif
-   //Invalid cipher mode?
-   {
-      //The specified cipher mode is not supported
-      error = ERROR_UNSUPPORTED_CIPHER_MODE;
+      //Invalid cipher mode?
+      {
+         //The specified cipher mode is not supported
+         error = ERROR_UNSUPPORTED_CIPHER_MODE;
+      }
    }
 
-#if (SSH_HMAC_SUPPORT == ENABLED)
    //Check status code
    if(!error)
    {
       //Encrypt-then-MAC mode?
-      if(encryptionEngine->hashAlgo != NULL && encryptionEngine->etm)
+      if(encryptionEngine->macAlgo != MAC_ALGO_NONE && encryptionEngine->etm)
       {
          //Compute message authentication code
-         sshAppendMessageAuthCode(encryptionEngine, packet, n);
+         error = sshGenerateMessageAuthCode(encryptionEngine, packet, n);
       }
    }
-#endif
 
    //Check status code
    if(!error)
    {
       //The value resulting from the MAC algorithm must be transmitted without
       //encryption as the last part of the packet
-      n += encryptionEngine->macSize;
+      n += encryptionEngine->macLen;
 
       //Debug message
       TRACE_VERBOSE("Encrypted packet (%" PRIuSIZE " bytes):\r\n", n);
@@ -694,27 +743,8 @@ error_t sshDecryptPacket(SshConnection *connection, uint8_t *packet,
    //Point to the decryption engine
    decryptionEngine = &connection->decryptionEngine;
 
-   //Block cipher algorithm?
-   if(decryptionEngine->cipherMode == CIPHER_MODE_CBC ||
-      decryptionEngine->cipherMode == CIPHER_MODE_CTR)
-   {
-      //Encrypt-then-MAC mode?
-      if(decryptionEngine->etm)
-      {
-         //The packet_length field is not encrypted
-         blockSize = 4;
-      }
-      else
-      {
-         //Retrieve the cipher block size
-         blockSize = decryptionEngine->cipherAlgo->blockSize;
-      }
-   }
-   else
-   {
-      //The packet_length field is a 32-bit integer
-      blockSize = 4;
-   }
+   //Determine the size of the first block
+   blockSize = sshGetBlockSize(connection);
 
    //Get the actual length of the packet
    n = *length;
@@ -724,20 +754,18 @@ error_t sshDecryptPacket(SshConnection *connection, uint8_t *packet,
    TRACE_VERBOSE_ARRAY("  ", packet, n);
 
    //Check the length of the incoming packet
-   if(n >= (blockSize + decryptionEngine->macSize))
+   if(n >= (blockSize + decryptionEngine->macLen))
    {
       //The value resulting from the MAC algorithm is transmitted without
       //encryption as the last part of the packet
-      n -= decryptionEngine->macSize;
+      n -= decryptionEngine->macLen;
 
-#if (SSH_HMAC_SUPPORT == ENABLED)
       //Encrypt-then-MAC mode?
-      if(decryptionEngine->hashAlgo != NULL && decryptionEngine->etm)
+      if(decryptionEngine->macAlgo != MAC_ALGO_NONE && decryptionEngine->etm)
       {
          //Verify message authentication code
          error = sshVerifyMessageAuthCode(decryptionEngine, packet, n);
       }
-#endif
 
       //Check status code
       if(!error)
@@ -794,7 +822,7 @@ error_t sshDecryptPacket(SshConnection *connection, uint8_t *packet,
             error = gcmDecrypt(&decryptionEngine->gcmContext,
                decryptionEngine->iv, 12, packet, blockSize, packet + blockSize,
                packet + blockSize, n - blockSize, packet + n,
-               decryptionEngine->macSize);
+               decryptionEngine->macLen);
 
             //The invocation counter is treated as a 64-bit integer and is
             //incremented after each invocation of AES-GCM to process a binary
@@ -807,8 +835,6 @@ error_t sshDecryptPacket(SshConnection *connection, uint8_t *packet,
          //ChaCha20Poly1305 AEAD cipher?
          if(decryptionEngine->cipherMode == CIPHER_MODE_CHACHA20_POLY1305)
          {
-            size_t i;
-            uint8_t mask;
             uint8_t nonce[8];
             uint8_t key[32];
             uint8_t mac[16];
@@ -849,16 +875,18 @@ error_t sshDecryptPacket(SshConnection *connection, uint8_t *packet,
                chachaCipher(&chachaContext, packet + blockSize, packet + blockSize,
                   n - blockSize);
 
-               //The calculated MAC is then compared in constant time with the
-               //one appended to the packet
-               for(mask = 0, i = 0; i < 16; i++)
+               //The calculated tag is bitwise compared to the received tag. The
+               //message is authenticated if and only if the tags match
+               if(cryptoCompMem(mac, packet + n, 16) != 0)
                {
-                  mask |= mac[i] ^ packet[n + i];
+                  error = ERROR_INVALID_TAG;
                }
-
-               //The message is authenticated if and only if the tags match
-               error = (mask == 0) ? NO_ERROR : ERROR_INVALID_TAG;
             }
+
+            //Erase working state
+            chachaDeinit(&chachaContext);
+            poly1305Deinit(&poly1305Context);
+            cryptoZeroizeMem(key, sizeof(key));
          }
          else
 #endif
@@ -882,14 +910,12 @@ error_t sshDecryptPacket(SshConnection *connection, uint8_t *packet,
       TRACE_VERBOSE("Decrypted packet (%" PRIuSIZE " bytes):\r\n", n);
       TRACE_VERBOSE_ARRAY("  ", packet, n);
 
-#if (SSH_HMAC_SUPPORT == ENABLED)
       //MAC-then-encrypt mode?
-      if(decryptionEngine->hashAlgo != NULL && !decryptionEngine->etm)
+      if(decryptionEngine->macAlgo != MAC_ALGO_NONE && !decryptionEngine->etm)
       {
          //Verify message authentication code
          error = sshVerifyMessageAuthCode(decryptionEngine, packet, n);
       }
-#endif
    }
 
    //Check status code
@@ -929,8 +955,9 @@ error_t sshParsePacketLength(SshConnection *connection, uint8_t *packet)
    //The length of the packet does not include the packet_length field itself
    packetLen += sizeof(uint32_t);
 
-   //Sanity check
-   if(packetLen <= SSH_BUFFER_SIZE && packetLen > LOAD32BE(packet))
+   //Check the length of the packet
+   if(packetLen >= connection->rxBufferPos && packetLen <= SSH_BUFFER_SIZE &&
+      packetLen >= LOAD32BE(packet))
    {
       //Save the total length of the packet
       connection->rxBufferLen = packetLen;
@@ -956,7 +983,8 @@ error_t sshParsePacketLength(SshConnection *connection, uint8_t *packet)
 error_t sshDecryptPacketLength(SshConnection *connection, uint8_t *packet)
 {
    error_t error;
-#if (SSH_HMAC_SUPPORT == ENABLED || SSH_CHACHA20_POLY1305_SUPPORT == ENABLED)
+#if (SSH_STREAM_CIPHER_SUPPORT == ENABLED || SSH_CBC_CIPHER_SUPPORT == ENABLED || \
+   SSH_CTR_CIPHER_SUPPORT == ENABLED || SSH_CHACHA20_POLY1305_SUPPORT == ENABLED)
    size_t blockSize;
 #endif
    size_t packetLen;
@@ -968,28 +996,10 @@ error_t sshDecryptPacketLength(SshConnection *connection, uint8_t *packet)
    //Point to the decryption engine
    decryptionEngine = &connection->decryptionEngine;
 
-#if (SSH_HMAC_SUPPORT == ENABLED || SSH_CHACHA20_POLY1305_SUPPORT == ENABLED)
-   //Block cipher algorithm?
-   if(decryptionEngine->cipherMode == CIPHER_MODE_CBC ||
-      decryptionEngine->cipherMode == CIPHER_MODE_CTR)
-   {
-      //Encrypt-then-MAC mode?
-      if(decryptionEngine->etm)
-      {
-         //The packet_length field is not encrypted
-         blockSize = 4;
-      }
-      else
-      {
-         //Retrieve the cipher block size
-         blockSize = decryptionEngine->cipherAlgo->blockSize;
-      }
-   }
-   else
-   {
-      //The packet_length field is a 32-bit integer
-      blockSize = 4;
-   }
+#if (SSH_STREAM_CIPHER_SUPPORT == ENABLED || SSH_CBC_CIPHER_SUPPORT == ENABLED || \
+   SSH_CTR_CIPHER_SUPPORT == ENABLED || SSH_CHACHA20_POLY1305_SUPPORT == ENABLED)
+   //Determine the size of the first block
+   blockSize = sshGetBlockSize(connection);
 
    //Debug message
    TRACE_VERBOSE("Block to be decrypted (%" PRIuSIZE " bytes):\r\n", blockSize);
@@ -1083,6 +1093,9 @@ error_t sshDecryptPacketLength(SshConnection *connection, uint8_t *packet)
          //obtain the plaintext length
          chachaCipher(&chachaContext, packet, packet, blockSize);
       }
+
+      //Erase working state
+      chachaDeinit(&chachaContext);
    }
    else
 #endif
@@ -1095,19 +1108,23 @@ error_t sshDecryptPacketLength(SshConnection *connection, uint8_t *packet)
    //Check status code
    if(!error)
    {
+#if (SSH_STREAM_CIPHER_SUPPORT == ENABLED || SSH_CBC_CIPHER_SUPPORT == ENABLED || \
+   SSH_CTR_CIPHER_SUPPORT == ENABLED || SSH_CHACHA20_POLY1305_SUPPORT == ENABLED)
       //Debug message
       TRACE_VERBOSE("Decrypted block (%" PRIuSIZE " bytes):\r\n", blockSize);
       TRACE_VERBOSE_ARRAY("  ", packet, blockSize);
+#endif
 
       //Convert the packet length to host byte order
       packetLen = LOAD32BE(packet);
 
       //The length of the packet does not include the mac field and the
       //packet_length field itself
-      packetLen += decryptionEngine->macSize + sizeof(uint32_t);
+      packetLen += decryptionEngine->macLen + sizeof(uint32_t);
 
-      //Sanity check
-      if(packetLen <= SSH_BUFFER_SIZE && packetLen > LOAD32BE(packet))
+      //Check the length of the packet
+      if(packetLen >= connection->rxBufferPos && packetLen <= SSH_BUFFER_SIZE &&
+         packetLen >= LOAD32BE(packet))
       {
          //Save the total length of the packet
          connection->rxBufferLen = packetLen;
@@ -1339,27 +1356,86 @@ error_t sshParseMessage(SshConnection *connection, const uint8_t *message,
  * @param[in] encryptionEngine Pointer to the encryption engine
  * @param[in] packet Pointer to the packet to be authenticated
  * @param[in] length of the packet, in bytes
+ * @return Error code
  **/
 
-void sshAppendMessageAuthCode(SshEncryptionEngine *encryptionEngine,
+error_t sshGenerateMessageAuthCode(SshEncryptionEngine *encryptionEngine,
    uint8_t *packet, size_t length)
 {
+   error_t error;
+
 #if (SSH_HMAC_SUPPORT == ENABLED)
-   //Initialize HMAC calculation
-   hmacInit(encryptionEngine->hmacContext, encryptionEngine->hashAlgo,
-      encryptionEngine->macKey, encryptionEngine->hashAlgo->digestSize);
+   //HMAC algorithm?
+   if(encryptionEngine->macAlgo == MAC_ALGO_HMAC)
+   {
+      HmacContext *hmacContext;
 
-   //Compute MAC(key, sequence_number || unencrypted_packet)
-   hmacUpdate(encryptionEngine->hmacContext, encryptionEngine->seqNum, 4);
-   hmacUpdate(encryptionEngine->hmacContext, packet, length);
-   hmacFinal(encryptionEngine->hmacContext, packet + length);
+      //Point to the HMAC context
+      hmacContext = &encryptionEngine->macContext->hmacContext;
 
-   //Debug message
-   TRACE_VERBOSE("Write sequence number:\r\n");
-   TRACE_VERBOSE_ARRAY("  ", &encryptionEngine->seqNum, 4);
-   TRACE_VERBOSE("Computed MAC:\r\n");
-   TRACE_VERBOSE_ARRAY("  ", packet + length, encryptionEngine->macSize);
+      //Initialize HMAC calculation
+      error = hmacInit(hmacContext, encryptionEngine->hashAlgo,
+         encryptionEngine->macKey, encryptionEngine->macKeyLen);
+
+      //Check status code
+      if(!error)
+      {
+         //Compute MAC(key, sequence_number || unencrypted_packet)
+         hmacUpdate(hmacContext, encryptionEngine->seqNum, 4);
+         hmacUpdate(hmacContext, packet, length);
+         hmacFinal(hmacContext, packet + length);
+      }
+   }
+   else
 #endif
+#if (SSH_UMAC64_SUPPORT == ENABLED || SSH_UMAC128_SUPPORT == ENABLED)
+   //UMAC algorithm?
+   if(encryptionEngine->macAlgo == MAC_ALGO_UMAC)
+   {
+      uint8_t nonce[8];
+      UmacContext *umacContext;
+
+      //Point to the UMAC context
+      umacContext = &encryptionEngine->macContext->umacContext;
+
+      //Initialize UMAC calculation
+      error = umacInit(umacContext, AES_CIPHER_ALGO, encryptionEngine->macKey,
+         encryptionEngine->macKeyLen, encryptionEngine->macLen);
+
+      //Check status code
+      if(!error)
+      {
+         //Compute UMAC(key, sequence_number, unencrypted_packet)
+         umacUpdate(umacContext, packet, length);
+
+         //The packet sequence number is used as the nonce
+         osMemset(nonce, 0, 4);
+         osMemcpy(nonce + 4, encryptionEngine->seqNum, 4);
+
+         //Finalize UMAC calculation
+         error = umacFinal(umacContext, nonce, 8, packet + length);
+      }
+   }
+   else
+#endif
+   //Invalid MAC algorithm?
+   {
+      //Report an error
+      error = ERROR_FAILURE;
+   }
+
+   //Check status code
+   if(!error)
+   {
+      //Debug message
+      TRACE_VERBOSE("Write sequence number:\r\n");
+      TRACE_VERBOSE_ARRAY("  ", &encryptionEngine->seqNum, 4);
+      TRACE_VERBOSE("Computed MAC:\r\n");
+      TRACE_VERBOSE_ARRAY("  ", packet + length, encryptionEngine->macLen);
+   }
+
+   //Return status code
+   return error;
 }
 
 
@@ -1374,39 +1450,130 @@ void sshAppendMessageAuthCode(SshEncryptionEngine *encryptionEngine,
 error_t sshVerifyMessageAuthCode(SshEncryptionEngine *decryptionEngine,
    const uint8_t *packet, size_t length)
 {
+   error_t error;
+   uint8_t mac[SSH_MAX_MAC_SIZE];
+
 #if (SSH_HMAC_SUPPORT == ENABLED)
-   size_t i;
-   uint8_t mask;
-   uint8_t mac[SSH_MAX_HASH_DIGEST_SIZE];
-
-   //Initialize HMAC calculation
-   hmacInit(decryptionEngine->hmacContext, decryptionEngine->hashAlgo,
-      decryptionEngine->macKey, decryptionEngine->hashAlgo->digestSize);
-
-   //Compute MAC(key, sequence_number || unencrypted_packet)
-   hmacUpdate(decryptionEngine->hmacContext, decryptionEngine->seqNum, 4);
-   hmacUpdate(decryptionEngine->hmacContext, packet, length);
-   hmacFinal(decryptionEngine->hmacContext, mac);
-
-   //Debug message
-   TRACE_VERBOSE("Read sequence number:\r\n");
-   TRACE_VERBOSE_ARRAY("  ", &decryptionEngine->seqNum, 4);
-   TRACE_VERBOSE("Computed MAC:\r\n");
-   TRACE_VERBOSE_ARRAY("  ", mac, decryptionEngine->macSize);
-
-   //The calculated MAC is bitwise compared to the received message
-   //authentication code
-   for(mask = 0, i = 0; i < decryptionEngine->macSize; i++)
+   //HMAC algorithm?
+   if(decryptionEngine->macAlgo == MAC_ALGO_HMAC)
    {
-      mask |= mac[i] ^ packet[length + i];
+      HmacContext *hmacContext;
+
+      //Point to the HMAC context
+      hmacContext = &decryptionEngine->macContext->hmacContext;
+
+      //Initialize HMAC calculation
+      error = hmacInit(hmacContext, decryptionEngine->hashAlgo,
+         decryptionEngine->macKey, decryptionEngine->macKeyLen);
+
+      //Check status code
+      if(!error)
+      {
+         //Compute MAC(key, sequence_number || unencrypted_packet)
+         hmacUpdate(hmacContext, decryptionEngine->seqNum, 4);
+         hmacUpdate(hmacContext, packet, length);
+         hmacFinal(hmacContext, mac);
+      }
+   }
+   else
+#endif
+#if (SSH_UMAC64_SUPPORT == ENABLED || SSH_UMAC128_SUPPORT == ENABLED)
+   //UMAC algorithm?
+   if(decryptionEngine->macAlgo == MAC_ALGO_UMAC)
+   {
+      uint8_t nonce[8];
+      UmacContext *umacContext;
+
+      //Point to the UMAC context
+      umacContext = &decryptionEngine->macContext->umacContext;
+
+      //Initialize UMAC calculation
+      error = umacInit(umacContext, AES_CIPHER_ALGO, decryptionEngine->macKey,
+         decryptionEngine->macKeyLen, decryptionEngine->macLen);
+
+      //Check status code
+      if(!error)
+      {
+         //Compute UMAC(key, sequence_number, unencrypted_packet)
+         umacUpdate(umacContext, packet, length);
+
+         //The packet sequence number is used as the nonce
+         osMemset(nonce, 0, 4);
+         osMemcpy(nonce + 4, decryptionEngine->seqNum, 4);
+
+         //Finalize UMAC calculation
+         error = umacFinal(umacContext, nonce, 8, mac);
+      }
+   }
+   else
+#endif
+   //Invalid MAC algorithm?
+   {
+      //Report an error
+      error = ERROR_DECRYPTION_FAILED;
    }
 
-   //The message is authenticated if and only if the MAC values match
-   return (mask == 0) ? NO_ERROR : ERROR_DECRYPTION_FAILED;
-#else
-   //Not implemented
-   return ERROR_DECRYPTION_FAILED;
-#endif
+   //Check status code
+   if(!error)
+   {
+      //Debug message
+      TRACE_VERBOSE("Read sequence number:\r\n");
+      TRACE_VERBOSE_ARRAY("  ", &decryptionEngine->seqNum, 4);
+      TRACE_VERBOSE("Computed MAC:\r\n");
+      TRACE_VERBOSE_ARRAY("  ", mac, decryptionEngine->macLen);
+
+      //The calculated MAC is bitwise compared to the received message
+      //authentication code. The message is authenticated if and only if the
+      //MAC values match
+      if(cryptoCompMem(mac, packet + length, decryptionEngine->macLen) != 0)
+      {
+         error = ERROR_DECRYPTION_FAILED;
+      }
+   }
+
+   //Return status code
+   return error;
+}
+
+
+/**
+ * @brief Determine the number of bytes to decrypt in the first block
+ * @param[in] connection Pointer to the SSH connection
+ * @return Number of bytes to decrypt in the first block
+ **/
+
+size_t sshGetBlockSize(SshConnection *connection)
+{
+   size_t blockSize;
+   SshEncryptionEngine *decryptionEngine;
+
+   //Point to the decryption engine
+   decryptionEngine = &connection->decryptionEngine;
+
+   //Block cipher algorithm?
+   if(decryptionEngine->cipherMode == CIPHER_MODE_CBC ||
+      decryptionEngine->cipherMode == CIPHER_MODE_CTR)
+   {
+      //Encrypt-then-MAC mode?
+      if(decryptionEngine->etm)
+      {
+         //The packet_length field is not encrypted
+         blockSize = sizeof(uint32_t);
+      }
+      else
+      {
+         //Retrieve the cipher block size
+         blockSize = decryptionEngine->cipherAlgo->blockSize;
+      }
+   }
+   else
+   {
+      //The packet_length field is a 32-bit integer
+      blockSize = sizeof(uint32_t);
+   }
+
+   //Return the number of bytes to decrypt in the first block
+   return blockSize;
 }
 
 

@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.6.6
+ * @version 2.6.8
  **/
 
 //Switch to the appropriate trace level
@@ -204,7 +204,6 @@ error_t sshSendKexInit(SshConnection *connection)
 error_t sshSendNewKeys(SshConnection *connection)
 {
    error_t error;
-   uint8_t x;
    size_t length;
    uint8_t *message;
 
@@ -228,16 +227,23 @@ error_t sshSendNewKeys(SshConnection *connection)
    //Check status code
    if(!error)
    {
-      //Check whether SSH operates as a client or a server
-      x = (connection->context->mode == SSH_OPERATION_MODE_CLIENT) ? 'A' : 'B';
-
       //Release encryption engine
       sshFreeEncryptionEngine(&connection->encryptionEngine);
 
       //The key exchange method specifies how one-time session keys are
       //generated for encryption and for authentication
-      error = sshInitEncryptionEngine(connection, &connection->encryptionEngine,
-         connection->serverEncAlgo, connection->serverMacAlgo, x);
+      if(connection->context->mode == SSH_OPERATION_MODE_CLIENT)
+      {
+         error = sshInitEncryptionEngine(connection,
+            &connection->encryptionEngine, connection->clientEncAlgo,
+            connection->clientMacAlgo, 'A');
+      }
+      else
+      {
+         error = sshInitEncryptionEngine(connection,
+            &connection->encryptionEngine, connection->serverEncAlgo,
+            connection->serverMacAlgo, 'B');
+      }
    }
 
    //Check status code
@@ -250,7 +256,8 @@ error_t sshSendNewKeys(SshConnection *connection)
       //Strict key exchange?
       if(connection->kexStrictReceived)
       {
-         //Reset the packet sequence number to zero
+         //The sequence number used when sending packets must be reset to zero
+         //immediately after any SSH_MSG_NEWKEYS packet is sent
          osMemset(connection->encryptionEngine.seqNum, 0, 4);
       }
 #endif
@@ -336,7 +343,9 @@ error_t sshFormatKexInit(SshConnection *connection, uint8_t *p,
    error = sshFormatKexAlgoList(connection, p, &n);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    p += n;
@@ -346,7 +355,9 @@ error_t sshFormatKexInit(SshConnection *connection, uint8_t *p,
    error = sshFormatHostKeyAlgoList(context, p, &n);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    p += n;
@@ -356,7 +367,9 @@ error_t sshFormatKexInit(SshConnection *connection, uint8_t *p,
    error = sshFormatEncAlgoList(context, p, &n);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    p += n;
@@ -366,7 +379,9 @@ error_t sshFormatKexInit(SshConnection *connection, uint8_t *p,
    error = sshFormatEncAlgoList(context, p, &n);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    p += n;
@@ -376,7 +391,9 @@ error_t sshFormatKexInit(SshConnection *connection, uint8_t *p,
    error = sshFormatMacAlgoList(context, p, &n);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    p += n;
@@ -386,7 +403,9 @@ error_t sshFormatKexInit(SshConnection *connection, uint8_t *p,
    error = sshFormatMacAlgoList(context, p, &n);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    p += n;
@@ -396,7 +415,9 @@ error_t sshFormatKexInit(SshConnection *connection, uint8_t *p,
    error = sshFormatCompressionAlgoList(context, p, &n);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    p += n;
@@ -406,7 +427,9 @@ error_t sshFormatKexInit(SshConnection *connection, uint8_t *p,
    error = sshFormatCompressionAlgoList(context, p, &n);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    p += n;
@@ -502,7 +525,6 @@ error_t sshParseKexInit(SshConnection *connection, const uint8_t *message,
       if(connection->state != SSH_CONN_STATE_SERVER_KEX_INIT &&
          connection->state != SSH_CONN_STATE_OPEN)
       {
-         //Report an error
          return ERROR_UNEXPECTED_MESSAGE;
       }
    }
@@ -512,14 +534,15 @@ error_t sshParseKexInit(SshConnection *connection, const uint8_t *message,
       if(connection->state != SSH_CONN_STATE_CLIENT_KEX_INIT &&
          connection->state != SSH_CONN_STATE_OPEN)
       {
-         //Report an error
          return ERROR_UNEXPECTED_MESSAGE;
       }
    }
 
    //Sanity check
    if(length < sizeof(uint8_t))
+   {
       return ERROR_INVALID_MESSAGE;
+   }
 
    //Point to the first field of the message
    p = message + sizeof(uint8_t);
@@ -527,8 +550,10 @@ error_t sshParseKexInit(SshConnection *connection, const uint8_t *message,
    n = length - sizeof(uint8_t);
 
    //Maformed message?
-   if(length < SSH_COOKIE_SIZE)
+   if(n < SSH_COOKIE_SIZE)
+   {
       return ERROR_INVALID_MESSAGE;
+   }
 
    //Debug message
    TRACE_DEBUG("  cookie =\r\n");
@@ -542,7 +567,9 @@ error_t sshParseKexInit(SshConnection *connection, const uint8_t *message,
    error = sshParseNameList(p, n, &kexAlgoList);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Debug message
    TRACE_DEBUG("  kex_algorithms =\r\n");
@@ -552,7 +579,22 @@ error_t sshParseKexInit(SshConnection *connection, const uint8_t *message,
    connection->kexAlgo = sshSelectKexAlgo(connection, &kexAlgoList);
    //No matching algorithm found?
    if(connection->kexAlgo == NULL)
+   {
       return ERROR_UNSUPPORTED_ALGO;
+   }
+
+#if (SSH_KEX_STRICT_SUPPORT == ENABLED)
+   //Strict key exchange?
+   if(!connection->newKeysReceived && connection->kexStrictReceived)
+   {
+      //Implementations must verify that the SSH_MSG_KEXINIT was the first
+      //message received from the peer
+      if(LOAD32BE(connection->decryptionEngine.seqNum) != 0)
+      {
+         return ERROR_UNEXPECTED_MESSAGE;
+      }
+   }
+#endif
 
    //Point to the next field
    p += sizeof(uint32_t) + kexAlgoList.length;
@@ -562,7 +604,9 @@ error_t sshParseKexInit(SshConnection *connection, const uint8_t *message,
    error = sshParseNameList(p, n, &hostKeyAlgoList);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Debug message
    TRACE_DEBUG("  server_host_key_algorithms =\r\n");
@@ -573,7 +617,9 @@ error_t sshParseKexInit(SshConnection *connection, const uint8_t *message,
       &hostKeyAlgoList);
    //No matching algorithm found?
    if(connection->serverHostKeyAlgo == NULL)
+   {
       return ERROR_UNSUPPORTED_ALGO;
+   }
 
    //Server operation mode?
    if(context->mode == SSH_OPERATION_MODE_SERVER)
@@ -584,7 +630,9 @@ error_t sshParseKexInit(SshConnection *connection, const uint8_t *message,
 
       //No matching host key found?
       if(connection->hostKeyIndex < 0)
+      {
          return ERROR_UNSUPPORTED_ALGO;
+      }
    }
 
    //Point to the next field
@@ -595,7 +643,9 @@ error_t sshParseKexInit(SshConnection *connection, const uint8_t *message,
    error = sshParseNameList(p, n, &nameList);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Debug message
    TRACE_DEBUG("  encryption_algorithms_client_to_server =\r\n");
@@ -605,7 +655,9 @@ error_t sshParseKexInit(SshConnection *connection, const uint8_t *message,
    connection->clientEncAlgo = sshSelectEncAlgo(context, &nameList);
    //No matching algorithm found?
    if(connection->clientEncAlgo == NULL)
+   {
       return ERROR_UNSUPPORTED_ALGO;
+   }
 
    //Point to the next field
    p += sizeof(uint32_t) + nameList.length;
@@ -615,7 +667,9 @@ error_t sshParseKexInit(SshConnection *connection, const uint8_t *message,
    error = sshParseNameList(p, n, &nameList);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Debug message
    TRACE_VERBOSE("  encryption_algorithms_server_to_client =\r\n");
@@ -625,7 +679,9 @@ error_t sshParseKexInit(SshConnection *connection, const uint8_t *message,
    connection->serverEncAlgo = sshSelectEncAlgo(context, &nameList);
    //No matching algorithm found?
    if(connection->serverEncAlgo == NULL)
+   {
       return ERROR_UNSUPPORTED_ALGO;
+   }
 
    //Point to the next field
    p += sizeof(uint32_t) + nameList.length;
@@ -635,7 +691,9 @@ error_t sshParseKexInit(SshConnection *connection, const uint8_t *message,
    error = sshParseNameList(p, n, &nameList);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Debug message
    TRACE_DEBUG("  mac_algorithms_client_to_server =\r\n");
@@ -646,7 +704,9 @@ error_t sshParseKexInit(SshConnection *connection, const uint8_t *message,
       connection->clientEncAlgo, &nameList);
    //No matching algorithm found?
    if(connection->clientMacAlgo == NULL)
+   {
       return ERROR_UNSUPPORTED_ALGO;
+   }
 
 #if (SSH_RFC5647_SUPPORT == ENABLED)
    //If AES-GCM is selected as the MAC algorithm, it must also be selected as
@@ -669,7 +729,9 @@ error_t sshParseKexInit(SshConnection *connection, const uint8_t *message,
    error = sshParseNameList(p, n, &nameList);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Debug message
    TRACE_VERBOSE("  mac_algorithms_server_to_client =\r\n");
@@ -680,7 +742,9 @@ error_t sshParseKexInit(SshConnection *connection, const uint8_t *message,
       connection->serverEncAlgo, &nameList);
    //No matching algorithm found?
    if(connection->serverMacAlgo == NULL)
+   {
       return ERROR_UNSUPPORTED_ALGO;
+   }
 
 #if (SSH_RFC5647_SUPPORT == ENABLED)
    //If AES-GCM is selected as the MAC algorithm, it must also be selected as
@@ -703,7 +767,9 @@ error_t sshParseKexInit(SshConnection *connection, const uint8_t *message,
    error = sshParseNameList(p, n, &nameList);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Debug message
    TRACE_VERBOSE("  compression_algorithms_client_to_server =\r\n");
@@ -714,7 +780,9 @@ error_t sshParseKexInit(SshConnection *connection, const uint8_t *message,
       &nameList);
    //No matching algorithm found?
    if(connection->clientCompressAlgo == NULL)
+   {
       return ERROR_UNSUPPORTED_ALGO;
+   }
 
    //Point to the next field
    p += sizeof(uint32_t) + nameList.length;
@@ -724,7 +792,9 @@ error_t sshParseKexInit(SshConnection *connection, const uint8_t *message,
    error = sshParseNameList(p, n, &nameList);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Debug message
    TRACE_VERBOSE("  compression_algorithms_server_to_client =\r\n");
@@ -735,7 +805,9 @@ error_t sshParseKexInit(SshConnection *connection, const uint8_t *message,
       &nameList);
    //No matching algorithm found?
    if(connection->serverCompressAlgo == NULL)
+   {
       return ERROR_UNSUPPORTED_ALGO;
+   }
 
    //Point to the next field
    p += sizeof(uint32_t) + nameList.length;
@@ -745,7 +817,9 @@ error_t sshParseKexInit(SshConnection *connection, const uint8_t *message,
    error = sshParseNameList(p, n, &nameList);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Debug message
    TRACE_VERBOSE("  languages_client_to_server =\r\n");
@@ -759,7 +833,9 @@ error_t sshParseKexInit(SshConnection *connection, const uint8_t *message,
    error = sshParseNameList(p, n, &nameList);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Debug message
    TRACE_VERBOSE("  languages_server_to_client =\r\n");
@@ -771,7 +847,9 @@ error_t sshParseKexInit(SshConnection *connection, const uint8_t *message,
 
    //Malformed message?
    if(n < sizeof(uint8_t))
+   {
       return ERROR_INVALID_MESSAGE;
+   }
 
    //Retrieve the value of the first_kex_packet_follows field
    firstKexPacketFollows = p[0];
@@ -782,7 +860,9 @@ error_t sshParseKexInit(SshConnection *connection, const uint8_t *message,
 
    //Malformed message?
    if(n < sizeof(uint32_t))
+   {
       return ERROR_INVALID_MESSAGE;
+   }
 
    //Ignore the reserved field
    p += sizeof(uint32_t);
@@ -790,7 +870,9 @@ error_t sshParseKexInit(SshConnection *connection, const uint8_t *message,
 
    //Malformed message?
    if(n != 0)
+   {
       return ERROR_INVALID_MESSAGE;
+   }
 
    //An SSH_MSG_KEXINIT message has been successfully received
    connection->kexInitReceived = TRUE;
@@ -833,7 +915,9 @@ error_t sshParseKexInit(SshConnection *connection, const uint8_t *message,
    error = sshInitExchangeHash(connection);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Check whether SSH operates as a client or a server
    if(connection->context->mode == SSH_OPERATION_MODE_CLIENT)
@@ -843,14 +927,18 @@ error_t sshParseKexInit(SshConnection *connection, const uint8_t *message,
          osStrlen(CYCLONE_SSH_ID));
       //Any error to report?
       if(error)
+      {
          return error;
+      }
 
       //Update exchange hash H with V_S (server's identification string)
       error = sshUpdateExchangeHash(connection, connection->remoteId,
          osStrlen(connection->remoteId));
       //Any error to report?
       if(error)
+      {
          return error;
+      }
    }
    else
    {
@@ -859,14 +947,18 @@ error_t sshParseKexInit(SshConnection *connection, const uint8_t *message,
          osStrlen(connection->remoteId));
       //Any error to report?
       if(error)
+      {
          return error;
+      }
 
       //Update exchange hash H with V_S (server's identification string)
       error = sshUpdateExchangeHash(connection, CYCLONE_SSH_ID,
          osStrlen(CYCLONE_SSH_ID));
       //Any error to report?
       if(error)
+      {
          return error;
+      }
    }
 
    //Check whether a key re-exchange has been initiated by the peer
@@ -877,7 +969,9 @@ error_t sshParseKexInit(SshConnection *connection, const uint8_t *message,
          connection->cookie, SSH_COOKIE_SIZE);
       //Any error to report?
       if(error)
+      {
          return error;
+      }
 
       //Debug message
       TRACE_DEBUG("  cookie =\r\n");
@@ -891,13 +985,17 @@ error_t sshParseKexInit(SshConnection *connection, const uint8_t *message,
       error = sshDigestClientKexInit(connection);
       //Any error to report?
       if(error)
+      {
          return error;
+      }
 
       //Update exchange hash H with I_S (payload of the server's SSH_MSG_KEXINIT)
       error = sshUpdateExchangeHash(connection, message, length);
       //Any error to report?
       if(error)
+      {
          return error;
+      }
    }
    else
    {
@@ -905,13 +1003,17 @@ error_t sshParseKexInit(SshConnection *connection, const uint8_t *message,
       error = sshUpdateExchangeHash(connection, message, length);
       //Any error to report?
       if(error)
+      {
          return error;
+      }
 
       //Format SSH_MSG_KEXINIT message
       error = sshFormatKexInit(connection, connection->buffer, &n);
       //Any error to report?
       if(error)
+      {
          return error;
+      }
 
       //Debug message
       TRACE_VERBOSE_ARRAY("I_S = ", connection->buffer, n);
@@ -920,13 +1022,17 @@ error_t sshParseKexInit(SshConnection *connection, const uint8_t *message,
       error = sshUpdateExchangeHash(connection, connection->buffer, n);
       //Any error to report?
       if(error)
+      {
          return error;
+      }
 
       //Format server's public host key
       error = sshFormatHostKey(connection, connection->buffer, &n);
       //Any error to report?
       if(error)
+      {
          return error;
+      }
 
       //Debug message
       TRACE_VERBOSE_ARRAY("K_S = ", connection->buffer, n);
@@ -935,7 +1041,9 @@ error_t sshParseKexInit(SshConnection *connection, const uint8_t *message,
       error = sshUpdateExchangeHash(connection, connection->buffer, n);
       //Any error to report?
       if(error)
+      {
          return error;
+      }
    }
 
    //Check whether a key re-exchange has been initiated by the peer
@@ -1035,7 +1143,6 @@ error_t sshParseNewKeys(SshConnection *connection, const uint8_t *message,
    size_t length)
 {
    error_t error;
-   uint8_t x;
 
    //Debug message
    TRACE_INFO("SSH_MSG_NEWKEYS message received (%" PRIuSIZE " bytes)...\r\n", length);
@@ -1046,38 +1153,59 @@ error_t sshParseNewKeys(SshConnection *connection, const uint8_t *message,
    {
       //Check connection state
       if(connection->state != SSH_CONN_STATE_SERVER_NEW_KEYS)
+      {
          return ERROR_UNEXPECTED_MESSAGE;
+      }
    }
    else
    {
       //Check connection state
       if(connection->state != SSH_CONN_STATE_CLIENT_NEW_KEYS)
+      {
          return ERROR_UNEXPECTED_MESSAGE;
+      }
    }
 
    //The SSH_MSG_NEWKEYS message consists of a single byte
    if(length != sizeof(uint8_t))
+   {
       return ERROR_INVALID_MESSAGE;
-
-   //Check whether SSH operates as a client or a server
-   x = (connection->context->mode == SSH_OPERATION_MODE_CLIENT) ? 'B' : 'A';
+   }
 
    //Release decryption engine
    sshFreeEncryptionEngine(&connection->decryptionEngine);
 
    //The key exchange method specifies how one-time session keys are generated
    //for encryption and for authentication
-   error = sshInitEncryptionEngine(connection, &connection->decryptionEngine,
-      connection->clientEncAlgo, connection->clientMacAlgo, x);
+   if(connection->context->mode == SSH_OPERATION_MODE_CLIENT)
+   {
+      error = sshInitEncryptionEngine(connection, &connection->decryptionEngine,
+         connection->serverEncAlgo, connection->serverMacAlgo, 'B');
+   }
+   else
+   {
+      error = sshInitEncryptionEngine(connection, &connection->decryptionEngine,
+         connection->clientEncAlgo, connection->clientMacAlgo, 'A');
+   }
 
    //Check status code
    if(!error)
    {
+      //The shared secret shall be destroyed immediately after its use (refer
+      //to RFC 9212, section 6)
+      cryptoZeroizeMem(connection->k, SSH_MAX_SHARED_SECRET_LEN);
+      connection->kLen = 0;
+
+      //The exchange hash H is no longer needed
+      cryptoZeroizeMem(connection->h, SSH_MAX_DIGEST_SIZE);
+      connection->hLen = 0;
+
 #if (SSH_KEX_STRICT_SUPPORT == ENABLED)
       //Strict key exchange?
       if(connection->kexStrictReceived)
       {
-         //Reset the packet sequence number to zero
+         //The expected sequence number for packets received from the peer must
+         //be reset after a SSH_MSG_NEWKEYS is received
          osMemset(connection->decryptionEngine.seqNum, 0xFF, 4);
       }
 #endif

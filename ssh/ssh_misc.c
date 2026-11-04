@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.6.6
+ * @version 2.6.8
  **/
 
 //Switch to the appropriate trace level
@@ -80,8 +80,9 @@ SshConnection *sshOpenConnection(SshContext *context, Socket *socket)
    //Loop through the connection table
    for(i = 0; i < context->numConnections; i++)
    {
-      //Unused SSH connection?
-      if(context->connections[i].state == SSH_CONN_STATE_CLOSED)
+      //A connection slot can be reused only when no channel still refers to it
+      if(context->connections[i].state == SSH_CONN_STATE_CLOSED &&
+         sshCountUsedChannels(context, &context->connections[i]) == 0)
       {
          connection = &context->connections[i];
          break;
@@ -100,8 +101,10 @@ SshConnection *sshOpenConnection(SshContext *context, Socket *socket)
       connection->socket = socket;
       //Index of the selected host key
       connection->hostKeyIndex = -1;
-      //Initialize time stamp
+
+      //Save current time
       connection->timestamp = osGetSystemTime();
+      connection->authTimestamp = connection->timestamp;
 
       //Initialize status code
       error = NO_ERROR;
@@ -198,7 +201,7 @@ void sshCloseConnection(SshConnection *connection)
       {
          //Check channel state
          if(connection->context->mode == SSH_OPERATION_MODE_SERVER &&
-            (channel->closeRequest || !channel->channelSuccessSent))
+            (channel->closeRequest || !channel->owned))
          {
             //Release SSH channel
             channel->state = SSH_CHANNEL_STATE_UNUSED;
@@ -263,6 +266,16 @@ void sshCloseConnection(SshConnection *connection)
             context->connectionCloseParam[i]);
       }
    }
+
+   //Erase session secrets
+   cryptoZeroizeMem(connection->k, SSH_MAX_SHARED_SECRET_LEN);
+   connection->kLen = 0;
+
+   cryptoZeroizeMem(connection->h, SSH_MAX_DIGEST_SIZE);
+   connection->hLen = 0;
+
+   cryptoZeroizeMem(connection->sessionId, SSH_MAX_DIGEST_SIZE);
+   connection->sessionIdLen = 0;
 
    //Mark the connection as closed
    connection->state = SSH_CONN_STATE_CLOSED;
@@ -344,7 +357,7 @@ void sshRegisterConnectionEvents(SshContext *context, SshConnection *connection,
          for(i = 0; i < context->numChannels; i++)
          {
             //Multiple channels can be multiplexed into a single connection
-            if(context->channels[i].state != SSH_CHANNEL_STATE_UNUSED &&
+            if(context->channels[i].state == SSH_CHANNEL_STATE_OPEN &&
                context->channels[i].connection == connection)
             {
                //Register the events related to the current SSH channel
@@ -393,7 +406,7 @@ error_t sshProcessConnectionEvents(SshContext *context,
       for(i = 0; i < context->numChannels && !error; i++)
       {
          //Multiple channels can be multiplexed into a single connection
-         if(context->channels[i].state != SSH_CHANNEL_STATE_UNUSED &&
+         if(context->channels[i].state == SSH_CHANNEL_STATE_OPEN &&
             context->channels[i].connection == connection)
          {
             //Check whether the connection is ready for transmission
@@ -822,6 +835,7 @@ int_t sshSelectNextHostKey(SshConnection *connection)
 #if (SSH_CLIENT_SUPPORT == ENABLED)
    int_t index;
    SshHostKey *hostKey;
+   const char_t *publicKeyAlgo;
 
    //Initialize index
    index = -1;
@@ -845,8 +859,13 @@ int_t sshSelectNextHostKey(SshConnection *connection)
       //Valid host key?
       if(hostKey != NULL)
       {
+         //Select the public key algorithm to use, depending on the algorithms
+         //accepted by the server
+         publicKeyAlgo = sshSelectPublicKeyAlgo(connection->context,
+            hostKey->keyFormatId, connection->peerSigAlgos);
+
          //Make sure the public key algorithm is valid
-         if(hostKey->publicKeyAlgo != NULL)
+         if(publicKeyAlgo != NULL)
          {
             //The current host key is acceptable
             index = connection->hostKeyIndex;
@@ -1181,7 +1200,9 @@ error_t sshParseString(const uint8_t *p, size_t length, SshString *string)
 
    //Malformed data?
    if(length < sizeof(uint32_t))
+   {
       return ERROR_INVALID_SYNTAX;
+   }
 
    //A string is stored as a uint32 containing its length and zero or more
    //bytes that are the value of the string
@@ -1193,7 +1214,9 @@ error_t sshParseString(const uint8_t *p, size_t length, SshString *string)
 
    //Malformed data?
    if(length < n)
+   {
       return ERROR_INVALID_SYNTAX;
+   }
 
    //Save the value of the string
    string->value = (char_t *) p;
@@ -1219,7 +1242,9 @@ error_t sshParseBinaryString(const uint8_t *p, size_t length,
 
    //Malformed data?
    if(length < sizeof(uint32_t))
+   {
       return ERROR_INVALID_SYNTAX;
+   }
 
    //A string is stored as a uint32 containing its length and zero or more
    //bytes that are the value of the string
@@ -1231,7 +1256,9 @@ error_t sshParseBinaryString(const uint8_t *p, size_t length,
 
    //Malformed data?
    if(length < n)
+   {
       return ERROR_INVALID_SYNTAX;
+   }
 
    //Save the value of the string
    string->value = p;
@@ -1258,7 +1285,9 @@ error_t sshParseNameList(const uint8_t *p, size_t length,
 
    //Malformed data?
    if(length < sizeof(uint32_t))
+   {
       return ERROR_INVALID_SYNTAX;
+   }
 
    //A name-list is represented as a uint32 containing its length followed by
    //a comma-separated list of zero or more names
@@ -1270,7 +1299,9 @@ error_t sshParseNameList(const uint8_t *p, size_t length,
 
    //Malformed data?
    if(length < n)
+   {
       return ERROR_INVALID_SYNTAX;
+   }
 
    //Loop through the comma-separated list of names
    for(i = 0; i < n; i++)
@@ -1279,18 +1310,24 @@ error_t sshParseNameList(const uint8_t *p, size_t length,
       if(i == 0 || i == (n - 1))
       {
          if(p[i] == ',')
+         {
             return ERROR_INVALID_SYNTAX;
+         }
       }
       else
       {
          if(p[i] == ',' && p[i - 1] == ',')
+         {
             return ERROR_INVALID_SYNTAX;
+         }
       }
 
       //Terminating null characters must not be used, neither for the
       //individual names, nor for the list as a whole
       if(p[i] == '\0')
+      {
          return ERROR_INVALID_SYNTAX;
+      }
    }
 
    //Save the list of names
@@ -1451,7 +1488,7 @@ error_t sshFormatBinaryString(const void *value, size_t valueLen, uint8_t *p,
    STORE32BE(valueLen, p);
 
    //Copy the value of the string
-   osMemcpy(p + sizeof(uint32_t), value, valueLen);
+   osMemmove(p + sizeof(uint32_t), value, valueLen);
 
    //Total number of bytes that have been written
    *written = sizeof(uint32_t) + valueLen;

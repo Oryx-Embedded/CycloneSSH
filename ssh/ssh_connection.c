@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.6.6
+ * @version 2.6.8
  **/
 
 //Switch to the appropriate trace level
@@ -376,7 +376,9 @@ error_t sshFormatChannelOpen(SshChannel *channel, const char_t *channelType,
    error = sshFormatString(channelType, p, &n);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    p += n;
@@ -453,7 +455,9 @@ error_t sshFormatForwardedTcpIpParams(const SshForwardedTcpIpParams *params,
 
    //Check parameters
    if(params == NULL)
+   {
       return ERROR_INVALID_PARAMETER;
+   }
 
    //Total length of the channel specific data
    *written = 0;
@@ -463,7 +467,9 @@ error_t sshFormatForwardedTcpIpParams(const SshForwardedTcpIpParams *params,
       params->addrConnected.length, p, &n);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    p += n;
@@ -481,7 +487,9 @@ error_t sshFormatForwardedTcpIpParams(const SshForwardedTcpIpParams *params,
       params->originIpAddr.length, p, &n);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    p += n;
@@ -514,7 +522,9 @@ error_t sshFormatDirectTcpIpParams(const SshDirectTcpIpParams *params,
 
    //Check parameters
    if(params == NULL)
+   {
       return ERROR_INVALID_PARAMETER;
+   }
 
    //Total length of the channel specific data
    *written = 0;
@@ -525,7 +535,9 @@ error_t sshFormatDirectTcpIpParams(const SshDirectTcpIpParams *params,
       params->hostToConnect.length, p, &n);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    p += n;
@@ -545,7 +557,9 @@ error_t sshFormatDirectTcpIpParams(const SshDirectTcpIpParams *params,
       params->originIpAddr.length, p, &n);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    p += n;
@@ -662,7 +676,9 @@ error_t sshFormatChannelOpenFailure(SshConnection *connection,
    error = sshFormatString(description, p, &n);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    p += n;
@@ -672,7 +688,9 @@ error_t sshFormatChannelOpenFailure(SshConnection *connection,
    error = sshFormatString("en", p, &n);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Total length of the message
    *length += n;
@@ -741,7 +759,9 @@ error_t sshFormatChannelData(SshChannel *channel, size_t dataLen,
 
    //Check the length of the payload data
    if((dataLen + SSH_CHANNEL_DATA_MSG_HEADER_SIZE) > SSH_MAX_PACKET_SIZE)
+   {
       return ERROR_INVALID_LENGTH;
+   }
 
    //Total length of the message
    *length = 0;
@@ -885,11 +905,15 @@ error_t sshParseChannelOpen(SshConnection *connection,
 
    //Check connection state
    if(connection->state != SSH_CONN_STATE_OPEN)
+   {
       return ERROR_UNEXPECTED_MESSAGE;
+   }
 
    //Sanity check
    if(length < sizeof(uint8_t))
+   {
       return ERROR_INVALID_MESSAGE;
+   }
 
    //Point to the first field of the message
    p = message + sizeof(uint8_t);
@@ -900,7 +924,9 @@ error_t sshParseChannelOpen(SshConnection *connection,
    error = sshParseString(p, length, &channelType);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    p += sizeof(uint32_t) + channelType.length;
@@ -908,7 +934,9 @@ error_t sshParseChannelOpen(SshConnection *connection,
 
    //Malformed message?
    if(length < sizeof(uint32_t))
+   {
       return ERROR_INVALID_MESSAGE;
+   }
 
    //Get sender channel number
    senderChannel = LOAD32BE(p);
@@ -919,7 +947,9 @@ error_t sshParseChannelOpen(SshConnection *connection,
 
    //Malformed message?
    if(length < sizeof(uint32_t))
+   {
       return ERROR_INVALID_MESSAGE;
+   }
 
    //Get initial window size
    initialWindowSize = LOAD32BE(p);
@@ -930,7 +960,9 @@ error_t sshParseChannelOpen(SshConnection *connection,
 
    //Malformed message?
    if(length < sizeof(uint32_t))
+   {
       return ERROR_INVALID_MESSAGE;
+   }
 
    //Get maximum packet size
    maxPacketSize = LOAD32BE(p);
@@ -944,20 +976,26 @@ error_t sshParseChannelOpen(SshConnection *connection,
    TRACE_DEBUG("  Initial Window Size = %" PRIu32 "\r\n", initialWindowSize);
    TRACE_DEBUG("  Max Packet Size = %" PRIu32 "\r\n", maxPacketSize);
 
-   //Sanity check
-   if(maxPacketSize == 0)
+   //Make sure the maximum packet size is acceptable
+   if(maxPacketSize < SSH_MIN_CHANNEL_PACKET_SIZE)
+   {
       return ERROR_ILLEGAL_PARAMETER;
+   }
 
    //Each side must associate a unique number to the channel
    if(!sshCheckRemoteChannelNum(connection, senderChannel))
+   {
       return ERROR_ILLEGAL_PARAMETER;
+   }
 
    //Check channel type
    if(sshCompareString(&channelType, "session"))
    {
       //A "session" channel does not specify any type-specific data
       if(length != 0)
+      {
          return ERROR_INVALID_MESSAGE;
+      }
 
       //Check whether SSH operates as a client or a server
       if(connection->context->mode == SSH_OPERATION_MODE_CLIENT)
@@ -1044,7 +1082,9 @@ error_t sshParseForwardedTcpIpParams(const uint8_t *p, size_t length,
    error = sshParseString(p, length, &params->addrConnected);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    p += sizeof(uint32_t) + params->addrConnected.length;
@@ -1052,14 +1092,18 @@ error_t sshParseForwardedTcpIpParams(const uint8_t *p, size_t length,
 
    //Malformed message?
    if(length < sizeof(uint32_t))
+   {
       return ERROR_INVALID_MESSAGE;
+   }
 
    //Parse 'port that was connected' field
    params->portConnected = LOAD32BE(p);
 
    //Invalid port number?
    if(params->portConnected > SSH_MAX_PORT_NUM)
+   {
       return ERROR_INVALID_PORT;
+   }
 
    //Point to the next field
    p += sizeof(uint32_t);
@@ -1069,7 +1113,9 @@ error_t sshParseForwardedTcpIpParams(const uint8_t *p, size_t length,
    error = sshParseString(p, length, &params->originIpAddr);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    p += sizeof(uint32_t) + params->originIpAddr.length;
@@ -1077,14 +1123,18 @@ error_t sshParseForwardedTcpIpParams(const uint8_t *p, size_t length,
 
    //Malformed message?
    if(length != sizeof(uint32_t))
+   {
       return ERROR_INVALID_MESSAGE;
+   }
 
    //Parse 'originator port' field
    params->originPort = LOAD32BE(p);
 
    //Invalid port number?
    if(params->originPort > SSH_MAX_PORT_NUM)
+   {
       return ERROR_INVALID_PORT;
+   }
 
    //Successful processing
    return NO_ERROR;
@@ -1109,7 +1159,9 @@ error_t sshParseDirectTcpIpParams(const uint8_t *p, size_t length,
    error = sshParseString(p, length, &params->hostToConnect);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    p += sizeof(uint32_t) + params->hostToConnect.length;
@@ -1117,7 +1169,9 @@ error_t sshParseDirectTcpIpParams(const uint8_t *p, size_t length,
 
    //Malformed message?
    if(length < sizeof(uint32_t))
+   {
       return ERROR_INVALID_MESSAGE;
+   }
 
    //The 'port to connect' field specifies the port where the recipient should
    //connect the channel
@@ -1125,7 +1179,9 @@ error_t sshParseDirectTcpIpParams(const uint8_t *p, size_t length,
 
    //Invalid port number?
    if(params->portToConnect > SSH_MAX_PORT_NUM)
+   {
       return ERROR_INVALID_PORT;
+   }
 
    //Point to the next field
    p += sizeof(uint32_t);
@@ -1136,7 +1192,9 @@ error_t sshParseDirectTcpIpParams(const uint8_t *p, size_t length,
    error = sshParseString(p, length, &params->originIpAddr);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    p += sizeof(uint32_t) + params->originIpAddr.length;
@@ -1144,7 +1202,9 @@ error_t sshParseDirectTcpIpParams(const uint8_t *p, size_t length,
 
    //Malformed message?
    if(length != sizeof(uint32_t))
+   {
       return ERROR_INVALID_MESSAGE;
+   }
 
    //The 'originator port' field is the port on the host from where the
    //connection originated
@@ -1152,7 +1212,9 @@ error_t sshParseDirectTcpIpParams(const uint8_t *p, size_t length,
 
    //Invalid port number?
    if(params->originPort > SSH_MAX_PORT_NUM)
+   {
       return ERROR_INVALID_PORT;
+   }
 
    //Successful processing
    return NO_ERROR;
@@ -1184,11 +1246,15 @@ error_t sshParseChannelOpenConfirmation(SshConnection *connection,
 
    //Check connection state
    if(connection->state != SSH_CONN_STATE_OPEN)
+   {
       return ERROR_UNEXPECTED_MESSAGE;
+   }
 
    //Sanity check
    if(length < sizeof(uint8_t))
+   {
       return ERROR_INVALID_MESSAGE;
+   }
 
    //Point to the first field of the message
    p = message + sizeof(uint8_t);
@@ -1197,7 +1263,9 @@ error_t sshParseChannelOpenConfirmation(SshConnection *connection,
 
    //Malformed message?
    if(length < sizeof(uint32_t))
+   {
       return ERROR_INVALID_MESSAGE;
+   }
 
    //Decode the recipient channel
    recipientChannel = LOAD32BE(p);
@@ -1208,7 +1276,9 @@ error_t sshParseChannelOpenConfirmation(SshConnection *connection,
 
    //Malformed message?
    if(length < sizeof(uint32_t))
+   {
       return ERROR_INVALID_MESSAGE;
+   }
 
    //Decode the sender channel
    senderChannel = LOAD32BE(p);
@@ -1219,7 +1289,9 @@ error_t sshParseChannelOpenConfirmation(SshConnection *connection,
 
    //Malformed message?
    if(length < sizeof(uint32_t))
+   {
       return ERROR_INVALID_MESSAGE;
+   }
 
    //Decode initial window size
    initialWindowSize = LOAD32BE(p);
@@ -1230,7 +1302,9 @@ error_t sshParseChannelOpenConfirmation(SshConnection *connection,
 
    //Malformed message?
    if(length != sizeof(uint32_t))
+   {
       return ERROR_INVALID_MESSAGE;
+   }
 
    //Decode maximum packet size
    maxPacketSize = LOAD32BE(p);
@@ -1241,9 +1315,11 @@ error_t sshParseChannelOpenConfirmation(SshConnection *connection,
    TRACE_DEBUG("  Initial Window Size = %" PRIu32 "\r\n", initialWindowSize);
    TRACE_DEBUG("  Max Packet Size = %" PRIu32 "\r\n", maxPacketSize);
 
-   //Sanity check
-   if(maxPacketSize == 0)
+   //Make sure the maximum packet size is acceptable
+   if(maxPacketSize < SSH_MIN_CHANNEL_PACKET_SIZE)
+   {
       return ERROR_ILLEGAL_PARAMETER;
+   }
 
    //Acquire exclusive access to the SSH context
    osAcquireMutex(&connection->context->mutex);
@@ -1326,11 +1402,15 @@ error_t sshParseChannelOpenFailure(SshConnection *connection,
 
    //Check connection state
    if(connection->state != SSH_CONN_STATE_OPEN)
+   {
       return ERROR_UNEXPECTED_MESSAGE;
+   }
 
    //Sanity check
    if(length < sizeof(uint8_t))
+   {
       return ERROR_INVALID_MESSAGE;
+   }
 
    //Point to the first field of the message
    p = message + sizeof(uint8_t);
@@ -1339,7 +1419,9 @@ error_t sshParseChannelOpenFailure(SshConnection *connection,
 
    //Malformed message?
    if(length < sizeof(uint32_t))
+   {
       return ERROR_INVALID_MESSAGE;
+   }
 
    //Decode the recipient channel
    recipientChannel = LOAD32BE(p);
@@ -1350,7 +1432,9 @@ error_t sshParseChannelOpenFailure(SshConnection *connection,
 
    //Malformed message?
    if(length < sizeof(uint32_t))
+   {
       return ERROR_INVALID_MESSAGE;
+   }
 
    //Decode the reason code
    reasonCode = LOAD32BE(p);
@@ -1365,7 +1449,9 @@ error_t sshParseChannelOpenFailure(SshConnection *connection,
    error = sshParseString(p, length, &description);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    p += sizeof(uint32_t) + description.length;
@@ -1375,7 +1461,9 @@ error_t sshParseChannelOpenFailure(SshConnection *connection,
    error = sshParseString(p, length, &languageTag);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    p += sizeof(uint32_t) + languageTag.length;
@@ -1383,7 +1471,9 @@ error_t sshParseChannelOpenFailure(SshConnection *connection,
 
    //Malformed message?
    if(length != 0)
+   {
       return ERROR_INVALID_MESSAGE;
+   }
 
    //Acquire exclusive access to the SSH context
    osAcquireMutex(&connection->context->mutex);
@@ -1452,11 +1542,15 @@ error_t sshParseChannelWindowAdjust(SshConnection *connection,
 
    //Check connection state
    if(connection->state != SSH_CONN_STATE_OPEN)
+   {
       return ERROR_UNEXPECTED_MESSAGE;
+   }
 
    //Sanity check
    if(length < sizeof(uint8_t))
+   {
       return ERROR_INVALID_MESSAGE;
+   }
 
    //Point to the first field of the message
    p = message + sizeof(uint8_t);
@@ -1465,7 +1559,9 @@ error_t sshParseChannelWindowAdjust(SshConnection *connection,
 
    //Malformed message?
    if(length < sizeof(uint32_t))
+   {
       return ERROR_INVALID_MESSAGE;
+   }
 
    //Get recipient channel number
    recipientChannel = LOAD32BE(p);
@@ -1476,7 +1572,9 @@ error_t sshParseChannelWindowAdjust(SshConnection *connection,
 
    //Malformed message?
    if(length != sizeof(uint32_t))
+   {
       return ERROR_INVALID_MESSAGE;
+   }
 
    //Get the number of bytes to add
    windowSizeInc = LOAD32BE(p);
@@ -1493,8 +1591,9 @@ error_t sshParseChannelWindowAdjust(SshConnection *connection,
       //Check channel state
       if(channel->state == SSH_CHANNEL_STATE_OPEN && !channel->closeReceived)
       {
-         //Check whether the window size increment is valid
-         if((channel->txWindowSize + windowSizeInc) >= channel->txWindowSize)
+         //The window must not be increased above 2^32 - 1 bytes (refer to
+         //RFC 4254, section 5.2)
+         if(windowSizeInc <= (SSH_MAX_WINDOW_SIZE - channel->txWindowSize))
          {
             //After receiving this message, the recipient may send the given
             //number of bytes more than it was previously allowed to send. The
@@ -1556,11 +1655,15 @@ error_t sshParseChannelData(SshConnection *connection,
 
    //Check connection state
    if(connection->state != SSH_CONN_STATE_OPEN)
+   {
       return ERROR_UNEXPECTED_MESSAGE;
+   }
 
    //Sanity check
    if(length < sizeof(uint8_t))
+   {
       return ERROR_INVALID_MESSAGE;
+   }
 
    //Point to the first field of the message
    p = message + sizeof(uint8_t);
@@ -1569,7 +1672,9 @@ error_t sshParseChannelData(SshConnection *connection,
 
    //Malformed message?
    if(length < sizeof(uint32_t))
+   {
       return ERROR_INVALID_MESSAGE;
+   }
 
    //Get recipient channel number
    recipientChannel = LOAD32BE(p);
@@ -1582,7 +1687,9 @@ error_t sshParseChannelData(SshConnection *connection,
    error = sshParseBinaryString(p, length, &data);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    p += sizeof(uint32_t) + data.length;
@@ -1590,7 +1697,9 @@ error_t sshParseChannelData(SshConnection *connection,
 
    //Malformed message?
    if(length != 0)
+   {
       return ERROR_INVALID_MESSAGE;
+   }
 
    //Acquire exclusive access to the SSH context
    osAcquireMutex(&connection->context->mutex);
@@ -1652,11 +1761,15 @@ error_t sshParseChannelExtendedData(SshConnection *connection,
 
    //Check connection state
    if(connection->state != SSH_CONN_STATE_OPEN)
+   {
       return ERROR_UNEXPECTED_MESSAGE;
+   }
 
    //Sanity check
    if(length < sizeof(uint8_t))
+   {
       return ERROR_INVALID_MESSAGE;
+   }
 
    //Point to the first field of the message
    p = message + sizeof(uint8_t);
@@ -1665,7 +1778,9 @@ error_t sshParseChannelExtendedData(SshConnection *connection,
 
    //Malformed message?
    if(length < sizeof(uint32_t))
+   {
       return ERROR_INVALID_MESSAGE;
+   }
 
    //Get recipient channel number
    recipientChannel = LOAD32BE(p);
@@ -1676,7 +1791,9 @@ error_t sshParseChannelExtendedData(SshConnection *connection,
 
    //Malformed message?
    if(length < sizeof(uint32_t))
+   {
       return ERROR_INVALID_MESSAGE;
+   }
 
    //Get data type code
    dataType = LOAD32BE(p);
@@ -1689,7 +1806,9 @@ error_t sshParseChannelExtendedData(SshConnection *connection,
    error = sshParseBinaryString(p, length, &data);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    p += sizeof(uint32_t) + data.length;
@@ -1697,7 +1816,9 @@ error_t sshParseChannelExtendedData(SshConnection *connection,
 
    //Malformed message?
    if(length != 0)
+   {
       return ERROR_INVALID_MESSAGE;
+   }
 
    //Acquire exclusive access to the SSH context
    osAcquireMutex(&connection->context->mutex);
@@ -1758,11 +1879,15 @@ error_t sshParseChannelEof(SshConnection *connection,
 
    //Check connection state
    if(connection->state != SSH_CONN_STATE_OPEN)
+   {
       return ERROR_UNEXPECTED_MESSAGE;
+   }
 
    //Sanity check
    if(length < sizeof(uint8_t))
+   {
       return ERROR_INVALID_MESSAGE;
+   }
 
    //Point to the first field of the message
    p = message + sizeof(uint8_t);
@@ -1771,7 +1896,9 @@ error_t sshParseChannelEof(SshConnection *connection,
 
    //Malformed message?
    if(length != sizeof(uint32_t))
+   {
       return ERROR_INVALID_MESSAGE;
+   }
 
    //Get recipient channel number
    recipientChannel = LOAD32BE(p);
@@ -1841,11 +1968,15 @@ error_t sshParseChannelClose(SshConnection *connection,
 
    //Check connection state
    if(connection->state != SSH_CONN_STATE_OPEN)
+   {
       return ERROR_UNEXPECTED_MESSAGE;
+   }
 
    //Sanity check
    if(length < sizeof(uint8_t))
+   {
       return ERROR_INVALID_MESSAGE;
+   }
 
    //Point to the first field of the message
    p = message + sizeof(uint8_t);
@@ -1854,7 +1985,9 @@ error_t sshParseChannelClose(SshConnection *connection,
 
    //Malformed message?
    if(length != sizeof(uint32_t))
+   {
       return ERROR_INVALID_MESSAGE;
+   }
 
    //Get recipient channel number
    recipientChannel = LOAD32BE(p);
@@ -1906,7 +2039,7 @@ error_t sshParseChannelClose(SshConnection *connection,
          channel->state == SSH_CHANNEL_STATE_CLOSED)
       {
          //Release SSH channel
-         if(channel->closeRequest || !channel->channelSuccessSent)
+         if(channel->closeRequest || !channel->owned)
          {
             channel->state = SSH_CHANNEL_STATE_UNUSED;
          }

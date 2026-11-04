@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.6.6
+ * @version 2.6.8
  **/
 
 //Switch to the appropriate trace level
@@ -137,20 +137,26 @@ error_t shellClientOpenConnection(ShellClientContext *context)
       &context->sshChannel, 1);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Select client operation mode
    error = sshSetOperationMode(&context->sshContext, SSH_OPERATION_MODE_CLIENT);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Register channel request processing callback
    error = sshRegisterChannelRequestCallback(&context->sshContext,
       shellClientChannelRequestCallback, context);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Invoke user-defined callback, if any
    if(context->sshInitCallback != NULL)
@@ -159,7 +165,9 @@ error_t shellClientOpenConnection(ShellClientContext *context)
       error = context->sshInitCallback(context, &context->sshContext);
       //Any error to report?
       if(error)
+      {
          return error;
+      }
    }
 
    //Open a TCP socket
@@ -339,7 +347,7 @@ error_t shellClientCheckTimeout(ShellClientContext *context)
    time = osGetSystemTime();
 
    //Check whether the timeout has elapsed
-   if(timeCompare(time, context->timestamp + context->timeout) >= 0)
+   if((time - context->timestamp) >= context->timeout)
    {
       //Report a timeout error
       error = ERROR_TIMEOUT;

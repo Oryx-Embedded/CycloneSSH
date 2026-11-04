@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.6.6
+ * @version 2.6.8
  **/
 
 //Switch to the appropriate trace level
@@ -99,14 +99,18 @@ error_t sshImportCertificate(const char_t *input, size_t inputLen,
    certType = sshGetCertType(input, inputLen);
    //Unrecognized certificate type?
    if(certType == NULL)
+   {
       return ERROR_INVALID_SYNTAX;
+   }
 
    //Get the length of the identifier string
    i = osStrlen(certType);
 
    //The identifier must be followed by a whitespace character
    if(input[i] != ' ' && input[i] != '\t')
+   {
       return ERROR_INVALID_SYNTAX;
+   }
 
    //Skip whitespace characters
    while(i < inputLen && (input[i] == ' ' || input[i] == '\t'))
@@ -127,11 +131,15 @@ error_t sshImportCertificate(const char_t *input, size_t inputLen,
    error = base64Decode(input + i, j - i, output, outputLen);
    //Failed to decode the file?
    if(error)
+   {
       return error;
+   }
 
    //Sanity check
    if(*outputLen == 0)
+   {
       return ERROR_INVALID_SYNTAX;
+   }
 
    //Successful processing
    return NO_ERROR;
@@ -164,21 +172,49 @@ error_t sshImportRsaCertPublicKey(RsaPublicKey *publicKey,
       cert->publicKey.rsaPublicKey.e.length, MPI_FORMAT_BIG_ENDIAN);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
+
+   //The public exponent must be an odd integer greater than 1
+   if(mpiCompInt(&publicKey->e, 1) <= 0 || mpiIsEven(&publicKey->e))
+   {
+      return ERROR_INVALID_KEY;
+   }
+
+   //Get the length of the public exponent, in bits
+   k = mpiGetBitLength(&publicKey->e);
+
+   //Limit the size of the public exponent to bound the cost of the RSA
+   //public operation
+   if(k > SSH_MAX_RSA_PUBLIC_EXPONENT_SIZE)
+   {
+      return ERROR_INVALID_KEY;
+   }
 
    //Import RSA modulus
    error = mpiImport(&publicKey->n, cert->publicKey.rsaPublicKey.n.value,
       cert->publicKey.rsaPublicKey.n.length, MPI_FORMAT_BIG_ENDIAN);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
+
+   //The RSA modulus must be an odd integer
+   if(mpiIsEven(&publicKey->n))
+   {
+      return ERROR_INVALID_KEY;
+   }
 
    //Get the length of the modulus, in bits
    k = mpiGetBitLength(&publicKey->n);
 
    //Applications should enforce minimum and maximum key sizes
    if(k < SSH_MIN_RSA_MODULUS_SIZE || k > SSH_MAX_RSA_MODULUS_SIZE)
+   {
       return ERROR_INVALID_KEY_LENGTH;
+   }
 
    //Successful processing
    return NO_ERROR;
@@ -215,35 +251,45 @@ error_t sshImportDsaCertPublicKey(DsaPublicKey *publicKey,
       cert->publicKey.dsaPublicKey.p.length, MPI_FORMAT_BIG_ENDIAN);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Import DSA group order
    error = mpiImport(&publicKey->params.q, cert->publicKey.dsaPublicKey.q.value,
       cert->publicKey.dsaPublicKey.q.length, MPI_FORMAT_BIG_ENDIAN);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Import DSA group generator
    error = mpiImport(&publicKey->params.g, cert->publicKey.dsaPublicKey.g.value,
       cert->publicKey.dsaPublicKey.g.length, MPI_FORMAT_BIG_ENDIAN);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Import DSA public key value
    error = mpiImport(&publicKey->y, cert->publicKey.dsaPublicKey.y.value,
       cert->publicKey.dsaPublicKey.y.length, MPI_FORMAT_BIG_ENDIAN);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Get the length of the modulus, in bits
    k = mpiGetBitLength(&publicKey->params.p);
 
    //Applications should enforce minimum and maximum key sizes
    if(k < SSH_MIN_DSA_MODULUS_SIZE || k > SSH_MAX_DSA_MODULUS_SIZE)
+   {
       return ERROR_INVALID_KEY_LENGTH;
+   }
 
    //Successful processing
    return NO_ERROR;

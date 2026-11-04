@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.6.6
+ * @version 2.6.8
  **/
 
 #ifndef _SSH_ALGORITHMS_H
@@ -74,7 +74,9 @@ const char_t *sshSelectCompressionAlgo(SshContext *context,
    const SshNameList *peerAlgoList);
 
 const char_t *sshSelectPublicKeyAlgo(SshContext *context,
-   const char_t *keyFormatId, const SshNameList *peerAlgoList);
+   const char_t *keyFormatId, uint32_t peerAlgos);
+
+uint32_t sshGetPeerPublicKeyAlgos(const SshNameList *peerAlgoList);
 
 const char_t *sshGetKeyFormatId(const SshString *publicKeyAlgo);
 const char_t *sshGetSignFormatId(const SshString *publicKeyAlgo);

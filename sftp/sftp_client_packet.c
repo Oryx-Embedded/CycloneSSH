@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.6.6
+ * @version 2.6.8
  **/
 
 //Switch to the appropriate trace level
@@ -139,7 +139,9 @@ error_t sftpClientFormatFxpOpen(SftpClientContext *context,
    error = sftpFormatPath(context, filename, p, &n);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    p += n;
@@ -160,7 +162,9 @@ error_t sftpClientFormatFxpOpen(SftpClientContext *context,
    error = sftpFormatAttributes(context->version, &attributes, p, &n);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Total length of the packet
    length += n;
@@ -230,7 +234,9 @@ error_t sftpClientFormatFxpClose(SftpClientContext *context,
    error = sshFormatBinaryString(handle, handleLen, p, &n);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Total length of the packet
    length += n;
@@ -303,7 +309,9 @@ error_t sftpClientFormatFxpRead(SftpClientContext *context,
    error = sshFormatBinaryString(handle, handleLen, p, &n);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    p += n;
@@ -393,7 +401,9 @@ error_t sftpClientFormatFxpWrite(SftpClientContext *context,
    error = sshFormatBinaryString(handle, handleLen, p, &n);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    p += n;
@@ -479,7 +489,9 @@ error_t sftpClientFormatFxpOpenDir(SftpClientContext *context,
    error = sftpFormatPath(context, path, p, &n);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Total length of the packet
    length += n;
@@ -549,7 +561,9 @@ error_t sftpClientFormatFxpReadDir(SftpClientContext *context,
    error = sshFormatBinaryString(handle, handleLen, p, &n);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Total length of the packet
    length += n;
@@ -617,7 +631,9 @@ error_t sftpClientFormatFxpRemove(SftpClientContext *context,
    error = sftpFormatPath(context, filename, p, &n);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Total length of the packet
    length += n;
@@ -686,7 +702,9 @@ error_t sftpClientFormatFxpMkDir(SftpClientContext *context,
    error = sftpFormatPath(context, path, p, &n);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    p += n;
@@ -699,7 +717,9 @@ error_t sftpClientFormatFxpMkDir(SftpClientContext *context,
    error = sftpFormatAttributes(context->version, &attributes, p, &n);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Total length of the packet
    length += n;
@@ -767,7 +787,9 @@ error_t sftpClientFormatFxpRmDir(SftpClientContext *context,
    error = sftpFormatPath(context, path, p, &n);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Total length of the packet
    length += n;
@@ -835,7 +857,9 @@ error_t sftpClientFormatFxpRealPath(SftpClientContext *context,
    error = sshFormatString(path, p, &n);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Total length of the packet
    length += n;
@@ -904,7 +928,9 @@ error_t sftpClientFormatFxpStat(SftpClientContext *context,
    error = sftpFormatPath(context, path, p, &n);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Total length of the packet
    length += n;
@@ -973,7 +999,9 @@ error_t sftpClientFormatFxpRename(SftpClientContext *context,
    error = sftpFormatPath(context, oldPath, p, &n);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    p += n;
@@ -983,7 +1011,9 @@ error_t sftpClientFormatFxpRename(SftpClientContext *context,
    error = sftpFormatPath(context, newPath, p, &n);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Total length of the packet
    length += n;
@@ -1032,14 +1062,18 @@ error_t sftpClientParseFxpVersion(SftpClientContext *context,
 
    //An SSH_FXP_VERSION packet is sent in response to an SSH_FXP_INIT request
    if(context->requestType != SSH_FXP_INIT)
+   {
       return ERROR_INVALID_TYPE;
+   }
 
    //Point to the first field of the packet
    p = packet;
 
    //Malformed packet?
    if(length < sizeof(uint32_t))
+   {
       return ERROR_INVALID_PACKET;
+   }
 
    //The SSH_FXP_VERSION packet contains the lowest of its own and the
    //client's version number
@@ -1056,7 +1090,9 @@ error_t sftpClientParseFxpVersion(SftpClientContext *context,
       error = sshParseString(p, length, &extensionName);
       //Any error to report?
       if(error)
+      {
          return error;
+      }
 
       //Point to the next field
       p += sizeof(uint32_t) + extensionName.length;
@@ -1066,7 +1102,9 @@ error_t sftpClientParseFxpVersion(SftpClientContext *context,
       error = sshParseString(p, length, &extensionValue);
       //Any error to report?
       if(error)
+      {
          return error;
+      }
 
       //Point to the next field
       p += sizeof(uint32_t) + extensionValue.length;
@@ -1075,7 +1113,9 @@ error_t sftpClientParseFxpVersion(SftpClientContext *context,
 
    //Sanity check
    if(version < SFTP_CLIENT_MIN_VERSION || version > SFTP_CLIENT_MAX_VERSION)
+   {
       return ERROR_INVALID_VERSION;
+   }
 
    //From then on, both parties must use the same version of the protocol
    context->version = (SftpVersion) version;
@@ -1108,14 +1148,18 @@ error_t sftpClientParseFxpStatus(SftpClientContext *context,
 
    //All requests can return an SSH_FXP_STATUS response upon failure
    if(context->requestType == SSH_FXP_INIT)
+   {
       return ERROR_INVALID_TYPE;
+   }
 
    //Point to the first field of the packet
    p = packet;
 
    //Malformed packet?
    if(length < sizeof(uint32_t))
+   {
       return ERROR_INVALID_PACKET;
+   }
 
    //Each response packet begins with the request identifier
    id = LOAD32BE(p);
@@ -1123,7 +1167,9 @@ error_t sftpClientParseFxpStatus(SftpClientContext *context,
    //The request identifier is used to match each response with the
    //corresponding request
    if(id != context->requestId)
+   {
       return ERROR_WRONG_IDENTIFIER;
+   }
 
    //Point to the next field
    p += sizeof(uint32_t);
@@ -1131,7 +1177,9 @@ error_t sftpClientParseFxpStatus(SftpClientContext *context,
 
    //Malformed packet?
    if(length < sizeof(uint32_t))
+   {
       return ERROR_INVALID_PACKET;
+   }
 
    //The status code indicates the result of the requested operation
    context->statusCode = LOAD32BE(p);
@@ -1148,7 +1196,9 @@ error_t sftpClientParseFxpStatus(SftpClientContext *context,
       error = sshParseString(p, length, &errorMessage);
       //Any error to report?
       if(error)
+      {
          return error;
+      }
 
       //Point to the next field
       p += sizeof(uint32_t) + errorMessage.length;
@@ -1158,7 +1208,9 @@ error_t sftpClientParseFxpStatus(SftpClientContext *context,
       error = sshParseString(p, length, &languageTag);
       //Any error to report?
       if(error)
+      {
          return error;
+      }
 
       //Point to the next field
       p += sizeof(uint32_t) + languageTag.length;
@@ -1167,7 +1219,9 @@ error_t sftpClientParseFxpStatus(SftpClientContext *context,
 
    //Malformed message?
    if(length != 0)
+   {
       return ERROR_INVALID_MESSAGE;
+   }
 
    //Check the result of the requested operation
    if(context->statusCode == SSH_FX_OK)
@@ -1237,7 +1291,9 @@ error_t sftpClientParseFxpHandle(SftpClientContext *context,
 
    //Malformed packet?
    if(length < sizeof(uint32_t))
+   {
       return ERROR_INVALID_PACKET;
+   }
 
    //Each response packet begins with the request identifier
    id = LOAD32BE(p);
@@ -1245,7 +1301,9 @@ error_t sftpClientParseFxpHandle(SftpClientContext *context,
    //The request identifier is used to match each response with the
    //corresponding request
    if(id != context->requestId)
+   {
       return ERROR_WRONG_IDENTIFIER;
+   }
 
    //Point to the next field
    p += sizeof(uint32_t);
@@ -1256,7 +1314,9 @@ error_t sftpClientParseFxpHandle(SftpClientContext *context,
    error = sshParseBinaryString(p, length, &handle);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    p += sizeof(uint32_t) + handle.length;
@@ -1264,11 +1324,15 @@ error_t sftpClientParseFxpHandle(SftpClientContext *context,
 
    //Malformed message?
    if(length != 0)
+   {
       return ERROR_INVALID_PACKET;
+   }
 
    //The length of the handle string must not exceed 256 data bytes
    if(handle.length > SFTP_CLIENT_MAX_HANDLE_SIZE)
+   {
       return ERROR_INVALID_HANDLE;
+   }
 
    //The handle is opaque to the client. The client must not attempt to
    //interpret or modify it in any way
@@ -1305,18 +1369,24 @@ error_t sftpClientParseFxpData(SftpClientContext *context,
 
    //Sanity check
    if(fragLen != sizeof(SftpFxpDataHeader))
+   {
       return ERROR_INVALID_PACKET;
+   }
 
    //SSH_FXP_DATA is used to return data from SSH_FXP_READ
    if(context->requestType != SSH_FXP_READ)
+   {
       return ERROR_INVALID_TYPE;
+   }
 
    //Point to the first field of the packet
    p = packet;
 
    //Malformed packet?
    if(totalLen < sizeof(uint32_t))
+   {
       return ERROR_INVALID_PACKET;
+   }
 
    //Each response packet begins with the request identifier
    id = LOAD32BE(p);
@@ -1324,7 +1394,9 @@ error_t sftpClientParseFxpData(SftpClientContext *context,
    //The request identifier is used to match each response with the
    //corresponding request
    if(id != context->requestId)
+   {
       return ERROR_WRONG_IDENTIFIER;
+   }
 
    //Point to the next field
    p += sizeof(uint32_t);
@@ -1334,7 +1406,9 @@ error_t sftpClientParseFxpData(SftpClientContext *context,
    error = sshParseBinaryString(p, totalLen, &data);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the data payload
    p += sizeof(uint32_t);
@@ -1342,12 +1416,16 @@ error_t sftpClientParseFxpData(SftpClientContext *context,
 
    //Malformed packet?
    if(data.length != totalLen)
+   {
       return ERROR_INVALID_PACKET;
+   }
 
    //The data string may be at most the number of bytes requested in a
    //SSH_FXP_READ request, but may also be shorter if end of file is reached
    if(data.length > context->dataLen)
+   {
       return ERROR_INVALID_LENGTH;
+   }
 
    //Save the actual number of data bytes in the SSH_FXP_DATA response
    context->dataLen = data.length;
@@ -1393,7 +1471,9 @@ error_t sftpClientParseFxpName(SftpClientContext *context,
 
    //Malformed packet?
    if(fragLen < sizeof(uint32_t) || fragLen > totalLen)
+   {
       return ERROR_INVALID_PACKET;
+   }
 
    //Each response packet begins with the request identifier
    id = LOAD32BE(p);
@@ -1401,7 +1481,9 @@ error_t sftpClientParseFxpName(SftpClientContext *context,
    //The request identifier is used to match each response with the
    //corresponding request
    if(id != context->requestId)
+   {
       return ERROR_WRONG_IDENTIFIER;
+   }
 
    //Point to the next field
    p += sizeof(uint32_t);
@@ -1410,7 +1492,9 @@ error_t sftpClientParseFxpName(SftpClientContext *context,
 
    //Malformed packet?
    if(fragLen < sizeof(uint32_t))
+   {
       return ERROR_INVALID_PACKET;
+   }
 
    //Get the number of names returned in this response
    count = LOAD32BE(p);
@@ -1426,24 +1510,32 @@ error_t sftpClientParseFxpName(SftpClientContext *context,
       //Each SSH_FXP_READDIR request returns one or more file names with full
       //file attributes for each file
       if(count < 1)
+      {
          return ERROR_INVALID_PACKET;
+      }
    }
    else
    {
       //The server will respond to an SSH_FXP_REALPATH request with an SSH_FXP_NAME
       //packet containing only one name and a dummy attributes value
       if(count != 1)
+      {
          return ERROR_INVALID_PACKET;
+      }
 
       //Parse file name and attributes
       error = sftpParseName(context->version, &name, p, fragLen, &n);
       //Any error to report?
       if(error)
+      {
          return error;
+      }
 
       //Malformed packet?
       if(fragLen != n || totalLen != n)
+      {
          return ERROR_INVALID_PACKET;
+      }
    }
 
    //Move the remaining data bytes to the start of the buffer
@@ -1494,7 +1586,9 @@ error_t sftpClientParseFxpAttrs(SftpClientContext *context,
 
    //Malformed packet?
    if(length < sizeof(uint32_t))
+   {
       return ERROR_INVALID_PACKET;
+   }
 
    //Each response packet begins with the request identifier
    id = LOAD32BE(p);
@@ -1502,7 +1596,9 @@ error_t sftpClientParseFxpAttrs(SftpClientContext *context,
    //The request identifier is used to match each response with the
    //corresponding request
    if(id != context->requestId)
+   {
       return ERROR_WRONG_IDENTIFIER;
+   }
 
    //Point to the next field
    p += sizeof(uint32_t);
@@ -1512,11 +1608,15 @@ error_t sftpClientParseFxpAttrs(SftpClientContext *context,
    error = sftpParseAttributes(context->version, &attributes, p, length, &n);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Malformed packet?
    if(length != n)
+   {
       return ERROR_INVALID_PACKET;
+   }
 
    //Move the remaining data bytes to the start of the buffer
    osMemmove(context->buffer, p, length);

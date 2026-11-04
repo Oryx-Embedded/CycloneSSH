@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.6.6
+ * @version 2.6.8
  **/
 
 #ifndef _SFTP_SERVER_H
@@ -62,6 +62,13 @@
    #error SFTP_SERVER_MAX_SESSIONS parameter is not valid
 #endif
 
+//Maximum number of file objects per SSH connection
+#ifndef SFTP_SERVER_MAX_FILE_OBJECTS_PER_CONNECTION
+   #define SFTP_SERVER_MAX_FILE_OBJECTS_PER_CONNECTION 4
+#elif (SFTP_SERVER_MAX_FILE_OBJECTS_PER_CONNECTION < 1)
+   #error SFTP_SERVER_MAX_FILE_OBJECTS_PER_CONNECTION parameter is not valid
+#endif
+
 //SFTP server tick interval
 #ifndef SFTP_SERVER_TICK_INTERVAL
    #define SFTP_SERVER_TICK_INTERVAL 1000
@@ -86,7 +93,7 @@
 //Size of buffer used for input/output operations
 #ifndef SFTP_SERVER_BUFFER_SIZE
    #define SFTP_SERVER_BUFFER_SIZE 1024
-#elif (SFTP_SERVER_BUFFER_SIZE < 128)
+#elif (SFTP_SERVER_BUFFER_SIZE < 512)
    #error SFTP_SERVER_BUFFER_SIZE parameter is not valid
 #endif
 

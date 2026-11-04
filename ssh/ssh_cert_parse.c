@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.6.6
+ * @version 2.6.8
  **/
 
 //Switch to the appropriate trace level
@@ -35,6 +35,7 @@
 #include "ssh/ssh.h"
 #include "ssh/ssh_cert_parse.h"
 #include "ssh/ssh_misc.h"
+#include "ecc/eddsa.h"
 #include "debug.h"
 
 //Check SSH stack configuration
@@ -62,7 +63,9 @@ error_t sshParseCertificate(const uint8_t *data, size_t length,
    error = sshParseString(data, length, &cert->keyFormatId);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    data += sizeof(uint32_t) + cert->keyFormatId.length;
@@ -72,7 +75,9 @@ error_t sshParseCertificate(const uint8_t *data, size_t length,
    error = sshParseBinaryString(data, length, &cert->nonce);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    data += sizeof(uint32_t) + cert->nonce.length;
@@ -121,7 +126,7 @@ error_t sshParseCertificate(const uint8_t *data, size_t length,
       sshCompareString(&cert->keyFormatId, "ssh-ed25519-cert-v01@openssh.com"))
    {
       //Parse Ed25519 public key
-      error = sshParseEddsaCertPublicKey(data, length, &n,
+      error = sshParseEd25519CertPublicKey(data, length, &n,
          &cert->publicKey.eddsaPublicKey);
    }
    else
@@ -131,7 +136,7 @@ error_t sshParseCertificate(const uint8_t *data, size_t length,
    if(sshCompareString(&cert->keyFormatId, "ssh-ed448-cert"))
    {
       //Parse Ed448 public key
-      error = sshParseEddsaCertPublicKey(data, length, &n,
+      error = sshParseEd448CertPublicKey(data, length, &n,
          &cert->publicKey.eddsaPublicKey);
    }
    else
@@ -144,7 +149,9 @@ error_t sshParseCertificate(const uint8_t *data, size_t length,
 
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    data += n;
@@ -152,7 +159,9 @@ error_t sshParseCertificate(const uint8_t *data, size_t length,
 
    //Malformed certificate?
    if(length < sizeof(uint64_t))
+   {
       return ERROR_INVALID_SYNTAX;
+   }
 
    //Parse 'serial' field
    cert->serial = LOAD64BE(data);
@@ -163,14 +172,18 @@ error_t sshParseCertificate(const uint8_t *data, size_t length,
 
    //Malformed certificate?
    if(length < sizeof(uint32_t))
+   {
       return ERROR_INVALID_SYNTAX;
+   }
 
    //Parse 'type' field
    cert->type = LOAD32BE(data);
 
    //Check certificate type
    if(cert->type != SSH_CERT_TYPE_USER && cert->type != SSH_CERT_TYPE_HOST)
+   {
       return ERROR_WRONG_TYPE;
+   }
 
    //Point to the next field
    data += sizeof(uint32_t);
@@ -180,7 +193,9 @@ error_t sshParseCertificate(const uint8_t *data, size_t length,
    error = sshParseString(data, length, &cert->keyId);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    data += sizeof(uint32_t) + cert->keyId.length;
@@ -190,7 +205,9 @@ error_t sshParseCertificate(const uint8_t *data, size_t length,
    error = sshParseValidPrincipals(data, length, &cert->validPrincipals);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    data += sizeof(uint32_t) + cert->validPrincipals.length;
@@ -198,7 +215,9 @@ error_t sshParseCertificate(const uint8_t *data, size_t length,
 
    //Malformed certificate?
    if(length < sizeof(uint64_t))
+   {
       return ERROR_INVALID_SYNTAX;
+   }
 
    //Parse 'valid after' field
    cert->validAfter = LOAD64BE(data);
@@ -209,7 +228,9 @@ error_t sshParseCertificate(const uint8_t *data, size_t length,
 
    //Malformed certificate?
    if(length < sizeof(uint64_t))
+   {
       return ERROR_INVALID_SYNTAX;
+   }
 
    //Parse 'valid before' field
    cert->validBefore = LOAD64BE(data);
@@ -222,7 +243,9 @@ error_t sshParseCertificate(const uint8_t *data, size_t length,
    error = sshParseCriticalOptions(data, length, &cert->criticalOptions);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    data += sizeof(uint32_t) + cert->criticalOptions.length;
@@ -232,7 +255,9 @@ error_t sshParseCertificate(const uint8_t *data, size_t length,
    error = sshParseExtensions(data, length, &cert->extensions);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    data += sizeof(uint32_t) + cert->extensions.length;
@@ -242,7 +267,9 @@ error_t sshParseCertificate(const uint8_t *data, size_t length,
    error = sshParseBinaryString(data, length, &cert->reserved);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    data += sizeof(uint32_t) + cert->reserved.length;
@@ -252,7 +279,9 @@ error_t sshParseCertificate(const uint8_t *data, size_t length,
    error = sshParseBinaryString(data, length, &cert->signatureKey);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    data += sizeof(uint32_t) + cert->signatureKey.length;
@@ -262,7 +291,9 @@ error_t sshParseCertificate(const uint8_t *data, size_t length,
    error = sshParseBinaryString(data, length, &cert->signature);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    data += sizeof(uint32_t) + cert->signature.length;
@@ -270,7 +301,9 @@ error_t sshParseCertificate(const uint8_t *data, size_t length,
 
    //Malformed certificate?
    if(length != 0)
+   {
       return ERROR_INVALID_SYNTAX;
+   }
 
    //Successful processing
    return NO_ERROR;
@@ -298,7 +331,9 @@ error_t sshParseRsaCertPublicKey(const uint8_t *data, size_t length,
    error = sshParseBinaryString(data, length, &publicKey->e);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    data += sizeof(uint32_t) + publicKey->e.length;
@@ -309,7 +344,9 @@ error_t sshParseRsaCertPublicKey(const uint8_t *data, size_t length,
    error = sshParseBinaryString(data, length, &publicKey->n);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    data += sizeof(uint32_t) + publicKey->n.length;
@@ -347,7 +384,9 @@ error_t sshParseDsaCertPublicKey(const uint8_t *data, size_t length,
    error = sshParseBinaryString(data, length, &publicKey->p);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    data += sizeof(uint32_t) + publicKey->p.length;
@@ -358,7 +397,9 @@ error_t sshParseDsaCertPublicKey(const uint8_t *data, size_t length,
    error = sshParseBinaryString(data, length, &publicKey->q);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    data += sizeof(uint32_t) + publicKey->q.length;
@@ -369,7 +410,9 @@ error_t sshParseDsaCertPublicKey(const uint8_t *data, size_t length,
    error = sshParseBinaryString(data, length, &publicKey->g);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    data += sizeof(uint32_t) + publicKey->g.length;
@@ -380,7 +423,9 @@ error_t sshParseDsaCertPublicKey(const uint8_t *data, size_t length,
    error = sshParseBinaryString(data, length, &publicKey->y);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    data += sizeof(uint32_t) + publicKey->y.length;
@@ -418,7 +463,9 @@ error_t sshParseEcdsaCertPublicKey(const uint8_t *data, size_t length,
    error = sshParseString(data, length, &publicKey->curveName);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    data += sizeof(uint32_t) + publicKey->curveName.length;
@@ -429,7 +476,9 @@ error_t sshParseEcdsaCertPublicKey(const uint8_t *data, size_t length,
    error = sshParseBinaryString(data, length, &publicKey->q);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    data += sizeof(uint32_t) + publicKey->q.length;
@@ -446,7 +495,7 @@ error_t sshParseEcdsaCertPublicKey(const uint8_t *data, size_t length,
 
 
 /**
- * @brief Parse an EdDSA public key
+ * @brief Parse an Ed25519 public key
  * @param[in] data Pointer to the input data to parse
  * @param[in] length Number of bytes available in the input data
  * @param[in] consumed Number of bytes that have been consumed
@@ -454,20 +503,74 @@ error_t sshParseEcdsaCertPublicKey(const uint8_t *data, size_t length,
  * @return Error code
  **/
 
-error_t sshParseEddsaCertPublicKey(const uint8_t *data, size_t length,
+error_t sshParseEd25519CertPublicKey(const uint8_t *data, size_t length,
    size_t *consumed, SshEddsaCertPublicKey *publicKey)
 {
-#if (SSH_ED25519_SIGN_SUPPORT == ENABLED || SSH_ED448_SIGN_SUPPORT == ENABLED)
+#if (SSH_ED25519_SIGN_SUPPORT == ENABLED)
    error_t error;
 
    //Total number of bytes that have been consumed
    *consumed = 0;
 
-   //Parse EdDSA public key value
+   //Parse Ed25519 public key value
    error = sshParseBinaryString(data, length, &publicKey->q);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
+
+   //The public key shall consist of 32 octets
+   if(publicKey->q.length != ED25519_PUBLIC_KEY_LEN)
+   {
+      return ERROR_INVALID_SYNTAX;
+   }
+
+   //Point to the next field
+   data += sizeof(uint32_t) + publicKey->q.length;
+   length -= sizeof(uint32_t) + publicKey->q.length;
+   *consumed += sizeof(uint32_t) + publicKey->q.length;
+
+   //Successful processing
+   return NO_ERROR;
+#else
+   //Not implemented
+   return ERROR_NOT_IMPLEMENTED;
+#endif
+}
+
+
+/**
+ * @brief Parse an Ed448 public key
+ * @param[in] data Pointer to the input data to parse
+ * @param[in] length Number of bytes available in the input data
+ * @param[in] consumed Number of bytes that have been consumed
+ * @param[out] publicKey Information resulting from the parsing process
+ * @return Error code
+ **/
+
+error_t sshParseEd448CertPublicKey(const uint8_t *data, size_t length,
+   size_t *consumed, SshEddsaCertPublicKey *publicKey)
+{
+#if (SSH_ED448_SIGN_SUPPORT == ENABLED)
+   error_t error;
+
+   //Total number of bytes that have been consumed
+   *consumed = 0;
+
+   //Parse Ed448 public key value
+   error = sshParseBinaryString(data, length, &publicKey->q);
+   //Any error to report?
+   if(error)
+   {
+      return error;
+   }
+
+   //The public key shall consist of 32 octets
+   if(publicKey->q.length != ED448_PUBLIC_KEY_LEN)
+   {
+      return ERROR_INVALID_SYNTAX;
+   }
 
    //Point to the next field
    data += sizeof(uint32_t) + publicKey->q.length;
@@ -520,7 +623,9 @@ error_t sshParseValidPrincipals(const uint8_t *data, size_t length,
             error = sshParseString(data, length, &name);
             //Any error to report?
             if(error)
+            {
                break;
+            }
 
             //Point to the next field
             data += sizeof(uint32_t) + name.length;
@@ -573,7 +678,9 @@ error_t sshParseCriticalOptions(const uint8_t *data, size_t length,
          error = sshParseString(data, length, &optionName);
          //Any error to report?
          if(error)
+         {
             break;
+         }
 
          //Point to the next field
          data += sizeof(uint32_t) + optionName.length;
@@ -583,7 +690,9 @@ error_t sshParseCriticalOptions(const uint8_t *data, size_t length,
          error = sshParseString(data, length, &optionData);
          //Any error to report?
          if(error)
+         {
             break;
+         }
 
          //Point to the next field
          data += sizeof(uint32_t) + optionData.length;
@@ -630,7 +739,9 @@ error_t sshParseExtensions(const uint8_t *data, size_t length,
          error = sshParseString(data, length, &extensionName);
          //Any error to report?
          if(error)
+         {
             break;
+         }
 
          //Point to the next field
          data += sizeof(uint32_t) + extensionName.length;
@@ -640,7 +751,9 @@ error_t sshParseExtensions(const uint8_t *data, size_t length,
          error = sshParseString(data, length, &extensionData);
          //Any error to report?
          if(error)
+         {
             break;
+         }
 
          //Point to the next field
          data += sizeof(uint32_t) + extensionData.length;
@@ -680,7 +793,9 @@ bool_t sshGetValidPrincipal(const SshCertificate *cert, uint_t index,
       error = sshParseString(p, length, name);
       //Any error to report?
       if(error)
+      {
          return FALSE;
+      }
 
       //Point to the next field
       p += sizeof(uint32_t) + name->length;
@@ -688,7 +803,9 @@ bool_t sshGetValidPrincipal(const SshCertificate *cert, uint_t index,
 
       //Matching index?
       if(i == index)
+      {
          return TRUE;
+      }
    }
 
    //The index is out of range
@@ -724,7 +841,9 @@ bool_t sshGetCriticalOption(const SshCertificate *cert, uint_t index,
       error = sshParseString(p, length, name);
       //Any error to report?
       if(error)
+      {
          break;
+      }
 
       //Point to the next field
       p += sizeof(uint32_t) + name->length;
@@ -734,7 +853,9 @@ bool_t sshGetCriticalOption(const SshCertificate *cert, uint_t index,
       error = sshParseBinaryString(p, length, data);
       //Any error to report?
       if(error)
+      {
          break;
+      }
 
       //Point to the next field
       p += sizeof(uint32_t) + data->length;
@@ -742,7 +863,9 @@ bool_t sshGetCriticalOption(const SshCertificate *cert, uint_t index,
 
       //Matching index?
       if(i == index)
+      {
          return TRUE;
+      }
    }
 
    //The index is out of range
@@ -778,7 +901,9 @@ bool_t sshGetExtension(const SshCertificate *cert, uint_t index,
       error = sshParseString(p, length, name);
       //Any error to report?
       if(error)
+      {
          break;
+      }
 
       //Point to the next field
       p += sizeof(uint32_t) + name->length;
@@ -788,7 +913,9 @@ bool_t sshGetExtension(const SshCertificate *cert, uint_t index,
       error = sshParseBinaryString(p, length, data);
       //Any error to report?
       if(error)
+      {
          break;
+      }
 
       //Point to the next field
       p += sizeof(uint32_t) + data->length;
@@ -796,7 +923,9 @@ bool_t sshGetExtension(const SshCertificate *cert, uint_t index,
 
       //Matching index?
       if(i == index)
+      {
          return TRUE;
+      }
    }
 
    //The index is out of range

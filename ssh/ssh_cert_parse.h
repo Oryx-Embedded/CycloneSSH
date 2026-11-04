@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.6.6
+ * @version 2.6.8
  **/
 
 #ifndef _SSH_CERT_PARSE_H
@@ -145,7 +145,10 @@ error_t sshParseDsaCertPublicKey(const uint8_t *data, size_t length,
 error_t sshParseEcdsaCertPublicKey(const uint8_t *data, size_t length,
    size_t *consumed, SshEcdsaCertPublicKey *publicKey);
 
-error_t sshParseEddsaCertPublicKey(const uint8_t *data, size_t length,
+error_t sshParseEd25519CertPublicKey(const uint8_t *data, size_t length,
+   size_t *consumed, SshEddsaCertPublicKey *publicKey);
+
+error_t sshParseEd448CertPublicKey(const uint8_t *data, size_t length,
    size_t *consumed, SshEddsaCertPublicKey *publicKey);
 
 error_t sshParseValidPrincipals(const uint8_t *data, size_t length,

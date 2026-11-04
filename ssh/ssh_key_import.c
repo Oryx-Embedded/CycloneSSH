@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.6.6
+ * @version 2.6.8
  **/
 
 //Switch to the appropriate trace level
@@ -88,8 +88,8 @@ static const SshKeyType sshKeyTypes[] =
 /**
  * @brief Decode an SSH public key file containing an RSA public key
  * @param[out] publicKey RSA public key resulting from the parsing process
- * @param[in] input Pointer to the SSH public key file
- * @param[in] length Length of the SSH public key file
+ * @param[in] input Pointer to the SSH public key string
+ * @param[in] length Length of the SSH public key string
  * @return Error code
  **/
 
@@ -104,9 +104,14 @@ error_t sshImportRsaPublicKey(RsaPublicKey *publicKey, const char_t *input,
 
    //Check parameters
    if(input == NULL && length != 0)
+   {
       return ERROR_INVALID_PARAMETER;
+   }
+
    if(publicKey == NULL)
+   {
       return ERROR_INVALID_PARAMETER;
+   }
 
    //Retrieve the length of the public key structure
    error = sshDecodePublicKeyFile(input, length, NULL, &n);
@@ -171,8 +176,8 @@ error_t sshImportRsaPublicKey(RsaPublicKey *publicKey, const char_t *input,
 /**
  * @brief Decode an SSH public key file containing a DSA public key
  * @param[out] publicKey DSA public key resulting from the parsing process
- * @param[in] input Pointer to the SSH public key file
- * @param[in] length Length of the SSH public key file
+ * @param[in] input Pointer to the SSH public key string
+ * @param[in] length Length of the SSH public key string
  * @return Error code
  **/
 
@@ -187,9 +192,14 @@ error_t sshImportDsaPublicKey(DsaPublicKey *publicKey, const char_t *input,
 
    //Check parameters
    if(input == NULL && length != 0)
+   {
       return ERROR_INVALID_PARAMETER;
+   }
+
    if(publicKey == NULL)
+   {
       return ERROR_INVALID_PARAMETER;
+   }
 
    //Retrieve the length of the public key structure
    error = sshDecodePublicKeyFile(input, length, NULL, &n);
@@ -254,8 +264,8 @@ error_t sshImportDsaPublicKey(DsaPublicKey *publicKey, const char_t *input,
 /**
  * @brief Decode an SSH public key file containing an ECDSA public key
  * @param[out] publicKey ECDSA public key resulting from the parsing process
- * @param[in] input Pointer to the SSH public key file
- * @param[in] length Length of the SSH public key file
+ * @param[in] input Pointer to the SSH public key string
+ * @param[in] length Length of the SSH public key string
  * @return Error code
  **/
 
@@ -270,9 +280,14 @@ error_t sshImportEcdsaPublicKey(EcPublicKey *publicKey, const char_t *input,
 
    //Check parameters
    if(input == NULL && length != 0)
+   {
       return ERROR_INVALID_PARAMETER;
+   }
+
    if(publicKey == NULL)
+   {
       return ERROR_INVALID_PARAMETER;
+   }
 
    //Retrieve the length of the public key structure
    error = sshDecodePublicKeyFile(input, length, NULL, &n);
@@ -337,8 +352,8 @@ error_t sshImportEcdsaPublicKey(EcPublicKey *publicKey, const char_t *input,
 /**
  * @brief Decode an SSH public key file containing an Ed25519 public key
  * @param[out] publicKey Ed25519 public key resulting from the parsing process
- * @param[in] input Pointer to the SSH public key file
- * @param[in] length Length of the SSH public key file
+ * @param[in] input Pointer to the SSH public key string
+ * @param[in] length Length of the SSH public key string
  * @return Error code
  **/
 
@@ -353,9 +368,14 @@ error_t sshImportEd25519PublicKey(EddsaPublicKey *publicKey,
 
    //Check parameters
    if(input == NULL && length != 0)
+   {
       return ERROR_INVALID_PARAMETER;
+   }
+
    if(publicKey == NULL)
+   {
       return ERROR_INVALID_PARAMETER;
+   }
 
    //Retrieve the length of the public key structure
    error = sshDecodePublicKeyFile(input, length, NULL, &n);
@@ -421,8 +441,8 @@ error_t sshImportEd25519PublicKey(EddsaPublicKey *publicKey,
 /**
  * @brief Decode an SSH public key file containing an Ed448 public key
  * @param[out] publicKey Ed448 public key resulting from the parsing process
- * @param[in] input Pointer to the SSH public key file
- * @param[in] length Length of the SSH public key file
+ * @param[in] input Pointer to the SSH public key string
+ * @param[in] length Length of the SSH public key string
  * @return Error code
  **/
 
@@ -437,9 +457,14 @@ error_t sshImportEd448PublicKey(EddsaPublicKey *publicKey, const char_t *input,
 
    //Check parameters
    if(input == NULL && length != 0)
+   {
       return ERROR_INVALID_PARAMETER;
+   }
+
    if(publicKey == NULL)
+   {
       return ERROR_INVALID_PARAMETER;
+   }
 
    //Retrieve the length of the public key structure
    error = sshDecodePublicKeyFile(input, length, NULL, &n);
@@ -505,8 +530,8 @@ error_t sshImportEd448PublicKey(EddsaPublicKey *publicKey, const char_t *input,
 /**
  * @brief Decode an SSH public key file containing an ML-DSA public key
  * @param[out] publicKey ML-DSA public key resulting from the parsing process
- * @param[in] input Pointer to the SSH public key file
- * @param[in] length Length of the SSH public key file
+ * @param[in] input Pointer to the SSH public key string
+ * @param[in] length Length of the SSH public key string
  * @return Error code
  **/
 
@@ -523,9 +548,14 @@ error_t sshImportMldsaPublicKey(MldsaPublicKey *publicKey, const char_t *input,
 
    //Check parameters
    if(input == NULL && length != 0)
+   {
       return ERROR_INVALID_PARAMETER;
+   }
+
    if(publicKey == NULL)
+   {
       return ERROR_INVALID_PARAMETER;
+   }
 
    //Retrieve the length of the public key structure
    error = sshDecodePublicKeyFile(input, length, NULL, &n);
@@ -617,8 +647,8 @@ error_t sshImportMldsaPublicKey(MldsaPublicKey *publicKey, const char_t *input,
 /**
  * @brief Decode an SSH private key file containing an RSA private key
  * @param[out] privateKey RSA private key resulting from the parsing process
- * @param[in] input Pointer to the SSH private key file
- * @param[in] length Length of the SSH private key file
+ * @param[in] input Pointer to the SSH private key string
+ * @param[in] length Length of the SSH private key string
  * @param[in] password NULL-terminated string containing the password. This
  *   parameter is required if the private key is encrypted
  * @return Error code
@@ -630,6 +660,7 @@ error_t sshImportRsaPrivateKey(RsaPrivateKey *privateKey, const char_t *input,
 #if (SSH_RSA_SIGN_SUPPORT == ENABLED)
    error_t error;
    size_t n;
+   size_t bufferLen;
    uint8_t *data;
    uint8_t *buffer;
    Mpi t;
@@ -638,21 +669,26 @@ error_t sshImportRsaPrivateKey(RsaPrivateKey *privateKey, const char_t *input,
 
    //Check parameters
    if(input == NULL && length != 0)
+   {
       return ERROR_INVALID_PARAMETER;
+   }
+
    if(privateKey == NULL)
+   {
       return ERROR_INVALID_PARAMETER;
+   }
 
    //Initialize variable
    data = NULL;
 
    //Retrieve the length of the private key structure
-   error = sshDecodeOpenSshPrivateKeyFile(input, length, NULL, &n);
+   error = sshDecodeOpenSshPrivateKeyFile(input, length, NULL, &bufferLen);
 
    //Check status code
    if(!error)
    {
       //Allocate a memory buffer to hold the private key structure
-      buffer = sshAllocMem(n);
+      buffer = sshAllocMem(bufferLen);
 
       //Successful memory allocation?
       if(buffer != NULL)
@@ -768,6 +804,9 @@ error_t sshImportRsaPrivateKey(RsaPrivateKey *privateKey, const char_t *input,
 
          //Release multiple precision integers
          mpiFree(&t);
+
+         //Erase the decrypted private key material
+         cryptoZeroizeMem(buffer, bufferLen);
          //Release previously allocated memory
          sshFreeMem(buffer);
       }
@@ -802,8 +841,8 @@ error_t sshImportRsaPrivateKey(RsaPrivateKey *privateKey, const char_t *input,
 /**
  * @brief Decode an SSH private key file containing a DSA private key
  * @param[out] privateKey DSA private key resulting from the parsing process
- * @param[in] input Pointer to the SSH private key file
- * @param[in] length Length of the SSH private key file
+ * @param[in] input Pointer to the SSH private key string
+ * @param[in] length Length of the SSH private key string
  * @param[in] password NULL-terminated string containing the password. This
  *   parameter is required if the private key is encrypted
  * @return Error code
@@ -815,6 +854,7 @@ error_t sshImportDsaPrivateKey(DsaPrivateKey *privateKey, const char_t *input,
 #if (SSH_DSA_SIGN_SUPPORT == ENABLED)
    error_t error;
    size_t n;
+   size_t bufferLen;
    uint8_t *data;
    uint8_t *buffer;
    SshPrivateKeyHeader privateKeyHeader;
@@ -822,21 +862,26 @@ error_t sshImportDsaPrivateKey(DsaPrivateKey *privateKey, const char_t *input,
 
    //Check parameters
    if(input == NULL && length != 0)
+   {
       return ERROR_INVALID_PARAMETER;
+   }
+
    if(privateKey == NULL)
+   {
       return ERROR_INVALID_PARAMETER;
+   }
 
    //Initialize variable
    data = NULL;
 
    //Retrieve the length of the private key structure
-   error = sshDecodeOpenSshPrivateKeyFile(input, length, NULL, &n);
+   error = sshDecodeOpenSshPrivateKeyFile(input, length, NULL, &bufferLen);
 
    //Check status code
    if(!error)
    {
       //Allocate a memory buffer to hold the private key structure
-      buffer = sshAllocMem(n);
+      buffer = sshAllocMem(bufferLen);
 
       //Successful memory allocation?
       if(buffer != NULL)
@@ -911,6 +956,8 @@ error_t sshImportDsaPrivateKey(DsaPrivateKey *privateKey, const char_t *input,
                privateKeyInfo.y.length, MPI_FORMAT_BIG_ENDIAN);
          }
 
+         //Erase the decrypted private key material
+         cryptoZeroizeMem(buffer, bufferLen);
          //Release previously allocated memory
          sshFreeMem(buffer);
       }
@@ -945,8 +992,8 @@ error_t sshImportDsaPrivateKey(DsaPrivateKey *privateKey, const char_t *input,
 /**
  * @brief Decode an SSH private key file containing an ECDSA private key
  * @param[out] privateKey ECDSA private key resulting from the parsing process
- * @param[in] input Pointer to the SSH private key file
- * @param[in] length Length of the SSH private key file
+ * @param[in] input Pointer to the SSH private key string
+ * @param[in] length Length of the SSH private key string
  * @param[in] password NULL-terminated string containing the password. This
  *   parameter is required if the private key is encrypted
  * @return Error code
@@ -958,6 +1005,7 @@ error_t sshImportEcdsaPrivateKey(EcPrivateKey *privateKey, const char_t *input,
 #if (SSH_ECDSA_SIGN_SUPPORT == ENABLED)
    error_t error;
    size_t n;
+   size_t bufferLen;
    uint8_t *data;
    uint8_t *buffer;
    SshPrivateKeyHeader privateKeyHeader;
@@ -966,21 +1014,26 @@ error_t sshImportEcdsaPrivateKey(EcPrivateKey *privateKey, const char_t *input,
 
    //Check parameters
    if(input == NULL && length != 0)
+   {
       return ERROR_INVALID_PARAMETER;
+   }
+
    if(privateKey == NULL)
+   {
       return ERROR_INVALID_PARAMETER;
+   }
 
    //Initialize variable
    data = NULL;
 
    //Retrieve the length of the private key structure
-   error = sshDecodeOpenSshPrivateKeyFile(input, length, NULL, &n);
+   error = sshDecodeOpenSshPrivateKeyFile(input, length, NULL, &bufferLen);
 
    //Check status code
    if(!error)
    {
       //Allocate a memory buffer to hold the private key structure
-      buffer = sshAllocMem(n);
+      buffer = sshAllocMem(bufferLen);
 
       //Successful memory allocation?
       if(buffer != NULL)
@@ -1046,6 +1099,8 @@ error_t sshImportEcdsaPrivateKey(EcPrivateKey *privateKey, const char_t *input,
             }
          }
 
+         //Erase the decrypted private key material
+         cryptoZeroizeMem(buffer, bufferLen);
          //Release previously allocated memory
          sshFreeMem(buffer);
       }
@@ -1080,8 +1135,8 @@ error_t sshImportEcdsaPrivateKey(EcPrivateKey *privateKey, const char_t *input,
 /**
  * @brief Decode an SSH private key file containing an Ed25519 private key
  * @param[out] privateKey Ed25519 private key resulting from the parsing process
- * @param[in] input Pointer to the SSH private key file
- * @param[in] length Length of the SSH private key file
+ * @param[in] input Pointer to the SSH private key string
+ * @param[in] length Length of the SSH private key string
  * @param[in] password NULL-terminated string containing the password. This
  *   parameter is required if the private key is encrypted
  * @return Error code
@@ -1093,6 +1148,7 @@ error_t sshImportEd25519PrivateKey(EddsaPrivateKey *privateKey,
 #if (SSH_ED25519_SIGN_SUPPORT == ENABLED)
    error_t error;
    size_t n;
+   size_t bufferLen;
    uint8_t *data;
    uint8_t *buffer;
    SshPrivateKeyHeader privateKeyHeader;
@@ -1100,21 +1156,26 @@ error_t sshImportEd25519PrivateKey(EddsaPrivateKey *privateKey,
 
    //Check parameters
    if(input == NULL && length != 0)
+   {
       return ERROR_INVALID_PARAMETER;
+   }
+
    if(privateKey == NULL)
+   {
       return ERROR_INVALID_PARAMETER;
+   }
 
    //Initialize variable
    data = NULL;
 
    //Retrieve the length of the private key structure
-   error = sshDecodeOpenSshPrivateKeyFile(input, length, NULL, &n);
+   error = sshDecodeOpenSshPrivateKeyFile(input, length, NULL, &bufferLen);
 
    //Check status code
    if(!error)
    {
       //Allocate a memory buffer to hold the private key structure
-      buffer = sshAllocMem(n);
+      buffer = sshAllocMem(bufferLen);
 
       //Successful memory allocation?
       if(buffer != NULL)
@@ -1165,6 +1226,8 @@ error_t sshImportEd25519PrivateKey(EddsaPrivateKey *privateKey,
             }
          }
 
+         //Erase the decrypted private key material
+         cryptoZeroizeMem(buffer, bufferLen);
          //Release previously allocated memory
          sshFreeMem(buffer);
       }
@@ -1199,8 +1262,8 @@ error_t sshImportEd25519PrivateKey(EddsaPrivateKey *privateKey,
 /**
  * @brief Decode an SSH private key file containing an Ed448 private key
  * @param[out] privateKey Ed448 private key resulting from the parsing process
- * @param[in] input Pointer to the SSH private key file
- * @param[in] length Length of the SSH private key file
+ * @param[in] input Pointer to the SSH private key string
+ * @param[in] length Length of the SSH private key string
  * @param[in] password NULL-terminated string containing the password. This
  *   parameter is required if the private key is encrypted
  * @return Error code
@@ -1212,6 +1275,7 @@ error_t sshImportEd448PrivateKey(EddsaPrivateKey *privateKey,
 #if (SSH_ED448_SIGN_SUPPORT == ENABLED)
    error_t error;
    size_t n;
+   size_t bufferLen;
    uint8_t *data;
    uint8_t *buffer;
    SshPrivateKeyHeader privateKeyHeader;
@@ -1219,21 +1283,26 @@ error_t sshImportEd448PrivateKey(EddsaPrivateKey *privateKey,
 
    //Check parameters
    if(input == NULL && length != 0)
+   {
       return ERROR_INVALID_PARAMETER;
+   }
+
    if(privateKey == NULL)
+   {
       return ERROR_INVALID_PARAMETER;
+   }
 
    //Initialize variable
    data = NULL;
 
    //Retrieve the length of the private key structure
-   error = sshDecodeOpenSshPrivateKeyFile(input, length, NULL, &n);
+   error = sshDecodeOpenSshPrivateKeyFile(input, length, NULL, &bufferLen);
 
    //Check status code
    if(!error)
    {
       //Allocate a memory buffer to hold the private key structure
-      buffer = sshAllocMem(n);
+      buffer = sshAllocMem(bufferLen);
 
       //Successful memory allocation?
       if(buffer != NULL)
@@ -1284,6 +1353,8 @@ error_t sshImportEd448PrivateKey(EddsaPrivateKey *privateKey,
             }
          }
 
+         //Erase the decrypted private key material
+         cryptoZeroizeMem(buffer, bufferLen);
          //Release previously allocated memory
          sshFreeMem(buffer);
       }
@@ -1334,21 +1405,49 @@ error_t sshImportRsaHostKey(RsaPublicKey *publicKey,
       MPI_FORMAT_BIG_ENDIAN);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
+
+   //The public exponent must be an odd integer greater than 1
+   if(mpiCompInt(&publicKey->e, 1) <= 0 || mpiIsEven(&publicKey->e))
+   {
+      return ERROR_INVALID_KEY;
+   }
+
+   //Get the length of the public exponent, in bits
+   k = mpiGetBitLength(&publicKey->e);
+
+   //Limit the size of the public exponent to bound the cost of the RSA
+   //public operation
+   if(k > SSH_MAX_RSA_PUBLIC_EXPONENT_SIZE)
+   {
+      return ERROR_INVALID_KEY;
+   }
 
    //Import RSA modulus
    error = mpiImport(&publicKey->n, hostKey->n.value, hostKey->n.length,
       MPI_FORMAT_BIG_ENDIAN);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
+
+   //The RSA modulus must be an odd integer
+   if(mpiIsEven(&publicKey->n))
+   {
+      return ERROR_INVALID_KEY;
+   }
 
    //Get the length of the modulus, in bits
    k = mpiGetBitLength(&publicKey->n);
 
    //Applications should enforce minimum and maximum key sizes
    if(k < SSH_MIN_RSA_MODULUS_SIZE || k > SSH_MAX_RSA_MODULUS_SIZE)
+   {
       return ERROR_INVALID_KEY_LENGTH;
+   }
 
    //Successful processing
    return NO_ERROR;
@@ -1378,35 +1477,45 @@ error_t sshImportDsaHostKey(DsaPublicKey *publicKey,
       MPI_FORMAT_BIG_ENDIAN);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Import DSA group order
    error = mpiImport(&publicKey->params.q, hostKey->q.value, hostKey->q.length,
       MPI_FORMAT_BIG_ENDIAN);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Import DSA group generator
    error = mpiImport(&publicKey->params.g, hostKey->g.value, hostKey->g.length,
       MPI_FORMAT_BIG_ENDIAN);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Import DSA public key value
    error = mpiImport(&publicKey->y, hostKey->y.value, hostKey->y.length,
       MPI_FORMAT_BIG_ENDIAN);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Get the length of the modulus, in bits
    k = mpiGetBitLength(&publicKey->params.p);
 
    //Applications should enforce minimum and maximum key sizes
    if(k < SSH_MIN_DSA_MODULUS_SIZE || k > SSH_MAX_DSA_MODULUS_SIZE)
+   {
       return ERROR_INVALID_KEY_LENGTH;
+   }
 
    //Successful processing
    return NO_ERROR;
@@ -1546,11 +1655,15 @@ const char_t *sshGetPublicKeyType(const char_t *input, size_t length)
             //EC public key?
             if(type == X509_KEY_TYPE_EC)
             {
-               //Check curve name
-               if(osStrcmp(sshKeyTypes[i].curveName, curve->name) == 0)
+               //Valid elliptic curve parameters?
+               if(curve != NULL)
                {
-                  keyType = sshKeyTypes[i].identifier;
-                  break;
+                  //Check curve name
+                  if(osStrcmp(sshKeyTypes[i].curveName, curve->name) == 0)
+                  {
+                     keyType = sshKeyTypes[i].identifier;
+                     break;
+                  }
                }
             }
             else
@@ -1636,13 +1749,15 @@ error_t sshDecodeSsh2PublicKeyFile(const char_t *input, size_t inputLen,
    i = sshSearchMarker(input, inputLen, "---- BEGIN SSH2 PUBLIC KEY ----", 31);
    //Begin marker not found?
    if(i < 0)
+   {
       return ERROR_INVALID_SYNTAX;
+   }
 
    //Advance the pointer over the marker
    i += 31;
 
    //Skip CR and LF control characters
-   while(input[i] == '\r' || input[i] == '\n')
+   while((size_t) i < inputLen && (input[i] == '\r' || input[i] == '\n'))
    {
       i++;
    }
@@ -1652,7 +1767,9 @@ error_t sshDecodeSsh2PublicKeyFile(const char_t *input, size_t inputLen,
    n = sshSearchMarker(input + i, inputLen - i, "---- END SSH2 PUBLIC KEY ----", 29);
    //End marker not found?
    if(n < 0)
+   {
       return ERROR_INVALID_SYNTAX;
+   }
 
    //Point to the key file header
    p = input + i;
@@ -1722,11 +1839,15 @@ error_t sshDecodeSsh2PublicKeyFile(const char_t *input, size_t inputLen,
    error = base64Decode(p, n, output, outputLen);
    //Failed to decode the file?
    if(error)
+   {
       return error;
+   }
 
    //Sanity check
    if(*outputLen == 0)
+   {
       return ERROR_INVALID_SYNTAX;
+   }
 
    //Successful processing
    return NO_ERROR;
@@ -1769,14 +1890,18 @@ error_t sshDecodeOpenSshPublicKeyFile(const char_t *input, size_t inputLen,
 
    //Unrecognized key type?
    if(keyType == NULL)
+   {
       return ERROR_INVALID_SYNTAX;
+   }
 
    //Get the length of the identifier string
    i = osStrlen(keyType);
 
    //The identifier must be followed by a whitespace character
    if(input[i] != ' ' && input[i] != '\t')
+   {
       return ERROR_INVALID_SYNTAX;
+   }
 
    //Skip whitespace characters
    while(i < inputLen && (input[i] == ' ' || input[i] == '\t'))
@@ -1797,11 +1922,15 @@ error_t sshDecodeOpenSshPublicKeyFile(const char_t *input, size_t inputLen,
    error = base64Decode(input + i, j - i, output, outputLen);
    //Failed to decode the file?
    if(error)
+   {
       return error;
+   }
 
    //Sanity check
    if(*outputLen == 0)
+   {
       return ERROR_INVALID_SYNTAX;
+   }
 
    //Successful processing
    return NO_ERROR;
@@ -1828,7 +1957,9 @@ error_t sshDecodeOpenSshPrivateKeyFile(const char_t *input, size_t inputLen,
       "-----BEGIN OPENSSH PRIVATE KEY-----", 35);
    //Begin marker not found?
    if(i < 0)
+   {
       return ERROR_INVALID_SYNTAX;
+   }
 
    //Advance the pointer over the marker
    i += 35;
@@ -1838,17 +1969,23 @@ error_t sshDecodeOpenSshPrivateKeyFile(const char_t *input, size_t inputLen,
       "-----END OPENSSH PRIVATE KEY-----", 33);
    //End marker not found?
    if(n < 0)
+   {
       return ERROR_INVALID_SYNTAX;
+   }
 
    //The body of the SSH private key file is Base64-encoded
    error = base64Decode(input + i, n, output, outputLen);
    //Failed to decode the file?
    if(error)
+   {
       return error;
+   }
 
    //Sanity check
    if(*outputLen == 0)
+   {
       return ERROR_INVALID_SYNTAX;
+   }
 
    //Successful processing
    return NO_ERROR;
@@ -1878,12 +2015,16 @@ int_t sshSearchMarker(const char_t *s, size_t sLen, const char_t *marker,
       for(j = 0; j < markerLen; j++)
       {
          if(s[i + j] != marker[j])
+         {
             break;
+         }
       }
 
       //Check whether the marker has been found
       if(j == markerLen)
+      {
          return i;
+      }
    }
 
    //The marker does not appear in the string

@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.6.6
+ * @version 2.6.8
  **/
 
 //Switch to the appropriate trace level
@@ -353,13 +353,17 @@ error_t sshFormatKexDhGexGroup(SshConnection *connection, uint8_t *p,
    error = sshFormatMpint(&connection->dhContext.params.p, p, &n);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Update exchange hash H with p (safe prime)
    error = sshUpdateExchangeHashRaw(connection, p, n);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    p += n;
@@ -369,13 +373,17 @@ error_t sshFormatKexDhGexGroup(SshConnection *connection, uint8_t *p,
    error = sshFormatMpint(&connection->dhContext.params.g, p, &n);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Update exchange hash H with g (generator for subgroup)
    error = sshUpdateExchangeHashRaw(connection, p, n);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Total length of the packet
    *length += n;
@@ -418,7 +426,9 @@ error_t sshFormatKexDhGexInit(SshConnection *connection, uint8_t *p,
    error = sshFormatMpint(&connection->dhContext.ya, p, &n);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Total length of the message
    *length += n;
@@ -461,7 +471,9 @@ error_t sshFormatKexDhGexReply(SshConnection *connection, uint8_t *p,
    error = sshFormatHostKey(connection, p + sizeof(uint32_t), &n);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //The octet string value is preceded by a uint32 containing its length
    STORE32BE(n, p);
@@ -474,13 +486,17 @@ error_t sshFormatKexDhGexReply(SshConnection *connection, uint8_t *p,
    error = sshFormatMpint(&connection->dhContext.ya, p, &n);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Update exchange hash H with f (exchange value sent by the server)
    error = sshUpdateExchangeHashRaw(connection, p, n);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    p += n;
@@ -490,21 +506,27 @@ error_t sshFormatKexDhGexReply(SshConnection *connection, uint8_t *p,
    error = sshComputeDhGexSharedSecret(connection);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Update exchange hash H with K (shared secret)
    error = sshUpdateExchangeHashRaw(connection, connection->k,
       connection->kLen);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Compute the signature on the exchange hash
    error = sshGenerateExchangeHashSignature(connection, p + sizeof(uint32_t),
       &n);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //The octet string value is preceded by a uint32 containing its length
    STORE32BE(n, p);
@@ -550,15 +572,21 @@ error_t sshParseKexDhGexRequest(SshConnection *connection,
 
    //Check operation mode
    if(connection->context->mode != SSH_OPERATION_MODE_SERVER)
+   {
       return ERROR_UNEXPECTED_MESSAGE;
+   }
 
    //Check connection state
    if(connection->state != SSH_CONN_STATE_KEX_DH_GEX_REQUEST)
+   {
       return ERROR_UNEXPECTED_MESSAGE;
+   }
 
    //Sanity check
    if(length < sizeof(uint8_t))
+   {
       return ERROR_INVALID_MESSAGE;
+   }
 
    //Point to the first field of the message
    p = message + sizeof(uint8_t);
@@ -567,7 +595,9 @@ error_t sshParseKexDhGexRequest(SshConnection *connection,
 
    //Malformed message?
    if(length != (3 * sizeof(uint32_t)))
+   {
       return ERROR_INVALID_MESSAGE;
+   }
 
    //Minimal size in bits of an acceptable group
    minDhModulusSize = LOAD32BE(p);
@@ -581,6 +611,13 @@ error_t sshParseKexDhGexRequest(SshConnection *connection,
    TRACE_DEBUG("  n = %" PRIu32 "\r\n", preferredDhModulusSize);
    TRACE_DEBUG("  max = %" PRIu32 "\r\n", maxDhModulusSize);
 
+   //Invalid parameter set?
+   if(minDhModulusSize > preferredDhModulusSize ||
+      maxDhModulusSize < preferredDhModulusSize)
+   {
+      return ERROR_INVALID_MESSAGE;
+   }
+
    //The server finds a group that best matches the client's request (refer
    //to RFC 4419, section 3)
    connection->dhGexGroupIndex = sshSelectDhGexGroup(connection->context,
@@ -588,13 +625,17 @@ error_t sshParseKexDhGexRequest(SshConnection *connection,
 
    //No Diffie-Hellman group found?
    if(connection->dhGexGroupIndex < 0)
+   {
       return ERROR_INVALID_GROUP;
+   }
 
    //Update exchange hash H with min, n and max
    error = sshUpdateExchangeHashRaw(connection, p, length);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //The server responds with an SSH_MSG_KEX_DH_GEX_GROUP message
    return sshSendKexDhGexGroup(connection);
@@ -627,15 +668,21 @@ error_t sshParseKexDhGexRequestOld(SshConnection *connection,
 
    //Check operation mode
    if(connection->context->mode != SSH_OPERATION_MODE_SERVER)
+   {
       return ERROR_UNEXPECTED_MESSAGE;
+   }
 
    //Check connection state
    if(connection->state != SSH_CONN_STATE_KEX_DH_GEX_REQUEST)
+   {
       return ERROR_UNEXPECTED_MESSAGE;
+   }
 
    //Sanity check
    if(length < sizeof(uint8_t))
+   {
       return ERROR_INVALID_MESSAGE;
+   }
 
    //Point to the first field of the message
    p = message + sizeof(uint8_t);
@@ -644,7 +691,9 @@ error_t sshParseKexDhGexRequestOld(SshConnection *connection,
 
    //Malformed message?
    if(length != sizeof(uint32_t))
+   {
       return ERROR_INVALID_MESSAGE;
+   }
 
    //SSH_MSG_KEX_DH_GEX_REQUEST_OLD is used for backward compatibility.
    //Instead of sending min, n and max, the client only sends n (refer to
@@ -661,14 +710,18 @@ error_t sshParseKexDhGexRequestOld(SshConnection *connection,
 
    //No Diffie-Hellman group found?
    if(connection->dhGexGroupIndex < 0)
+   {
       return ERROR_INVALID_GROUP;
+   }
 
    //The hash is calculated using only n instead of min, n and max (refer to
    //RFC 4419, section 5)
    error = sshUpdateExchangeHashRaw(connection, p, length);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //The server responds with an SSH_MSG_KEX_DH_GEX_GROUP message
    return sshSendKexDhGexGroup(connection);
@@ -703,15 +756,21 @@ error_t sshParseKexDhGexGroup(SshConnection *connection, const uint8_t *message,
 
    //Check operation mode
    if(connection->context->mode != SSH_OPERATION_MODE_CLIENT)
+   {
       return ERROR_UNEXPECTED_MESSAGE;
+   }
 
    //Check connection state
    if(connection->state != SSH_CONN_STATE_KEX_DH_GEX_GROUP)
+   {
       return ERROR_UNEXPECTED_MESSAGE;
+   }
 
    //Sanity check
    if(length < sizeof(uint8_t))
+   {
       return ERROR_INVALID_MESSAGE;
+   }
 
    //Point to the first field of the message
    p = message + sizeof(uint8_t);
@@ -722,7 +781,9 @@ error_t sshParseKexDhGexGroup(SshConnection *connection, const uint8_t *message,
    error = sshParseBinaryString(p, length, &prime);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    p += sizeof(uint32_t) + prime.length;
@@ -732,7 +793,9 @@ error_t sshParseKexDhGexGroup(SshConnection *connection, const uint8_t *message,
    error = sshParseBinaryString(p, length, &generator);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    p += sizeof(uint32_t) + generator.length;
@@ -740,28 +803,36 @@ error_t sshParseKexDhGexGroup(SshConnection *connection, const uint8_t *message,
 
    //Malformed message?
    if(length != 0)
+   {
       return ERROR_INVALID_MESSAGE;
+   }
 
    //Convert the prime modulus to a multiple precision integer
    error = mpiImport(&connection->dhContext.params.p, prime.value,
       prime.length, MPI_FORMAT_BIG_ENDIAN);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Get the length of the prime modulus, in bits
    k = mpiGetBitLength(&connection->dhContext.params.p);
 
    //Make sure the prime modulus is acceptable
    if(k < SSH_MIN_DH_MODULUS_SIZE || k > SSH_MAX_DH_MODULUS_SIZE)
+   {
       return ERROR_INVALID_GROUP;
+   }
 
    //Convert the generator to a multiple precision integer
    error = mpiImport(&connection->dhContext.params.g, generator.value,
       generator.length, MPI_FORMAT_BIG_ENDIAN);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //The client responds with an SSH_MSG_KEX_DH_GEX_INIT message
    return sshSendKexDhGexInit(connection);
@@ -794,15 +865,21 @@ error_t sshParseKexDhGexInit(SshConnection *connection, const uint8_t *message,
 
    //Check operation mode
    if(connection->context->mode != SSH_OPERATION_MODE_SERVER)
+   {
       return ERROR_UNEXPECTED_MESSAGE;
+   }
 
    //Check connection state
    if(connection->state != SSH_CONN_STATE_KEX_DH_GEX_INIT)
+   {
       return ERROR_UNEXPECTED_MESSAGE;
+   }
 
    //Sanity check
    if(length < sizeof(uint8_t))
+   {
       return ERROR_INVALID_MESSAGE;
+   }
 
    //Point to the first field of the message
    p = message + sizeof(uint8_t);
@@ -813,7 +890,9 @@ error_t sshParseKexDhGexInit(SshConnection *connection, const uint8_t *message,
    error = sshParseBinaryString(p, length, &publicKey);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    p += sizeof(uint32_t) + publicKey.length;
@@ -821,21 +900,27 @@ error_t sshParseKexDhGexInit(SshConnection *connection, const uint8_t *message,
 
    //Malformed message?
    if(length != 0)
+   {
       return ERROR_INVALID_MESSAGE;
+   }
 
    //Update exchange hash H with e (exchange value sent by the client)
    error = sshUpdateExchangeHash(connection, publicKey.value,
       publicKey.length);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Load client's ephemeral public key
    error = dhImportPeerPublicKey(&connection->dhContext, publicKey.value,
       publicKey.length, MPI_FORMAT_BIG_ENDIAN);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //The server responds with an SSH_MSG_KEX_DH_GEX_REPLY message
    return sshSendKexDhGexReply(connection);
@@ -871,15 +956,21 @@ error_t sshParseKexDhGexReply(SshConnection *connection, const uint8_t *message,
 
    //Check operation mode
    if(connection->context->mode != SSH_OPERATION_MODE_CLIENT)
+   {
       return ERROR_UNEXPECTED_MESSAGE;
+   }
 
    //Check connection state
    if(connection->state != SSH_CONN_STATE_KEX_DH_GEX_REPLY)
+   {
       return ERROR_UNEXPECTED_MESSAGE;
+   }
 
    //Sanity check
    if(length < sizeof(uint8_t))
+   {
       return ERROR_INVALID_MESSAGE;
+   }
 
    //Point to the first field of the message
    p = message + sizeof(uint8_t);
@@ -890,7 +981,9 @@ error_t sshParseKexDhGexReply(SshConnection *connection, const uint8_t *message,
    error = sshParseBinaryString(p, length, &hostKey);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    p += sizeof(uint32_t) + hostKey.length;
@@ -900,7 +993,9 @@ error_t sshParseKexDhGexReply(SshConnection *connection, const uint8_t *message,
    error = sshParseBinaryString(p, length, &publicKey);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    p += sizeof(uint32_t) + publicKey.length;
@@ -910,7 +1005,9 @@ error_t sshParseKexDhGexReply(SshConnection *connection, const uint8_t *message,
    error = sshParseBinaryString(p, length, &signature);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    p += sizeof(uint32_t) + signature.length;
@@ -918,7 +1015,9 @@ error_t sshParseKexDhGexReply(SshConnection *connection, const uint8_t *message,
 
    //Malformed message?
    if(length != 0)
+   {
       return ERROR_INVALID_MESSAGE;
+   }
 
    //Get the selected server's host key algorithm
    hostKeyAlgo.value = connection->serverHostKeyAlgo;
@@ -941,51 +1040,67 @@ error_t sshParseKexDhGexReply(SshConnection *connection, const uint8_t *message,
    //If the client fails to verify the server's host key, it should disconnect
    //from the server by sending an SSH_DISCONNECT_HOST_KEY_NOT_VERIFIABLE message
    if(error)
+   {
       return ERROR_INVALID_KEY;
+   }
 
    //Update exchange hash H with K_S (server's public host key)
    error = sshUpdateExchangeHash(connection, hostKey.value, hostKey.length);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Update exchange hash H with min, n, max, p, g and e
    error = sshDigestDhGexParams(connection);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Update exchange hash H with f (exchange value sent by the server)
    error = sshUpdateExchangeHash(connection, publicKey.value, publicKey.length);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Load server's ephemeral public key
    error = dhImportPeerPublicKey(&connection->dhContext, publicKey.value,
       publicKey.length, MPI_FORMAT_BIG_ENDIAN);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Compute the shared secret K
    error = sshComputeDhGexSharedSecret(connection);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Update exchange hash H with K (shared secret)
    error = sshUpdateExchangeHashRaw(connection, connection->k,
       connection->kLen);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Verify the signature on the exchange hash
    error = sshVerifyExchangeHashSignature(connection, &hostKey, &signature);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //The ephemeral private key shall be destroyed as soon as possible (refer
    //to RFC 9212, section 6)

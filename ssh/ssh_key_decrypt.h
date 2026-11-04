@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.6.6
+ * @version 2.6.8
  **/
 
 #ifndef _SSH_KEY_DECRYPT_H
@@ -34,6 +34,13 @@
 //Dependencies
 #include "ssh.h"
 #include "ssh_key_parse.h"
+
+//Maximum number of bcrypt KDF round
+#ifndef SSH_MAX_BCRYPT_KDF_ROUNDS
+   #define SSH_MAX_BCRYPT_KDF_ROUNDS 100
+#elif (SSH_MAX_BCRYPT_KDF_ROUNDS < 1)
+   #error SSH_MAX_BCRYPT_KDF_ROUNDS parameter is not valid
+#endif
 
 //C++ guard
 #ifdef __cplusplus
@@ -59,6 +66,9 @@ error_t sshDecryptPrivateKey(const char_t *input, size_t inputLen,
 error_t sshDecryptOpenSshPrivateKey(const SshPrivateKeyHeader *privateKeyHeader,
    const char_t *password, const uint8_t *ciphertext, uint8_t *plaintext,
    size_t length);
+
+error_t sshDecryptOpenSshPrivateKeyAes256Ctr(const uint8_t *key, uint8_t *iv,
+   const uint8_t *ciphertext, uint8_t *plaintext, size_t length);
 
 error_t sshParseBcryptKdfOptions(const uint8_t *data, size_t length,
    SshBcryptKdfOptions *kdfOptions);

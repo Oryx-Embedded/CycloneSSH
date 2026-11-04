@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.6.6
+ * @version 2.6.8
  **/
 
 //Switch to the appropriate trace level
@@ -47,8 +47,11 @@
 /**
  * @brief Export an RSA public key to SSH public key file format
  * @param[in] publicKey RSA public key
- * @param[out] output Buffer where to store the SSH public key file (optional parameter)
- * @param[out] written Length of the resulting SSH public key file
+ * @param[out] output Buffer where to store the NULL-terminated string. If this
+ *   parameter is NULL, the function only calculates the length of the resulting
+ *   string
+ * @param[out] written Length of the resulting string, excluding the terminating
+ *   NULL character
  * @param[in] format Desired output format (SSH2 or OpenSSH format)
  * @return Error code
  **/
@@ -62,19 +65,25 @@ error_t sshExportRsaPublicKey(const RsaPublicKey *publicKey,
 
    //Check parameters
    if(publicKey == NULL || written == NULL)
+   {
       return ERROR_INVALID_PARAMETER;
+   }
 
    //Format RSA host key structure
    error = sshFormatRsaPublicKey(publicKey, (uint8_t *) output, &n);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Convert the host key structure to the desired format
    error = sshEncodePublicKeyFile("ssh-rsa", output, n, output, &n, format);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Total number of bytes that have been written
    *written = n;
@@ -91,8 +100,11 @@ error_t sshExportRsaPublicKey(const RsaPublicKey *publicKey,
 /**
  * @brief Export a DSA public key to SSH public key file format
  * @param[in] publicKey DSA public key
- * @param[out] output Buffer where to store the SSH public key file (optional parameter)
- * @param[out] written Length of the resulting SSH public key file
+ * @param[out] output Buffer where to store the NULL-terminated string. If this
+ *   parameter is NULL, the function only calculates the length of the resulting
+ *   string
+ * @param[out] written Length of the resulting string, excluding the terminating
+ *   NULL character
  * @param[in] format Desired output format (SSH2 or OpenSSH format)
  * @return Error code
  **/
@@ -106,19 +118,25 @@ error_t sshExportDsaPublicKey(const DsaPublicKey *publicKey,
 
    //Check parameters
    if(publicKey == NULL || written == NULL)
+   {
       return ERROR_INVALID_PARAMETER;
+   }
 
    //Format DSA host key structure
    error = sshFormatDsaPublicKey(publicKey, (uint8_t *) output, &n);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Convert the host key structure to the desired format
    error = sshEncodePublicKeyFile("ssh-dss", output, n, output, &n, format);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Total number of bytes that have been written
    *written = n;
@@ -135,8 +153,11 @@ error_t sshExportDsaPublicKey(const DsaPublicKey *publicKey,
 /**
  * @brief Export an ECDSA public key to SSH public key file format
  * @param[in] publicKey ECDSA public key
- * @param[out] output Buffer where to store the SSH public key file (optional parameter)
- * @param[out] written Length of the resulting SSH public key file
+ * @param[out] output Buffer where to store the NULL-terminated string. If this
+ *   parameter is NULL, the function only calculates the length of the resulting
+ *   string
+ * @param[out] written Length of the resulting string, excluding the terminating
+ *   NULL character
  * @param[in] format Desired output format (SSH2 or OpenSSH format)
  * @return Error code
  **/
@@ -151,11 +172,15 @@ error_t sshExportEcdsaPublicKey(const EcPublicKey *publicKey,
 
    //Check parameters
    if(publicKey == NULL || written == NULL)
+   {
       return ERROR_INVALID_PARAMETER;
+   }
 
    //Invalid ECDSA public key?
    if(publicKey->curve == NULL)
+   {
       return ERROR_UNSUPPORTED_ELLIPTIC_CURVE;
+   }
 
    //Check elliptic curve
    if(osStrcmp(publicKey->curve->name, "secp256r1") == 0)
@@ -183,13 +208,17 @@ error_t sshExportEcdsaPublicKey(const EcPublicKey *publicKey,
    error = sshFormatEcdsaPublicKey(publicKey, (uint8_t *) output, &n);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Convert the host key structure to the desired format
    error = sshEncodePublicKeyFile(keyFormatId, output, n, output, &n, format);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Total number of bytes that have been written
    *written = n;
@@ -206,8 +235,11 @@ error_t sshExportEcdsaPublicKey(const EcPublicKey *publicKey,
 /**
  * @brief Export a Ed25519 public key to SSH public key file format
  * @param[in] publicKey Ed25519 public key
- * @param[out] output Buffer where to store the SSH public key file (optional parameter)
- * @param[out] written Length of the resulting SSH public key file
+ * @param[out] output Buffer where to store the NULL-terminated string. If this
+ *   parameter is NULL, the function only calculates the length of the resulting
+ *   string
+ * @param[out] written Length of the resulting string, excluding the terminating
+ *   NULL character
  * @param[in] format Desired output format (SSH2 or OpenSSH format)
  * @return Error code
  **/
@@ -222,19 +254,25 @@ error_t sshExportEd25519PublicKey(const EddsaPublicKey *publicKey,
 
    //Check parameters
    if(publicKey == NULL || written == NULL)
+   {
       return ERROR_INVALID_PARAMETER;
+   }
 
    //Format Ed25519 host key structure
    error = sshFormatEd25519PublicKey(publicKey, (uint8_t *) output, &n);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Convert the host key structure to the desired format
    error = sshEncodePublicKeyFile("ssh-ed25519", output, n, output, &n, format);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Total number of bytes that have been written
    *written = n;
@@ -251,8 +289,11 @@ error_t sshExportEd25519PublicKey(const EddsaPublicKey *publicKey,
 /**
  * @brief Export a Ed448 public key to SSH public key file format
  * @param[in] publicKey Ed448 public key
- * @param[out] output Buffer where to store the SSH public key file (optional parameter)
- * @param[out] written Length of the resulting SSH public key file
+ * @param[out] output Buffer where to store the NULL-terminated string. If this
+ *   parameter is NULL, the function only calculates the length of the resulting
+ *   string
+ * @param[out] written Length of the resulting string, excluding the terminating
+ *   NULL character
  * @param[in] format Desired output format (SSH2 or OpenSSH format)
  * @return Error code
  **/
@@ -266,19 +307,25 @@ error_t sshExportEd448PublicKey(const EddsaPublicKey *publicKey,
 
    //Check parameters
    if(publicKey == NULL || written == NULL)
+   {
       return ERROR_INVALID_PARAMETER;
+   }
 
    //Format Ed448 host key structure
    error = sshFormatEd448PublicKey(publicKey, (uint8_t *) output, &n);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Convert the host key structure to the desired format
    error = sshEncodePublicKeyFile("ssh-ed448", output, n, output, &n, format);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Total number of bytes that have been written
    *written = n;
@@ -295,8 +342,11 @@ error_t sshExportEd448PublicKey(const EddsaPublicKey *publicKey,
 /**
  * @brief Export a ML-DSA public key to SSH public key file format
  * @param[in] publicKey ML-DSA public key
- * @param[out] output Buffer where to store the SSH public key file (optional parameter)
- * @param[out] written Length of the resulting SSH public key file
+ * @param[out] output Buffer where to store the NULL-terminated string. If this
+ *   parameter is NULL, the function only calculates the length of the resulting
+ *   string
+ * @param[out] written Length of the resulting string, excluding the terminating
+ *   NULL character
  * @param[in] format Desired output format (SSH2 or OpenSSH format)
  * @return Error code
  **/
@@ -312,7 +362,9 @@ error_t sshExportMldsaPublicKey(const MldsaPublicKey *publicKey,
 
    //Check parameters
    if(publicKey == NULL || written == NULL)
+   {
       return ERROR_INVALID_PARAMETER;
+   }
 
    //Check security level
    if(publicKey->level == MLDSA44_SECURITY_LEVEL)
@@ -340,13 +392,17 @@ error_t sshExportMldsaPublicKey(const MldsaPublicKey *publicKey,
    error = sshFormatMldsaPublicKey(publicKey, (uint8_t *) output, &n);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Convert the host key structure to the desired format
    error = sshEncodePublicKeyFile(keyFormatId, output, n, output, &n, format);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Total number of bytes that have been written
    *written = n;
@@ -363,8 +419,11 @@ error_t sshExportMldsaPublicKey(const MldsaPublicKey *publicKey,
 /**
  * @brief Export an RSA private key to SSH private key file format
  * @param[in] privateKey RSA private key
- * @param[out] output Buffer where to store the SSH private key file
- * @param[out] written Length of the resulting SSH private key file
+ * @param[out] output Buffer where to store the NULL-terminated string. If this
+ *   parameter is NULL, the function only calculates the length of the resulting
+ *   string
+ * @param[out] written Length of the resulting string, excluding the terminating
+ *   NULL character
  * @param[in] format Desired output format (OpenSSH format only)
  * @return Error code
  **/
@@ -395,8 +454,11 @@ error_t sshExportRsaPrivateKey(const RsaPrivateKey *privateKey,
 /**
  * @brief Export a DSA private key to SSH private key file format
  * @param[in] privateKey DSA private key
- * @param[out] output Buffer where to store the SSH private key file
- * @param[out] written Length of the resulting SSH private key file
+ * @param[out] output Buffer where to store the NULL-terminated string. If this
+ *   parameter is NULL, the function only calculates the length of the resulting
+ *   string
+ * @param[out] written Length of the resulting string, excluding the terminating
+ *   NULL character
  * @param[in] format Desired output format (OpenSSH format only)
  * @return Error code
  **/
@@ -427,8 +489,11 @@ error_t sshExportDsaPrivateKey(const DsaPrivateKey *privateKey,
 /**
  * @brief Export an ECDSA private key to SSH private key file format
  * @param[in] privateKey ECDSA private key
- * @param[out] output Buffer where to store the SSH private key file
- * @param[out] written Length of the resulting SSH private key file
+ * @param[out] output Buffer where to store the NULL-terminated string. If this
+ *   parameter is NULL, the function only calculates the length of the resulting
+ *   string
+ * @param[out] written Length of the resulting string, excluding the terminating
+ *   NULL character
  * @param[in] format Desired output format (OpenSSH format only)
  * @return Error code
  **/
@@ -459,8 +524,11 @@ error_t sshExportEcdsaPrivateKey(const EcPrivateKey *privateKey,
 /**
  * @brief Export an Ed25519 private key to SSH private key file format
  * @param[in] privateKey Ed25519 private key
- * @param[out] output Buffer where to store the SSH private key file
- * @param[out] written Length of the resulting SSH private key file
+ * @param[out] output Buffer where to store the NULL-terminated string. If this
+ *   parameter is NULL, the function only calculates the length of the resulting
+ *   string
+ * @param[out] written Length of the resulting string, excluding the terminating
+ *   NULL character
  * @param[in] format Desired output format (OpenSSH format only)
  * @return Error code
  **/
@@ -491,8 +559,11 @@ error_t sshExportEd25519PrivateKey(const EddsaPrivateKey *privateKey,
 /**
  * @brief Export an Ed448 private key to SSH private key file format
  * @param[in] privateKey Ed448 private key
- * @param[out] output Buffer where to store the SSH private key file
- * @param[out] written Length of the resulting SSH private key file
+ * @param[out] output Buffer where to store the NULL-terminated string. If this
+ *   parameter is NULL, the function only calculates the length of the resulting
+ *   string
+ * @param[out] written Length of the resulting string, excluding the terminating
+ *   NULL character
  * @param[in] format Desired output format (OpenSSH format only)
  * @return Error code
  **/
@@ -523,8 +594,11 @@ error_t sshExportEd448PrivateKey(const EddsaPrivateKey *privateKey,
 /**
  * @brief Export an RSA private key to OpenSSH private key file format
  * @param[in] privateKey RSA private key
- * @param[out] output Buffer where to store the OpenSSH private key file
- * @param[out] written Length of the resulting OpenSSH private key file
+ * @param[out] output Buffer where to store the NULL-terminated string. If this
+ *   parameter is NULL, the function only calculates the length of the resulting
+ *   string
+ * @param[out] written Length of the resulting string, excluding the terminating
+ *   NULL character
  * @return Error code
  **/
 
@@ -546,7 +620,9 @@ error_t sshExportOpenSshRsaPrivateKey(const RsaPrivateKey *privateKey,
    error = sshFormatOpenSshPrivateKeyHeader(p, &n);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    p = SSH_INC_POINTER(p, n);
@@ -561,7 +637,9 @@ error_t sshExportOpenSshRsaPrivateKey(const RsaPrivateKey *privateKey,
       SSH_INC_POINTER(p, sizeof(uint32_t)), &n);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //The octet string value is preceded by a uint32 containing its length
    if(p != NULL)
@@ -578,7 +656,9 @@ error_t sshExportOpenSshRsaPrivateKey(const RsaPrivateKey *privateKey,
       SSH_INC_POINTER(p, sizeof(uint32_t)), &n);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //The octet string value is preceded by a uint32 containing its length
    if(p != NULL)
@@ -593,7 +673,9 @@ error_t sshExportOpenSshRsaPrivateKey(const RsaPrivateKey *privateKey,
    error = sshEncodeOpenSshPrivateKeyFile(output, length, output, &n);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Total number of bytes that have been written
    *written = n;
@@ -610,8 +692,11 @@ error_t sshExportOpenSshRsaPrivateKey(const RsaPrivateKey *privateKey,
 /**
  * @brief Export a DSA private key to OpenSSH private key file format
  * @param[in] privateKey DSA private key
- * @param[out] output Buffer where to store the OpenSSH private key file
- * @param[out] written Length of the resulting OpenSSH private key file
+ * @param[out] output Buffer where to store the NULL-terminated string. If this
+ *   parameter is NULL, the function only calculates the length of the resulting
+ *   string
+ * @param[out] written Length of the resulting string, excluding the terminating
+ *   NULL character
  * @return Error code
  **/
 
@@ -633,7 +718,9 @@ error_t sshExportOpenSshDsaPrivateKey(const DsaPrivateKey *privateKey,
    error = sshFormatOpenSshPrivateKeyHeader(p, &n);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    p = SSH_INC_POINTER(p, n);
@@ -648,7 +735,9 @@ error_t sshExportOpenSshDsaPrivateKey(const DsaPrivateKey *privateKey,
       SSH_INC_POINTER(p, sizeof(uint32_t)), &n);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //The octet string value is preceded by a uint32 containing its length
    if(p != NULL)
@@ -665,7 +754,9 @@ error_t sshExportOpenSshDsaPrivateKey(const DsaPrivateKey *privateKey,
       SSH_INC_POINTER(p, sizeof(uint32_t)), &n);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //The octet string value is preceded by a uint32 containing its length
    if(p != NULL)
@@ -680,7 +771,9 @@ error_t sshExportOpenSshDsaPrivateKey(const DsaPrivateKey *privateKey,
    error = sshEncodeOpenSshPrivateKeyFile(output, length, output, &n);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Total number of bytes that have been written
    *written = n;
@@ -697,8 +790,11 @@ error_t sshExportOpenSshDsaPrivateKey(const DsaPrivateKey *privateKey,
 /**
  * @brief Export an ECDSA private key to OpenSSH private key file format
  * @param[in] privateKey ECDSA private key
- * @param[out] output Buffer where to store the OpenSSH private key file
- * @param[out] written Length of the resulting OpenSSH private key file
+ * @param[out] output Buffer where to store the NULL-terminated string. If this
+ *   parameter is NULL, the function only calculates the length of the resulting
+ *   string
+ * @param[out] written Length of the resulting string, excluding the terminating
+ *   NULL character
  * @return Error code
  **/
 
@@ -719,7 +815,9 @@ error_t sshExportOpenSshEcdsaPrivateKey(const EcPrivateKey *privateKey,
    error = sshFormatOpenSshPrivateKeyHeader(p, &n);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    p = SSH_INC_POINTER(p, n);
@@ -730,7 +828,9 @@ error_t sshExportOpenSshEcdsaPrivateKey(const EcPrivateKey *privateKey,
       SSH_INC_POINTER(p, sizeof(uint32_t)), &n);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //The octet string value is preceded by a uint32 containing its length
    if(p != NULL)
@@ -747,7 +847,9 @@ error_t sshExportOpenSshEcdsaPrivateKey(const EcPrivateKey *privateKey,
       SSH_INC_POINTER(p, sizeof(uint32_t)), &n);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //The octet string value is preceded by a uint32 containing its length
    if(p != NULL)
@@ -762,7 +864,9 @@ error_t sshExportOpenSshEcdsaPrivateKey(const EcPrivateKey *privateKey,
    error = sshEncodeOpenSshPrivateKeyFile(output, length, output, &n);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Total number of bytes that have been written
    *written = n;
@@ -779,8 +883,11 @@ error_t sshExportOpenSshEcdsaPrivateKey(const EcPrivateKey *privateKey,
 /**
  * @brief Export an Ed25519 private key to OpenSSH private key file format
  * @param[in] privateKey Ed25519 private key
- * @param[out] output Buffer where to store the OpenSSH private key file
- * @param[out] written Length of the resulting OpenSSH private key file
+ * @param[out] output Buffer where to store the NULL-terminated string. If this
+ *   parameter is NULL, the function only calculates the length of the resulting
+ *   string
+ * @param[out] written Length of the resulting string, excluding the terminating
+ *   NULL character
  * @return Error code
  **/
 
@@ -801,7 +908,9 @@ error_t sshExportOpenSshEd25519PrivateKey(const EddsaPrivateKey *privateKey,
    error = sshFormatOpenSshPrivateKeyHeader(p, &n);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    p = SSH_INC_POINTER(p, n);
@@ -812,7 +921,9 @@ error_t sshExportOpenSshEd25519PrivateKey(const EddsaPrivateKey *privateKey,
       SSH_INC_POINTER(p, sizeof(uint32_t)), &n);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //The octet string value is preceded by a uint32 containing its length
    if(p != NULL)
@@ -829,7 +940,9 @@ error_t sshExportOpenSshEd25519PrivateKey(const EddsaPrivateKey *privateKey,
       SSH_INC_POINTER(p, sizeof(uint32_t)), &n);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //The octet string value is preceded by a uint32 containing its length
    if(p != NULL)
@@ -844,7 +957,9 @@ error_t sshExportOpenSshEd25519PrivateKey(const EddsaPrivateKey *privateKey,
    error = sshEncodeOpenSshPrivateKeyFile(output, length, output, &n);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Total number of bytes that have been written
    *written = n;
@@ -861,8 +976,11 @@ error_t sshExportOpenSshEd25519PrivateKey(const EddsaPrivateKey *privateKey,
 /**
  * @brief Export an Ed448 private key to OpenSSH private key file format
  * @param[in] privateKey Ed448 private key
- * @param[out] output Buffer where to store the OpenSSH private key file
- * @param[out] written Length of the resulting OpenSSH private key file
+ * @param[out] output Buffer where to store the NULL-terminated string. If this
+ *   parameter is NULL, the function only calculates the length of the resulting
+ *   string
+ * @param[out] written Length of the resulting string, excluding the terminating
+ *   NULL character
  * @return Error code
  **/
 
@@ -883,7 +1001,9 @@ error_t sshExportOpenSshEd448PrivateKey(const EddsaPrivateKey *privateKey,
    error = sshFormatOpenSshPrivateKeyHeader(p, &n);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    p = SSH_INC_POINTER(p, n);
@@ -894,7 +1014,9 @@ error_t sshExportOpenSshEd448PrivateKey(const EddsaPrivateKey *privateKey,
       SSH_INC_POINTER(p, sizeof(uint32_t)), &n);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //The octet string value is preceded by a uint32 containing its length
    if(p != NULL)
@@ -911,7 +1033,9 @@ error_t sshExportOpenSshEd448PrivateKey(const EddsaPrivateKey *privateKey,
       SSH_INC_POINTER(p, sizeof(uint32_t)), &n);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //The octet string value is preceded by a uint32 containing its length
    if(p != NULL)
@@ -926,7 +1050,9 @@ error_t sshExportOpenSshEd448PrivateKey(const EddsaPrivateKey *privateKey,
    error = sshEncodeOpenSshPrivateKeyFile(output, length, output, &n);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Total number of bytes that have been written
    *written = n;
@@ -945,8 +1071,11 @@ error_t sshExportOpenSshEd448PrivateKey(const EddsaPrivateKey *privateKey,
  * @param[in] keyFormatId Key format identifier
  * @param[in] input Host key structure to encode
  * @param[in] inputLen Length of the host key structure to encode
- * @param[out] output SSH public key file (optional parameter)
- * @param[out] outputLen Length of the SSH public key file
+ * @param[out] output Buffer where to store the NULL-terminated string. If this
+ *   parameter is NULL, the function only calculates the length of the resulting
+ *   string
+ * @param[out] outputLen Length of the resulting string, excluding the terminating
+ *   NULL character
  * @param[in] format Desired output format (SSH2 or OpenSSH format)
  **/
 
@@ -983,8 +1112,11 @@ error_t sshEncodePublicKeyFile(const char_t *keyFormatId, const void *input,
  * @brief Encode SSH public key file (SSH2 format)
  * @param[in] input Host key structure to encode
  * @param[in] inputLen Length of the host key structure to encode
- * @param[out] output SSH public key file (optional parameter)
- * @param[out] outputLen Length of the SSH public key file
+ * @param[out] output Buffer where to store the NULL-terminated string. If this
+ *   parameter is NULL, the function only calculates the length of the resulting
+ *   string
+ * @param[out] outputLen Length of the resulting string, excluding the terminating
+ *   NULL character
  **/
 
 error_t sshEncodeSsh2PublicKeyFile(const void *input, size_t inputLen,
@@ -994,11 +1126,15 @@ error_t sshEncodeSsh2PublicKeyFile(const void *input, size_t inputLen,
 
    //Check parameters
    if(outputLen == NULL)
+   {
       return ERROR_INVALID_PARAMETER;
+   }
 
    //Sanity check
    if(input == NULL && output != NULL)
+   {
       return ERROR_INVALID_PARAMETER;
+   }
 
    //Each line in the body must not be longer than 72 8-bit bytes excluding
    //line termination characters (refer to RFC 4716, section 3.4)
@@ -1037,8 +1173,11 @@ error_t sshEncodeSsh2PublicKeyFile(const void *input, size_t inputLen,
  * @param[in] keyFormatId Key format identifier
  * @param[in] input Host key structure to encode
  * @param[in] inputLen Length of the host key structure to encode
- * @param[out] output SSH public key file (optional parameter)
- * @param[out] outputLen Length of the SSH public key file
+ * @param[out] output Buffer where to store the NULL-terminated string. If this
+ *   parameter is NULL, the function only calculates the length of the resulting
+ *   string
+ * @param[out] outputLen Length of the resulting string, excluding the terminating
+ *   NULL character
  **/
 
 error_t sshEncodeOpenSshPublicKeyFile(const char_t *keyFormatId,
@@ -1049,11 +1188,15 @@ error_t sshEncodeOpenSshPublicKeyFile(const char_t *keyFormatId,
 
    //Check parameters
    if(keyFormatId == NULL || outputLen == NULL)
+   {
       return ERROR_INVALID_PARAMETER;
+   }
 
    //Sanity check
    if(input == NULL && output != NULL)
+   {
       return ERROR_INVALID_PARAMETER;
+   }
 
    //Get the length of the key format identifier
    keyFormatIdLen = osStrlen(keyFormatId);
@@ -1088,8 +1231,11 @@ error_t sshEncodeOpenSshPublicKeyFile(const char_t *keyFormatId,
  * @brief Encode SSH private key file (OpenSSH format)
  * @param[in] input Private key structure to encode
  * @param[in] inputLen Length of the private key structure to encode
- * @param[out] output SSH private key file (optional parameter)
- * @param[out] outputLen Length of the SSH private key file
+ * @param[out] output Buffer where to store the NULL-terminated string. If this
+ *   parameter is NULL, the function only calculates the length of the resulting
+ *   string
+ * @param[out] outputLen Length of the resulting string, excluding the terminating
+ *   NULL character
  **/
 
 error_t sshEncodeOpenSshPrivateKeyFile(const void *input, size_t inputLen,
@@ -1099,11 +1245,15 @@ error_t sshEncodeOpenSshPrivateKeyFile(const void *input, size_t inputLen,
 
    //Check parameters
    if(outputLen == NULL)
+   {
       return ERROR_INVALID_PARAMETER;
+   }
 
    //Sanity check
    if(input == NULL && output != NULL)
+   {
       return ERROR_INVALID_PARAMETER;
+   }
 
    //Encode the private key structure using Base64
    base64EncodeMultiline(input, inputLen, output, &n, 70);

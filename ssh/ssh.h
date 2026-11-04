@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.6.6
+ * @version 2.6.8
  **/
 
 #ifndef _SSH_H
@@ -38,6 +38,7 @@
 #include "ssh_cert_parse.h"
 #include "core/net.h"
 #include "core/crypto.h"
+#include "core/crypto_mem.h"
 #include "cipher/cipher_algorithms.h"
 #include "cipher_modes/cipher_modes.h"
 #include "hash/hash_algorithms.h"
@@ -74,13 +75,13 @@
 #endif
 
 //Version string
-#define CYCLONE_SSH_VERSION_STRING "2.6.6"
+#define CYCLONE_SSH_VERSION_STRING "2.6.8"
 //Major version
 #define CYCLONE_SSH_MAJOR_VERSION 2
 //Minor version
 #define CYCLONE_SSH_MINOR_VERSION 6
 //Revision number
-#define CYCLONE_SSH_REV_NUMBER 6
+#define CYCLONE_SSH_REV_NUMBER 8
 
 //Identification string
 #define CYCLONE_SSH_ID "SSH-2.0-CycloneSSH_" CYCLONE_SSH_VERSION_STRING
@@ -190,6 +191,13 @@
    #error SSH_MAX_CONNECTIONS parameter is not valid
 #endif
 
+//Maximum number of channels per connection
+#ifndef SSH_MAX_CHANNELS_PER_CONNECTION
+   #define SSH_MAX_CHANNELS_PER_CONNECTION 4
+#elif (SSH_MAX_CHANNELS_PER_CONNECTION < 1)
+   #error SSH_MAX_CHANNELS_PER_CONNECTION parameter is not valid
+#endif
+
 //Maximum number of global request callbacks that can be attached
 #ifndef SSH_MAX_GLOBAL_REQ_CALLBACKS
    #define SSH_MAX_GLOBAL_REQ_CALLBACKS 3
@@ -228,28 +236,35 @@
 //Maximum number of authentication attempts
 #ifndef SSH_MAX_AUTH_ATTEMPTS
    #define SSH_MAX_AUTH_ATTEMPTS 10
-#elif (SSH_MAX_AUTH_ATTEMPTS < 1 && SSH_MAX_AUTH_ATTEMPTS > 20)
+#elif (SSH_MAX_AUTH_ATTEMPTS < 1 || SSH_MAX_AUTH_ATTEMPTS > 20)
    #error SSH_MAX_AUTH_ATTEMPTS parameter is not valid
 #endif
 
 //Maximum packet size
 #ifndef SSH_MAX_PACKET_SIZE
    #define SSH_MAX_PACKET_SIZE 2048
-#elif (SSH_MAX_PACKET_SIZE < 128)
+#elif (SSH_MAX_PACKET_SIZE < 1024)
    #error SSH_MAX_PACKET_SIZE parameter is not valid
 #endif
 
 //Size of channel TX/RX buffers
 #ifndef SSH_CHANNEL_BUFFER_SIZE
    #define SSH_CHANNEL_BUFFER_SIZE 2048
-#elif (SSH_CHANNEL_BUFFER_SIZE < 128)
+#elif (SSH_CHANNEL_BUFFER_SIZE < 1024)
    #error SSH_CHANNEL_BUFFER_SIZE parameter is not valid
+#endif
+
+//Minimum acceptable value for the maximum packet size advertised by the peer
+#ifndef SSH_MIN_CHANNEL_PACKET_SIZE
+   #define SSH_MIN_CHANNEL_PACKET_SIZE 256
+#elif (SSH_MIN_CHANNEL_PACKET_SIZE < 1)
+   #error SSH_MIN_CHANNEL_PACKET_SIZE parameter is not valid
 #endif
 
 //Maximum length of identification string
 #ifndef SSH_MAX_ID_LEN
-   #define SSH_MAX_ID_LEN 80
-#elif (SSH_MAX_ID_LEN < 1)
+   #define SSH_MAX_ID_LEN 253
+#elif (SSH_MAX_ID_LEN < 1 || SSH_MAX_ID_LEN > 253)
    #error SSH_MAX_ID_LEN parameter is not valid
 #endif
 
@@ -461,6 +476,27 @@
    #define SSH_SEED_SUPPORT DISABLED
 #elif (SSH_SEED_SUPPORT != ENABLED && SSH_SEED_SUPPORT != DISABLED)
    #error SSH_SEED_SUPPORT parameter is not valid
+#endif
+
+//HMAC support
+#ifndef SSH_HMAC_SUPPORT
+   #define SSH_HMAC_SUPPORT ENABLED
+#elif (SSH_HMAC_SUPPORT != ENABLED && SSH_HMAC_SUPPORT != DISABLED)
+   #error SSH_HMAC_SUPPORT parameter is not valid
+#endif
+
+//UMAC-64 support
+#ifndef SSH_UMAC64_SUPPORT
+   #define SSH_UMAC64_SUPPORT DISABLED
+#elif (SSH_UMAC64_SUPPORT != ENABLED && SSH_UMAC64_SUPPORT != DISABLED)
+   #error SSH_UMAC64_SUPPORT parameter is not valid
+#endif
+
+//UMAC-128 support
+#ifndef SSH_UMAC128_SUPPORT
+   #define SSH_UMAC128_SUPPORT DISABLED
+#elif (SSH_UMAC128_SUPPORT != ENABLED && SSH_UMAC128_SUPPORT != DISABLED)
+   #error SSH_UMAC128_SUPPORT parameter is not valid
 #endif
 
 //MD5 hash support (insecure)
@@ -703,7 +739,7 @@
 
 //Minimum acceptable size for Diffie-Hellman prime modulus
 #ifndef SSH_MIN_DH_MODULUS_SIZE
-   #define SSH_MIN_DH_MODULUS_SIZE 1024
+   #define SSH_MIN_DH_MODULUS_SIZE 2048
 #elif (SSH_MIN_DH_MODULUS_SIZE < 1024)
    #error SSH_MIN_DH_MODULUS_SIZE parameter is not valid
 #endif
@@ -717,14 +753,14 @@
 
 //Maximum acceptable size for Diffie-Hellman prime modulus
 #ifndef SSH_MAX_DH_MODULUS_SIZE
-   #define SSH_MAX_DH_MODULUS_SIZE 3072
+   #define SSH_MAX_DH_MODULUS_SIZE 2048
 #elif (SSH_MAX_DH_MODULUS_SIZE < SSH_PREFERRED_DH_MODULUS_SIZE)
    #error SSH_MAX_DH_MODULUS_SIZE parameter is not valid
 #endif
 
 //Minimum acceptable size for RSA modulus
 #ifndef SSH_MIN_RSA_MODULUS_SIZE
-   #define SSH_MIN_RSA_MODULUS_SIZE 1024
+   #define SSH_MIN_RSA_MODULUS_SIZE 2048
 #elif (SSH_MIN_RSA_MODULUS_SIZE < 1024)
    #error SSH_MIN_RSA_MODULUS_SIZE parameter is not valid
 #endif
@@ -736,9 +772,16 @@
    #error SSH_MAX_RSA_MODULUS_SIZE parameter is not valid
 #endif
 
+//Maximum acceptable size for RSA public exponent
+#ifndef SSH_MAX_RSA_PUBLIC_EXPONENT_SIZE
+   #define SSH_MAX_RSA_PUBLIC_EXPONENT_SIZE 64
+#elif (SSH_MAX_RSA_PUBLIC_EXPONENT_SIZE < 17)
+   #error SSH_MAX_RSA_PUBLIC_EXPONENT_SIZE parameter is not valid
+#endif
+
 //Minimum acceptable size for DSA prime modulus
 #ifndef SSH_MIN_DSA_MODULUS_SIZE
-   #define SSH_MIN_DSA_MODULUS_SIZE 1024
+   #define SSH_MIN_DSA_MODULUS_SIZE 2048
 #elif (SSH_MIN_DSA_MODULUS_SIZE < 1024)
    #error SSH_MIN_DSA_MODULUS_SIZE parameter is not valid
 #endif
@@ -760,74 +803,119 @@
    #define sshFreeMem(p) osFreeMem(p)
 #endif
 
-//HMAC support
-#if (SSH_STREAM_CIPHER_SUPPORT == ENABLED)
-   #define SSH_HMAC_SUPPORT ENABLED
-#elif (SSH_CBC_CIPHER_SUPPORT == ENABLED)
-   #define SSH_HMAC_SUPPORT ENABLED
-#elif (SSH_CTR_CIPHER_SUPPORT == ENABLED)
-   #define SSH_HMAC_SUPPORT ENABLED
-#else
-   #define SSH_HMAC_SUPPORT DISABLED
-#endif
-
-//Maximum key size (encryption algorithms)
+//Maximum encryption key size
 #if (SSH_CHACHA20_POLY1305_SUPPORT == ENABLED)
    #define SSH_MAX_ENC_KEY_SIZE 64
-#else
+#elif (SSH_RC4_256_SUPPORT == ENABLED)
    #define SSH_MAX_ENC_KEY_SIZE 32
-#endif
-
-//Maximum block size (encryption algorithms)
-#if (SSH_AES_128_SUPPORT == ENABLED)
-   #define SSH_MAX_CIPHER_BLOCK_SIZE AES_BLOCK_SIZE
-#elif (SSH_AES_192_SUPPORT == ENABLED)
-   #define SSH_MAX_CIPHER_BLOCK_SIZE AES_BLOCK_SIZE
-#elif (SSH_AES_256_SUPPORT == ENABLED)
-   #define SSH_MAX_CIPHER_BLOCK_SIZE AES_BLOCK_SIZE
-#elif (SSH_TWOFISH_128_SUPPORT == ENABLED)
-   #define SSH_MAX_CIPHER_BLOCK_SIZE TWOFISH_BLOCK_SIZE
-#elif (SSH_TWOFISH_192_SUPPORT == ENABLED)
-   #define SSH_MAX_CIPHER_BLOCK_SIZE TWOFISH_BLOCK_SIZE
-#elif (SSH_TWOFISH_256_SUPPORT == ENABLED)
-   #define SSH_MAX_CIPHER_BLOCK_SIZE TWOFISH_BLOCK_SIZE
-#elif (SSH_SERPENT_128_SUPPORT == ENABLED)
-   #define SSH_MAX_CIPHER_BLOCK_SIZE SERPENT_BLOCK_SIZE
-#elif (SSH_SERPENT_192_SUPPORT == ENABLED)
-   #define SSH_MAX_CIPHER_BLOCK_SIZE SERPENT_BLOCK_SIZE
-#elif (SSH_SERPENT_256_SUPPORT == ENABLED)
-   #define SSH_MAX_CIPHER_BLOCK_SIZE SERPENT_BLOCK_SIZE
-#elif (SSH_CAMELLIA_128_SUPPORT == ENABLED)
-   #define SSH_MAX_CIPHER_BLOCK_SIZE CAMELLIA_BLOCK_SIZE
-#elif (SSH_CAMELLIA_192_SUPPORT == ENABLED)
-   #define SSH_MAX_CIPHER_BLOCK_SIZE CAMELLIA_BLOCK_SIZE
-#elif (SSH_CAMELLIA_256_SUPPORT == ENABLED)
-   #define SSH_MAX_CIPHER_BLOCK_SIZE CAMELLIA_BLOCK_SIZE
-#elif (SSH_SEED_SUPPORT == ENABLED)
-   #define SSH_MAX_CIPHER_BLOCK_SIZE SEED_BLOCK_SIZE
-#elif (SSH_CAST128_SUPPORT == ENABLED)
-   #define SSH_MAX_CIPHER_BLOCK_SIZE CAST128_BLOCK_SIZE
-#elif (SSH_IDEA_SUPPORT == ENABLED)
-   #define SSH_MAX_CIPHER_BLOCK_SIZE IDEA_BLOCK_SIZE
 #elif (SSH_BLOWFISH_SUPPORT == ENABLED)
-   #define SSH_MAX_CIPHER_BLOCK_SIZE BLOWFISH_BLOCK_SIZE
+   #define SSH_MAX_ENC_KEY_SIZE 32
+#elif (SSH_AES_256_SUPPORT == ENABLED)
+   #define SSH_MAX_ENC_KEY_SIZE 32
+#elif (SSH_TWOFISH_256_SUPPORT == ENABLED)
+   #define SSH_MAX_ENC_KEY_SIZE 32
+#elif (SSH_SERPENT_256_SUPPORT == ENABLED)
+   #define SSH_MAX_ENC_KEY_SIZE 32
+#elif (SSH_CAMELLIA_256_SUPPORT == ENABLED)
+   #define SSH_MAX_ENC_KEY_SIZE 32
+#elif (SSH_3DES_SUPPORT == ENABLED)
+   #define SSH_MAX_ENC_KEY_SIZE 24
+#elif (SSH_AES_192_SUPPORT == ENABLED)
+   #define SSH_MAX_ENC_KEY_SIZE 24
+#elif (SSH_TWOFISH_192_SUPPORT == ENABLED)
+   #define SSH_MAX_ENC_KEY_SIZE 24
+#elif (SSH_SERPENT_192_SUPPORT == ENABLED)
+   #define SSH_MAX_ENC_KEY_SIZE 24
+#elif (SSH_CAMELLIA_192_SUPPORT == ENABLED)
+   #define SSH_MAX_ENC_KEY_SIZE 24
 #else
-   #define SSH_MAX_CIPHER_BLOCK_SIZE DES3_BLOCK_SIZE
+   #define SSH_MAX_ENC_KEY_SIZE 16
 #endif
 
-//Maximum digest size (MAC algorithms)
-#if (SSH_SHA512_SUPPORT == ENABLED)
-   #define SSH_MAX_HASH_DIGEST_SIZE SHA512_DIGEST_SIZE
-#elif (SSH_SHA384_SUPPORT == ENABLED)
-   #define SSH_MAX_HASH_DIGEST_SIZE SHA384_DIGEST_SIZE
-#elif (SSH_SHA256_SUPPORT == ENABLED)
-   #define SSH_MAX_HASH_DIGEST_SIZE SHA256_DIGEST_SIZE
-#elif (SSH_SHA1_SUPPORT == ENABLED || SSH_SHA1_96_SUPPORT == ENABLED)
-   #define SSH_MAX_HASH_DIGEST_SIZE SHA1_DIGEST_SIZE
-#elif (SSH_RIPEMD160_SUPPORT == ENABLED)
-   #define SSH_MAX_HASH_DIGEST_SIZE RIPEMD160_DIGEST_SIZE
+//Maximum integrity key size
+#if (SSH_HMAC_SUPPORT == ENABLED && SSH_SHA512_SUPPORT == ENABLED)
+   #define SSH_MAX_MAC_KEY_SIZE SHA512_DIGEST_SIZE
+#elif (SSH_HMAC_SUPPORT == ENABLED && SSH_SHA256_SUPPORT == ENABLED)
+   #define SSH_MAX_MAC_KEY_SIZE SHA256_DIGEST_SIZE
+#elif (SSH_HMAC_SUPPORT == ENABLED && SSH_SHA1_SUPPORT == ENABLED)
+   #define SSH_MAX_MAC_KEY_SIZE SHA1_DIGEST_SIZE
+#elif (SSH_HMAC_SUPPORT == ENABLED && SSH_SHA1_96_SUPPORT == ENABLED)
+   #define SSH_MAX_MAC_KEY_SIZE SHA1_DIGEST_SIZE
+#elif (SSH_HMAC_SUPPORT == ENABLED && SSH_RIPEMD160_SUPPORT == ENABLED)
+   #define SSH_MAX_MAC_KEY_SIZE RIPEMD160_DIGEST_SIZE
+#elif (SSH_HMAC_SUPPORT == ENABLED && SSH_MD5_SUPPORT == ENABLED)
+   #define SSH_MAX_MAC_KEY_SIZE MD5_DIGEST_SIZE
+#elif (SSH_HMAC_SUPPORT == ENABLED && SSH_MD5_96_SUPPORT == ENABLED)
+   #define SSH_MAX_MAC_KEY_SIZE MD5_DIGEST_SIZE
 #else
-   #define SSH_MAX_HASH_DIGEST_SIZE MD5_DIGEST_SIZE
+   #define SSH_MAX_MAC_KEY_SIZE 16
+#endif
+
+//Maximum IV size
+#if (SSH_AES_128_SUPPORT == ENABLED)
+   #define SSH_MAX_IV_SIZE AES_BLOCK_SIZE
+#elif (SSH_AES_192_SUPPORT == ENABLED)
+   #define SSH_MAX_IV_SIZE AES_BLOCK_SIZE
+#elif (SSH_AES_256_SUPPORT == ENABLED)
+   #define SSH_MAX_IV_SIZE AES_BLOCK_SIZE
+#elif (SSH_TWOFISH_128_SUPPORT == ENABLED)
+   #define SSH_MAX_IV_SIZE TWOFISH_BLOCK_SIZE
+#elif (SSH_TWOFISH_192_SUPPORT == ENABLED)
+   #define SSH_MAX_IV_SIZE TWOFISH_BLOCK_SIZE
+#elif (SSH_TWOFISH_256_SUPPORT == ENABLED)
+   #define SSH_MAX_IV_SIZE TWOFISH_BLOCK_SIZE
+#elif (SSH_SERPENT_128_SUPPORT == ENABLED)
+   #define SSH_MAX_IV_SIZE SERPENT_BLOCK_SIZE
+#elif (SSH_SERPENT_192_SUPPORT == ENABLED)
+   #define SSH_MAX_IV_SIZE SERPENT_BLOCK_SIZE
+#elif (SSH_SERPENT_256_SUPPORT == ENABLED)
+   #define SSH_MAX_IV_SIZE SERPENT_BLOCK_SIZE
+#elif (SSH_CAMELLIA_128_SUPPORT == ENABLED)
+   #define SSH_MAX_IV_SIZE CAMELLIA_BLOCK_SIZE
+#elif (SSH_CAMELLIA_192_SUPPORT == ENABLED)
+   #define SSH_MAX_IV_SIZE CAMELLIA_BLOCK_SIZE
+#elif (SSH_CAMELLIA_256_SUPPORT == ENABLED)
+   #define SSH_MAX_IV_SIZE CAMELLIA_BLOCK_SIZE
+#elif (SSH_SEED_SUPPORT == ENABLED)
+   #define SSH_MAX_IV_SIZE SEED_BLOCK_SIZE
+#else
+   #define SSH_MAX_IV_SIZE 8
+#endif
+
+//Maximum MAC size
+#if (SSH_HMAC_SUPPORT == ENABLED && SSH_SHA512_SUPPORT == ENABLED)
+   #define SSH_MAX_MAC_SIZE SHA512_DIGEST_SIZE
+#elif (SSH_HMAC_SUPPORT == ENABLED && SSH_SHA256_SUPPORT == ENABLED)
+   #define SSH_MAX_MAC_SIZE SHA256_DIGEST_SIZE
+#elif (SSH_HMAC_SUPPORT == ENABLED && SSH_SHA1_SUPPORT == ENABLED)
+   #define SSH_MAX_MAC_SIZE SHA1_DIGEST_SIZE
+#elif (SSH_HMAC_SUPPORT == ENABLED && SSH_SHA1_96_SUPPORT == ENABLED)
+   #define SSH_MAX_MAC_SIZE SHA1_DIGEST_SIZE
+#elif (SSH_HMAC_SUPPORT == ENABLED && SSH_RIPEMD160_SUPPORT == ENABLED)
+   #define SSH_MAX_MAC_SIZE RIPEMD160_DIGEST_SIZE
+#elif (SSH_HMAC_SUPPORT == ENABLED && SSH_MD5_SUPPORT == ENABLED)
+   #define SSH_MAX_MAC_SIZE MD5_DIGEST_SIZE
+#elif (SSH_HMAC_SUPPORT == ENABLED && SSH_MD5_96_SUPPORT == ENABLED)
+   #define SSH_MAX_MAC_SIZE MD5_DIGEST_SIZE
+#elif (SSH_UMAC128_SUPPORT == ENABLED)
+   #define SSH_MAX_MAC_SIZE 16
+#else
+   #define SSH_MAX_MAC_SIZE 8
+#endif
+
+//Maximum digest size
+#if (SSH_SHA512_SUPPORT == ENABLED)
+   #define SSH_MAX_DIGEST_SIZE SHA512_DIGEST_SIZE
+#elif (SSH_SHA384_SUPPORT == ENABLED)
+   #define SSH_MAX_DIGEST_SIZE SHA384_DIGEST_SIZE
+#elif (SSH_SHA256_SUPPORT == ENABLED)
+   #define SSH_MAX_DIGEST_SIZE SHA256_DIGEST_SIZE
+#elif (SSH_SHA1_SUPPORT == ENABLED)
+   #define SSH_MAX_DIGEST_SIZE SHA1_DIGEST_SIZE
+#elif (SSH_RIPEMD160_SUPPORT == ENABLED)
+   #define SSH_MAX_DIGEST_SIZE RIPEMD160_DIGEST_SIZE
+#else
+   #define SSH_MAX_DIGEST_SIZE MD5_DIGEST_SIZE
 #endif
 
 //Maximum shared secret length (RSA key exchange)
@@ -898,6 +986,39 @@
    #define SSH_MAX_SHARED_SECRET_LEN SSH_MAX_HYBRID_SHARED_SECRET_LEN
 #endif
 
+//Maximum SSH_MSG_KEX_HYBRID_INIT or SSH_MSG_KEX_KEM_INIT payload size
+#if (SSH_HYBRID_KEX_SUPPORT == ENABLED && SSH_MLKEM1024_SUPPORT == ENABLED && \
+   SSH_NISTP384_SUPPORT == ENABLED && SSH_SHA384_SUPPORT == ENABLED)
+   #define SSH_MAX_PQ_KEX_INIT_SIZE 1670
+#elif (SSH_KEM_KEX_SUPPORT == ENABLED && SSH_MLKEM1024_SUPPORT == ENABLED && \
+   SSH_SHA384_SUPPORT == ENABLED)
+   #define SSH_MAX_PQ_KEX_INIT_SIZE 1573
+#elif (SSH_HYBRID_KEX_SUPPORT == ENABLED && SSH_MLKEM768_SUPPORT == ENABLED && \
+   SSH_NISTP256_SUPPORT == ENABLED && SSH_SHA256_SUPPORT == ENABLED)
+   #define SSH_MAX_PQ_KEX_INIT_SIZE 1254
+#elif (SSH_HYBRID_KEX_SUPPORT == ENABLED && SSH_MLKEM768_SUPPORT == ENABLED && \
+   SSH_CURVE25519_SUPPORT == ENABLED && SSH_SHA256_SUPPORT == ENABLED)
+   #define SSH_MAX_PQ_KEX_INIT_SIZE 1221
+#elif (SSH_HYBRID_KEX_SUPPORT == ENABLED && \
+   SSH_SNTRUP761_SUPPORT == ENABLED && SSH_CURVE25519_SUPPORT == ENABLED && \
+   SSH_SHA512_SUPPORT == ENABLED)
+   #define SSH_MAX_PQ_KEX_INIT_SIZE 1195
+#elif (SSH_KEM_KEX_SUPPORT == ENABLED && SSH_MLKEM768_SUPPORT == ENABLED && \
+   SSH_SHA256_SUPPORT == ENABLED)
+   #define SSH_MAX_PQ_KEX_INIT_SIZE 1189
+#elif (SSH_KEM_KEX_SUPPORT == ENABLED && SSH_MLKEM512_SUPPORT == ENABLED && \
+   SSH_SHA256_SUPPORT == ENABLED)
+   #define SSH_MAX_PQ_KEX_INIT_SIZE 805
+#else
+   #define SSH_MAX_PQ_KEX_INIT_SIZE 0
+#endif
+
+//The maximum packet size must be large enough for the post-quantum and hybrid
+//key exchange algorithms that are enabled
+#if (SSH_MAX_PACKET_SIZE < SSH_MAX_PQ_KEX_INIT_SIZE)
+   #error SSH_MAX_PACKET_SIZE parameter is not valid
+#endif
+
 //Application specific context
 #ifndef SSH_CONTEXT_PRIVATE
    #define SSH_CONTEXT_PRIVATE
@@ -922,6 +1043,8 @@
 #define SSH_MAX_MPINT_OVERHEAD 5
 //Data overhead caused by packet encryption
 #define SSH_MAX_PACKET_OVERHEAD 128
+//Maximum size of the flow-control window
+#define SSH_MAX_WINDOW_SIZE 0xFFFFFFFF
 
 //Size of buffer used for input/output operations
 #define SSH_BUFFER_SIZE (SSH_MAX_PACKET_SIZE + SSH_MAX_PACKET_OVERHEAD)
@@ -1031,6 +1154,8 @@ typedef enum
    SSH_MSG_USERAUTH_PASSWD_CHANGEREQ = 60,
    SSH_MSG_USERAUTH_INFO_REQUEST     = 60,
    SSH_MSG_USERAUTH_INFO_RESPONSE    = 61,
+   SSH_MSG_USERAUTH_KEM_CHALLENGE    = 60,
+   SSH_MSG_USERAUTH_KEM_RESPONSE     = 61,
    SSH_MSG_GLOBAL_REQUEST            = 80,
    SSH_MSG_REQUEST_SUCCESS           = 81,
    SSH_MSG_REQUEST_FAILURE           = 82,
@@ -1212,9 +1337,6 @@ typedef struct
    const char_t *privateKey;                  ///<Private key (PEM or OpenSSH format)
    size_t privateKeyLen;                      ///<Length of the private key
    char_t password[SSH_MAX_PASSWORD_LEN + 1]; ///<Password used to decrypt the private key
-#if (SSH_CLIENT_SUPPORT == ENABLED)
-   const char_t *publicKeyAlgo;               ///<Public key algorithm to use during user authentication
-#endif
 } SshHostKey;
 
 
@@ -1382,14 +1504,16 @@ typedef struct
    CipherMode cipherMode;                    ///<Cipher mode of operation
    const CipherAlgo *cipherAlgo;             ///<Cipher algorithm
    CipherContext cipherContext;              ///<Cipher context
-   const HashAlgo *hashAlgo;                 ///<Hash algorithm for MAC operations
-   HmacContext *hmacContext;                 ///<HMAC context
-   size_t macSize;                           ///<Size of the MAC tag, in bytes
+   MacAlgo macAlgo;                          ///<MAC algorithm
+   const HashAlgo *hashAlgo;                 ///<Hash algorithm
+   MacContext *macContext;                   ///<MAC context
+   size_t macLen;                            ///<Length of the MAC tag, in bytes
    bool_t etm;                               ///<Encrypt-then-MAC
-   uint8_t iv[SSH_MAX_CIPHER_BLOCK_SIZE];    ///<Initialization vector
+   uint8_t iv[SSH_MAX_IV_SIZE];              ///<Initialization vector
    uint8_t encKey[SSH_MAX_ENC_KEY_SIZE];     ///<Encryption key
    size_t encKeyLen;                         ///<Length of the encryption key, in bytes
-   uint8_t macKey[SSH_MAX_HASH_DIGEST_SIZE]; ///<Integrity key
+   uint8_t macKey[SSH_MAX_MAC_KEY_SIZE];     ///<Integrity key
+   size_t macKeyLen;                         ///<Length of the integrity key, in bytes
    uint8_t seqNum[4];                        ///<Sequence number
 #if (SSH_GCM_CIPHER_SUPPORT == ENABLED || SSH_RFC5647_SUPPORT == ENABLED)
    GcmContext gcmContext;                    ///<GCM context
@@ -1437,7 +1561,8 @@ struct _SshChannel
    size_t txWindowSize;          ///<TX flow-control window
    size_t rxWindowSize;          ///<RX flow-control window
    size_t rxWindowSizeInc;       ///<Window size increment
-   bool_t channelSuccessSent;    ///<An SSH_MSG_CHANNEL_SUCCESS message has been sent
+   bool_t owned;                 ///<The channel is owned by an application session
+   bool_t serviceStarted;        ///<A "shell", "exec" or "subsystem" request has succeeded
    bool_t eofRequest;            ///<Channel EOF request
    bool_t eofSent;               ///<An SSH_MSG_CHANNEL_EOF message has been sent
    bool_t eofReceived;           ///<An SSH_MSG_CHANNEL_EOF message has been received
@@ -1461,6 +1586,8 @@ struct _SshConnection
    SshContext *context;                         ///<SSH context
    Socket *socket;                              ///<Underlying socket
    systime_t timestamp;                         ///<Time stamp to manage connection timeout
+   systime_t authTimestamp;                     ///<Time stamp to manage authentication timeout
+   bool_t authenticated;                        ///<User authentication successfully completed
 
    char_t remoteId[SSH_MAX_ID_LEN + 1];         ///<Peer's identification string
    uint8_t cookie[SSH_COOKIE_SIZE];             ///<Random value generated by the sender
@@ -1488,17 +1615,18 @@ struct _SshConnection
    int_t dhGexGroupIndex;                       ///<Index of the selected Diffie-Hellman group
 #endif
 
-   uint8_t sessionId[SSH_MAX_HASH_DIGEST_SIZE]; ///<Session identifier
+   uint8_t sessionId[SSH_MAX_DIGEST_SIZE];      ///<Session identifier
    size_t sessionIdLen;                         ///<Length of the session identifier, in bytes
-   uint8_t h[SSH_MAX_HASH_DIGEST_SIZE];         ///<Exchange hash H
+   uint8_t h[SSH_MAX_DIGEST_SIZE];              ///<Exchange hash H
    size_t hLen;                                 ///<Length of the exchange hash, in bytes
    uint8_t k[SSH_MAX_SHARED_SECRET_LEN];        ///<Shared secret K
    size_t kLen;                                 ///<Length of the shared secret, in bytes
 
    const HashAlgo *hashAlgo;                    ///<Exchange hash algorithm
    HashContext hashContext;                     ///<Exchange hash context
-#if (SSH_HMAC_SUPPORT == ENABLED)
-   HmacContext hmacContext;                     ///<HMAC context
+#if (SSH_HMAC_SUPPORT == ENABLED || SSH_UMAC64_SUPPORT == ENABLED || \
+   SSH_UMAC128_SUPPORT == ENABLED)
+   MacContext macContext;                       ///<MAC context
 #endif
 #if (SSH_DH_KEX_SUPPORT == ENABLED || SSH_DH_GEX_KEX_SUPPORT == ENABLED)
    DhContext dhContext;                         ///<Diffie-Hellman context
@@ -1523,6 +1651,7 @@ struct _SshConnection
    bool_t wrongGuess;                           ///<A wrong guessed key exchange packet follows
    uint_t authAttempts;                         ///<Number of authentication attempts
    bool_t publicKeyOk;                          ///<The provided host key is acceptable
+   uint32_t peerSigAlgos;                       ///<Signature algorithms supported by the peer (bitmap)
    uint32_t localChannelNum;                    ///<Current channel number
 
 #if (SSH_EXT_INFO_SUPPORT == ENABLED)
@@ -1530,6 +1659,7 @@ struct _SshConnection
 #endif
 #if (SSH_KEX_STRICT_SUPPORT == ENABLED)
    bool_t kexStrictReceived;                    ///<"strict KEX" pseudo-algorithm received
+   bool_t seqNumWrap;                           ///<The receive sequence number has wrapped
 #endif
 
    uint8_t buffer[SSH_BUFFER_SIZE];             ///<Internal buffer
@@ -1572,6 +1702,7 @@ struct _SshContext
 #if (SSH_CERT_SUPPORT == ENABLED)
    SshCertVerifyCallback certVerifyCallback;                     ///<Certificate verification callback
    SshCaPublicKeyVerifyCallback caPublicKeyVerifyCallback;       ///<CA public key verification callback
+   bool_t certValidityCheck;                                     ///<Check the validity period of certificates
 #endif
 #if (SSH_PUBLIC_KEY_AUTH_SUPPORT == ENABLED)
    SshPublicKeyAuthCallback publicKeyAuthCallback;               ///<Public key authentication callback
@@ -1635,6 +1766,8 @@ error_t sshSetPrng(SshContext *context, const PrngAlgo *prngAlgo,
 
 error_t sshSetUsername(SshContext *context, const char_t *username);
 error_t sshSetPassword(SshContext *context, const char_t *password);
+
+error_t sshEnableCertValidityCheck(SshContext *context, bool_t enable);
 
 error_t sshRegisterHostKeyVerifyCallback(SshContext *context,
    SshHostKeyVerifyCallback callback);

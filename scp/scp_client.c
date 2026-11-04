@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.6.6
+ * @version 2.6.8
  **/
 
 //Switch to the appropriate trace level
@@ -55,7 +55,9 @@ error_t scpClientInit(ScpClientContext *context)
 {
    //Make sure the SCP client context is valid
    if(context == NULL)
+   {
       return ERROR_INVALID_PARAMETER;
+   }
 
    //Clear SCP client context
    osMemset(context, 0, sizeof(ScpClientContext));
@@ -87,7 +89,9 @@ error_t scpClientRegisterSshInitCallback(ScpClientContext *context,
 {
    //Check parameters
    if(context == NULL || callback == NULL)
+   {
       return ERROR_INVALID_PARAMETER;
+   }
 
    //Save callback function
    context->sshInitCallback = callback;
@@ -108,7 +112,9 @@ error_t scpClientSetTimeout(ScpClientContext *context, systime_t timeout)
 {
    //Make sure the SCP client context is valid
    if(context == NULL)
+   {
       return ERROR_INVALID_PARAMETER;
+   }
 
    //Save timeout value
    context->timeout = timeout;
@@ -130,7 +136,9 @@ error_t scpClientBindToInterface(ScpClientContext *context,
 {
    //Make sure the SCP client context is valid
    if(context == NULL)
+   {
       return ERROR_INVALID_PARAMETER;
+   }
 
    //Explicitly associate the SCP client with the specified interface
    context->interface = interface;
@@ -155,7 +163,9 @@ error_t scpClientConnect(ScpClientContext *context,
 
    //Make sure the SCP client context is valid
    if(context == NULL)
+   {
       return ERROR_INVALID_PARAMETER;
+   }
 
    //Initialize status code
    error = NO_ERROR;
@@ -251,7 +261,17 @@ error_t scpClientOpenFileForWriting(ScpClientContext *context,
 
    //Check parameters
    if(context == NULL || path == NULL)
+   {
       return ERROR_INVALID_PARAMETER;
+   }
+
+   //The path is sent to the server as part of the SCP command line
+   error = scpClientCheckPath(path);
+   //Any error to report?
+   if(error)
+   {
+      return error;
+   }
 
    //Initialize SCP directive
    osMemset(&directive, 0, sizeof(ScpDirective));
@@ -342,7 +362,7 @@ error_t scpClientOpenFileForWriting(ScpClientContext *context,
          SshExecParams requestParams;
 
          //Format SCP command line
-         sprintf(context->buffer, "scp -t %s", path);
+         osSprintf(context->buffer, "scp -t %s", path);
 
          //Set "exec" request parameters
          requestParams.command.value = context->buffer;
@@ -519,7 +539,17 @@ error_t scpClientOpenFileForReading(ScpClientContext *context,
 
    //Check parameters
    if(context == NULL || path == NULL)
+   {
       return ERROR_INVALID_PARAMETER;
+   }
+
+   //The path is sent to the server as part of the SCP command line
+   error = scpClientCheckPath(path);
+   //Any error to report?
+   if(error)
+   {
+      return error;
+   }
 
    //Initialize SCP directive
    osMemset(&directive, 0, sizeof(ScpDirective));
@@ -789,11 +819,15 @@ error_t scpClientWriteFile(ScpClientContext *context, const void *data,
 
    //Make sure the SCP client context is valid
    if(context == NULL)
+   {
       return ERROR_INVALID_PARAMETER;
+   }
 
    //Check parameters
    if(data == NULL && length != 0)
+   {
       return ERROR_INVALID_PARAMETER;
+   }
 
    //Initialize status code
    error = NO_ERROR;
@@ -910,7 +944,9 @@ error_t scpClientReadFile(ScpClientContext *context, void *data, size_t size,
 
    //Check parameters
    if(context == NULL || data == NULL || received == NULL)
+   {
       return ERROR_INVALID_PARAMETER;
+   }
 
    //Initialize status code
    error = NO_ERROR;
@@ -1011,7 +1047,9 @@ error_t scpClientCloseFile(ScpClientContext *context)
 
    //Make sure the SCP client context is valid
    if(context == NULL)
+   {
       return ERROR_INVALID_PARAMETER;
+   }
 
    //Initialize SCP directive
    osMemset(&directive, 0, sizeof(ScpDirective));
@@ -1182,7 +1220,9 @@ error_t scpClientDisconnect(ScpClientContext *context)
 
    //Make sure the SCP client context is valid
    if(context == NULL)
+   {
       return ERROR_INVALID_PARAMETER;
+   }
 
    //Initialize status code
    error = NO_ERROR;
@@ -1279,7 +1319,9 @@ error_t scpClientClose(ScpClientContext *context)
 {
    //Make sure the SCP client context is valid
    if(context == NULL)
+   {
       return ERROR_INVALID_PARAMETER;
+   }
 
    //Close network connection
    scpClientCloseConnection(context);

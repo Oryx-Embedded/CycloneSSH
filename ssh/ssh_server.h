@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.6.6
+ * @version 2.6.8
  **/
 
 #ifndef _SSH_SERVER_H
@@ -48,9 +48,16 @@
 
 //Idle connection timeout
 #ifndef SSH_SERVER_TIMEOUT
-   #define SSH_SERVER_TIMEOUT 60000
+   #define SSH_SERVER_TIMEOUT 120000
 #elif (SSH_SERVER_TIMEOUT < 1000)
    #error SSH_SERVER_TIMEOUT parameter is not valid
+#endif
+
+//Maximum time allowed for a client to authenticate
+#ifndef SSH_SERVER_AUTH_TIMEOUT
+   #define SSH_SERVER_AUTH_TIMEOUT 30000
+#elif (SSH_SERVER_AUTH_TIMEOUT < 1000)
+   #error SSH_SERVER_AUTH_TIMEOUT parameter is not valid
 #endif
 
 //SSH server tick interval
@@ -94,6 +101,7 @@ typedef struct
 #if (SSH_PUBLIC_KEY_AUTH_SUPPORT == ENABLED && SSH_CERT_SUPPORT == ENABLED)
    SshCertAuthCallback certAuthCallback;                         ///<Certificate authentication callback
    SshCaPublicKeyVerifyCallback caPublicKeyVerifyCallback;       ///<CA public key verification callback
+   bool_t certValidityCheck;                                     ///<Check the validity period of certificates
 #endif
 #if (SSH_PASSWORD_AUTH_SUPPORT == ENABLED)
    SshPasswordAuthCallback passwordAuthCallback;                 ///<Password authentication callback

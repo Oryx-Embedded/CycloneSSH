@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.6.6
+ * @version 2.6.8
  **/
 
 //Switch to the appropriate trace level
@@ -105,7 +105,9 @@ error_t sshParseEcdsaSignature(const uint8_t *data, size_t length,
    error = sshParseBinaryString(data, length, &signature->r);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    data += sizeof(uint32_t) + signature->r.length;
@@ -115,7 +117,9 @@ error_t sshParseEcdsaSignature(const uint8_t *data, size_t length,
    error = sshParseBinaryString(data, length, &signature->s);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    data += sizeof(uint32_t) + signature->s.length;
@@ -123,7 +127,9 @@ error_t sshParseEcdsaSignature(const uint8_t *data, size_t length,
 
    //Malformed signature?
    if(length != 0)
+   {
       return ERROR_INVALID_MESSAGE;
+   }
 
    //Successful processing
    return NO_ERROR;

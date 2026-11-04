@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.6.6
+ * @version 2.6.8
  **/
 
 //Switch to the appropriate trace level
@@ -61,7 +61,9 @@ error_t sftpFormatName(SftpVersion version, const SftpName *name,
       p, &n);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    p += n;
@@ -75,7 +77,9 @@ error_t sftpFormatName(SftpVersion version, const SftpName *name,
          (char_t *) p + 4, &n);
       //Any error to report?
       if(error)
+      {
          return error;
+      }
 
       //The string is preceded by a uint32 containing its length
       STORE32BE(n, p);
@@ -89,7 +93,9 @@ error_t sftpFormatName(SftpVersion version, const SftpName *name,
    error = sftpFormatAttributes(version, &name->attributes, p, &n);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Total number of bytes that have been written
    *written += n;
@@ -384,7 +390,9 @@ error_t sftpParseName(SftpVersion version, SftpName *name, const uint8_t *data,
    error = sshParseString(p, length, &name->filename);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    p += sizeof(uint32_t) + name->filename.length;
@@ -397,7 +405,9 @@ error_t sftpParseName(SftpVersion version, SftpName *name, const uint8_t *data,
       error = sshParseString(p, length, &name->longname);
       //Any error to report?
       if(error)
+      {
          return error;
+      }
 
       //Point to the next field
       p += sizeof(uint32_t) + name->longname.length;
@@ -408,7 +418,9 @@ error_t sftpParseName(SftpVersion version, SftpName *name, const uint8_t *data,
    error = sftpParseAttributes(version, &name->attributes, p, length, &n);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    p += n;
@@ -470,7 +482,9 @@ error_t sftpParseAttributes(SftpVersion version, SftpFileAttrs *attributes,
 
    //Malformed packet?
    if(length < sizeof(uint32_t))
+   {
       return ERROR_INVALID_PACKET;
+   }
 
    //The flags specify which of the fields are present
    attributes->flags = LOAD32BE(p);
@@ -485,7 +499,9 @@ error_t sftpParseAttributes(SftpVersion version, SftpFileAttrs *attributes,
    {
       //Malformed packet?
       if(length < sizeof(uint8_t))
+      {
          return ERROR_INVALID_PACKET;
+      }
 
       //The 'type' field is always present in version 4
       attributes->type = (SftpFileType) p[0];
@@ -505,7 +521,9 @@ error_t sftpParseAttributes(SftpVersion version, SftpFileAttrs *attributes,
    {
       //Malformed packet?
       if(length < sizeof(uint64_t))
+      {
          return ERROR_INVALID_PACKET;
+      }
 
       //The 'size' field specifies the size of the file in bytes
       attributes->size = LOAD64BE(p);
@@ -520,7 +538,9 @@ error_t sftpParseAttributes(SftpVersion version, SftpFileAttrs *attributes,
    {
       //Malformed packet?
       if(length < sizeof(uint32_t))
+      {
          return ERROR_INVALID_PACKET;
+      }
 
       //The 'uid' field contains numeric Unix-like user identifier
       attributes->uid = LOAD32BE(p);
@@ -531,7 +551,9 @@ error_t sftpParseAttributes(SftpVersion version, SftpFileAttrs *attributes,
 
       //Malformed packet?
       if(length < sizeof(uint32_t))
+      {
          return ERROR_INVALID_PACKET;
+      }
 
       //The 'gid' field contains numeric Unix-like group identifier
       attributes->gid = LOAD32BE(p);
@@ -546,7 +568,9 @@ error_t sftpParseAttributes(SftpVersion version, SftpFileAttrs *attributes,
    {
       //Malformed packet?
       if(length < sizeof(uint32_t))
+      {
          return ERROR_INVALID_PACKET;
+      }
 
       //The 'permissions' field contains a bit mask of file permissions
       attributes->permissions = LOAD32BE(p);
@@ -568,7 +592,9 @@ error_t sftpParseAttributes(SftpVersion version, SftpFileAttrs *attributes,
    {
       //Malformed packet?
       if(length < sizeof(uint32_t))
+      {
          return ERROR_INVALID_PACKET;
+      }
 
       //The 'atime' field contain the access time of the file
       time = LOAD32BE(p);
@@ -581,7 +607,9 @@ error_t sftpParseAttributes(SftpVersion version, SftpFileAttrs *attributes,
 
       //Malformed packet?
       if(length < sizeof(uint32_t))
+      {
          return ERROR_INVALID_PACKET;
+      }
 
       //The 'mtime' field contain the modification time of the file
       time = LOAD32BE(p);
@@ -598,7 +626,9 @@ error_t sftpParseAttributes(SftpVersion version, SftpFileAttrs *attributes,
    {
       //Malformed packet?
       if(length < sizeof(uint32_t))
+      {
          return ERROR_INVALID_PACKET;
+      }
 
       //Parse the 'extended_count' field
       extendedCount = LOAD32BE(p);
@@ -622,7 +652,9 @@ error_t sftpParseAttributes(SftpVersion version, SftpFileAttrs *attributes,
       error = sshParseString(p, length, &extendedType);
       //Any error to report?
       if(error)
+      {
          return error;
+      }
 
       //Point to the next field
       p += sizeof(uint32_t) + extendedType.length;
@@ -632,7 +664,9 @@ error_t sftpParseAttributes(SftpVersion version, SftpFileAttrs *attributes,
       error = sshParseString(p, length, &extendedData);
       //Any error to report?
       if(error)
+      {
          return error;
+      }
 
       //Point to the next field
       p += sizeof(uint32_t) + extendedData.length;

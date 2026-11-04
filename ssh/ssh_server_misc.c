@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.6.6
+ * @version 2.6.8
  **/
 
 //Switch to the appropriate trace level
@@ -68,24 +68,78 @@ void sshServerTick(SshServerContext *context)
       //Active connection?
       if(connection->state != SSH_CONN_STATE_CLOSED)
       {
-         //Check idle connection timeout (a value of zero means no timeout)
-         if(context->timeout != 0)
+         //Check authentication timeout
+         if(!connection->authenticated)
          {
-            //Disconnect inactive client after idle timeout
-            if(timeCompare(time, connection->timestamp + context->timeout) >= 0)
+            //The server should have a timeout for authentication and disconnect
+            //if the authentication has not been accepted within the timeout
+            //period (refer to RFC 4252, section 4)
+            if((time - connection->authTimestamp) >= SSH_SERVER_AUTH_TIMEOUT)
             {
                //Debug message
-               TRACE_INFO("SSH server: Closing inactive connection...\r\n");
+               TRACE_INFO("SSH server: Authentication timeout...\r\n");
 
-               //Send an SSH_MSG_DISCONNECT message
-               error = sshSendDisconnect(connection, SSH_DISCONNECT_BY_APPLICATION,
-                  "Session idle timeout");
+               //Check connection state
+               if(connection->state != SSH_CONN_STATE_CLIENT_ID &&
+                  connection->state != SSH_CONN_STATE_SERVER_ID &&
+                  connection->state != SSH_CONN_STATE_DISCONNECT &&
+                  connection->txBufferLen == 0 &&
+                  connection->rxBufferLen == 0 &&
+                  connection->rxBufferPos == 0)
+               {
+                  //Send an SSH_MSG_DISCONNECT message
+                  error = sshSendDisconnect(connection,
+                     SSH_DISCONNECT_BY_APPLICATION, "Authentication timeout");
+               }
+               else
+               {
+                  //A partially sent or received packet cannot be interrupted
+                  //without corrupting the stream
+                  error = ERROR_FAILURE;
+               }
 
                //Failed to send message?
                if(error)
                {
-                  //Close the SSH connection
+                  //Close the SSH connection immediately
                   sshCloseConnection(connection);
+               }
+            }
+         }
+         else
+         {
+            //Check idle connection timeout (a value of zero means no timeout)
+            if(context->timeout != 0)
+            {
+               //Disconnect inactive clients after idle timeout
+               if((time - connection->timestamp) >= context->timeout)
+               {
+                  //Debug message
+                  TRACE_INFO("SSH server: Closing inactive connection...\r\n");
+
+                  //Check connection state
+                  if(connection->state != SSH_CONN_STATE_DISCONNECT &&
+                     connection->txBufferLen == 0 &&
+                     connection->rxBufferLen == 0 &&
+                     connection->rxBufferPos == 0)
+                  {
+                     //Send an SSH_MSG_DISCONNECT message
+                     error = sshSendDisconnect(connection,
+                        SSH_DISCONNECT_BY_APPLICATION, "Session idle timeout");
+                  }
+                  else
+                  {
+                     //A partially sent or received packet cannot be interrupted
+                     //without corrupting the stream
+                     error = ERROR_FAILURE;
+                  }
+
+                  //Failed to send message?
+                  if(error)
+                  {
+                     //Close the SSH connection immediately
+                     sshCloseConnection(connection);
+                  }
                }
             }
          }

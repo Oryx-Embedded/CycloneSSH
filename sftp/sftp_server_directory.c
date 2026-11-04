@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.6.6
+ * @version 2.6.8
  **/
 
 //Switch to the appropriate trace level
@@ -66,13 +66,17 @@ error_t sftpServerCreateDir(SftpServerSession *session,
       SFTP_SERVER_MAX_PATH_LEN);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Retrieve permissions for the specified directory
    perm = sftpServerGetFilePermissions(session, context->path);
    //Insufficient access rights?
    if((perm & SFTP_FILE_PERM_WRITE) == 0)
+   {
       return ERROR_ACCESS_DENIED;
+   }
 
    //Create the specified directory
    error = fsCreateDir(context->path);
@@ -104,13 +108,17 @@ error_t sftpServerRemoveDir(SftpServerSession *session,
       SFTP_SERVER_MAX_PATH_LEN);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Retrieve permissions for the specified directory
    perm = sftpServerGetFilePermissions(session, context->path);
    //Insufficient access rights?
    if((perm & SFTP_FILE_PERM_WRITE) == 0)
+   {
       return ERROR_ACCESS_DENIED;
+   }
 
    //Remove the specified directory
    error = fsRemoveDir(context->path);
@@ -132,7 +140,6 @@ error_t sftpServerOpenDir(SftpServerSession *session,
    const SshString *path, uint32_t *handle)
 {
    error_t error;
-   uint_t i;
    uint_t perm;
    SftpServerContext *context;
    SftpFileObject *fileObject;
@@ -145,29 +152,23 @@ error_t sftpServerOpenDir(SftpServerSession *session,
       SFTP_SERVER_MAX_PATH_LEN);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Retrieve permissions for the specified directory
    perm = sftpServerGetFilePermissions(session, context->path);
    //Insufficient access rights?
    if((perm & SFTP_FILE_PERM_READ) == 0)
-      return ERROR_ACCESS_DENIED;
-
-   //Loop through file objects
-   for(i = 0; i < context->numFileObjects; i++)
    {
-      //Point to the current file object
-      fileObject = &context->fileObjects[i];
-
-      //Unused file object?
-      if(fileObject->type == SSH_FILEXFER_TYPE_INVALID)
-      {
-         break;
-      }
+      return ERROR_ACCESS_DENIED;
    }
 
-   //Any file object available for use?
-   if(i < context->numFileObjects)
+   //Allocate a new file object
+   fileObject = sftpServerAllocateFileObject(session);
+
+   //Any file object available for this connection?
+   if(fileObject != NULL)
    {
       //Open the specified directory
       fileObject->dir = fsOpenDir(context->path);
@@ -203,7 +204,8 @@ error_t sftpServerOpenDir(SftpServerSession *session,
    }
    else
    {
-      //The file object table runs out of space
+      //The file object table runs out of space, or the connection has reached
+      //its file object limit
       error = ERROR_OUT_OF_RESOURCES;
    }
 
@@ -243,7 +245,9 @@ error_t sftpServerReadDir(SftpServerSession *session,
    fileObject = sftpServerFindDir(session, handle);
    //Invalid handle?
    if(fileObject == NULL)
+   {
       return ERROR_INVALID_HANDLE;
+   }
 
    //Loop through the directory
    while(!error)

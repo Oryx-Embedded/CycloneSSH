@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.6.6
+ * @version 2.6.8
  **/
 
 //Switch to the appropriate trace level
@@ -235,7 +235,9 @@ error_t sshFormatKexRsaPubKey(SshConnection *connection, uint8_t *p,
    error = sshFormatHostKey(connection, p + sizeof(uint32_t), &n);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //The octet string value is preceded by a uint32 containing its length
    STORE32BE(n, p);
@@ -248,13 +250,17 @@ error_t sshFormatKexRsaPubKey(SshConnection *connection, uint8_t *p,
    error = sshFormatTransientRsaPublicKey(connection, p + sizeof(uint32_t), &n);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Update exchange hash H with K_T (transient RSA public key)
    error = sshUpdateExchangeHash(connection, p + sizeof(uint32_t), n);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //The octet string value is preceded by a uint32 containing its length
    STORE32BE(n, p);
@@ -302,13 +308,17 @@ error_t sshFormatKexRsaSecret(SshConnection *connection,
       p + sizeof(uint32_t), &n);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Update exchange hash H with the encrypted secret
    error = sshUpdateExchangeHash(connection, p + sizeof(uint32_t), n);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //The octet string value is preceded by a uint32 containing its length
    STORE32BE(n, p);
@@ -355,14 +365,18 @@ error_t sshFormatKexRsaDone(SshConnection *connection, uint8_t *p,
       connection->kLen);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Compute the signature on the exchange hash
    error = sshGenerateExchangeHashSignature(connection, p + sizeof(uint32_t),
       &n);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //The octet string value is preceded by a uint32 containing its length
    STORE32BE(n, p);
@@ -403,15 +417,21 @@ error_t sshParseKexRsaPubKey(SshConnection *connection, const uint8_t *message,
 
    //Check operation mode
    if(connection->context->mode != SSH_OPERATION_MODE_CLIENT)
+   {
       return ERROR_UNEXPECTED_MESSAGE;
+   }
 
    //Check connection state
    if(connection->state != SSH_CONN_STATE_KEX_RSA_PUB_KEY)
+   {
       return ERROR_UNEXPECTED_MESSAGE;
+   }
 
    //Sanity check
    if(length < sizeof(uint8_t))
+   {
       return ERROR_INVALID_MESSAGE;
+   }
 
    //Point to the first field of the message
    p = message + sizeof(uint8_t);
@@ -422,7 +442,9 @@ error_t sshParseKexRsaPubKey(SshConnection *connection, const uint8_t *message,
    error = sshParseBinaryString(p, length, &hostKey);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    p += sizeof(uint32_t) + hostKey.length;
@@ -432,7 +454,9 @@ error_t sshParseKexRsaPubKey(SshConnection *connection, const uint8_t *message,
    error = sshParseBinaryString(p, length, &transientRsaPublicKey);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    p += sizeof(uint32_t) + transientRsaPublicKey.length;
@@ -440,7 +464,9 @@ error_t sshParseKexRsaPubKey(SshConnection *connection, const uint8_t *message,
 
    //Malformed message?
    if(length != 0)
+   {
       return ERROR_INVALID_MESSAGE;
+   }
 
    //Get the selected server's host key algorithm
    hostKeyAlgo.value = connection->serverHostKeyAlgo;
@@ -464,13 +490,17 @@ error_t sshParseKexRsaPubKey(SshConnection *connection, const uint8_t *message,
    //from the server by sending an SSH_DISCONNECT_HOST_KEY_NOT_VERIFIABLE
    //message
    if(error)
+   {
       return ERROR_INVALID_KEY;
+   }
 
    //Allocate a buffer to store the server's host key
    connection->serverHostKey = sshAllocMem(hostKey.length);
    //Failed to allocate memory?
    if(connection->serverHostKey == NULL)
+   {
       return ERROR_OUT_OF_MEMORY;
+   }
 
    //The server's host key will be used to verify the signature in the
    //SSH_MSG_KEXRSA_DONE message
@@ -481,14 +511,18 @@ error_t sshParseKexRsaPubKey(SshConnection *connection, const uint8_t *message,
    error = sshUpdateExchangeHash(connection, hostKey.value, hostKey.length);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Update exchange hash H with K_T (transient RSA public key)
    error = sshUpdateExchangeHash(connection, transientRsaPublicKey.value,
       transientRsaPublicKey.length);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //The client responds with an SSH_MSG_KEXRSA_SECRET message
    return sshSendKexRsaSecret(connection, &transientRsaPublicKey);
@@ -521,15 +555,21 @@ error_t sshParseKexRsaSecret(SshConnection *connection, const uint8_t *message,
 
    //Check operation mode
    if(connection->context->mode != SSH_OPERATION_MODE_SERVER)
+   {
       return ERROR_UNEXPECTED_MESSAGE;
+   }
 
    //Check connection state
    if(connection->state != SSH_CONN_STATE_KEX_RSA_SECRET)
+   {
       return ERROR_UNEXPECTED_MESSAGE;
+   }
 
    //Sanity check
    if(length < sizeof(uint8_t))
+   {
       return ERROR_INVALID_MESSAGE;
+   }
 
    //Point to the first field of the message
    p = message + sizeof(uint8_t);
@@ -540,7 +580,9 @@ error_t sshParseKexRsaSecret(SshConnection *connection, const uint8_t *message,
    error = sshParseBinaryString(p, length, &encryptedSecret);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    p += sizeof(uint32_t) + encryptedSecret.length;
@@ -548,14 +590,18 @@ error_t sshParseKexRsaSecret(SshConnection *connection, const uint8_t *message,
 
    //Malformed message?
    if(length != 0)
+   {
       return ERROR_INVALID_MESSAGE;
+   }
 
    //Update exchange hash H with the encrypted secret
    error = sshUpdateExchangeHash(connection, encryptedSecret.value,
       encryptedSecret.length);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //The server decrypts K using RSAES-OAEP
    error = sshDecryptSharedSecret(connection, encryptedSecret.value,
@@ -607,15 +653,21 @@ error_t sshParseKexRsaDone(SshConnection *connection, const uint8_t *message,
 
    //Check operation mode
    if(connection->context->mode != SSH_OPERATION_MODE_CLIENT)
+   {
       return ERROR_UNEXPECTED_MESSAGE;
+   }
 
    //Check connection state
    if(connection->state != SSH_CONN_STATE_KEX_RSA_DONE)
+   {
       return ERROR_UNEXPECTED_MESSAGE;
+   }
 
    //Sanity check
    if(length < sizeof(uint8_t))
+   {
       return ERROR_INVALID_MESSAGE;
+   }
 
    //Point to the first field of the message
    p = message + sizeof(uint8_t);
@@ -626,7 +678,9 @@ error_t sshParseKexRsaDone(SshConnection *connection, const uint8_t *message,
    error = sshParseBinaryString(p, length, &signature);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    p += sizeof(uint32_t) + signature.length;
@@ -634,14 +688,18 @@ error_t sshParseKexRsaDone(SshConnection *connection, const uint8_t *message,
 
    //Malformed message?
    if(length != 0)
+   {
       return ERROR_INVALID_MESSAGE;
+   }
 
    //Update exchange hash H with K (shared secret)
    error = sshUpdateExchangeHashRaw(connection, connection->k,
       connection->kLen);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Get server's host key
    hostKey.value = connection->serverHostKey;
@@ -651,7 +709,9 @@ error_t sshParseKexRsaDone(SshConnection *connection, const uint8_t *message,
    error = sshVerifyExchangeHashSignature(connection, &hostKey, &signature);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Release server's host key
    sshFreeMem(connection->serverHostKey);
@@ -901,52 +961,83 @@ error_t sshEncryptSharedSecret(SshConnection *connection,
       //Make sure the length of the RSA modulus is acceptable
       if(kLen >= SSH_MIN_RSA_MODULUS_SIZE && kLen <= SSH_MAX_RSA_MODULUS_SIZE)
       {
-         //Determine the length of the shared secret
-         connection->kLen = (kLen + 7) / 8;
-         connection->kLen -= (2 * connection->hashAlgo->digestSize) + 6;
-
-         //Generate a random integer K
-         error = context->prngAlgo->generate(context->prngContext,
-            connection->k, connection->kLen);
-
-         //Check status code
-         if(!error)
+         //The modulus of K_T must be at least MINKLEN bits long
+         if(sshCompareAlgo(connection->kexAlgo, "rsa1024-sha1"))
          {
-            //The mpint encoding of K requires a leading zero bit and padding
-            //to a whole number of bytes
-            n = (kLen + 7) % 8;
-
-            //Ensure K is in the range 0 <= K < 2^(KLEN-2*HLEN-49)
-            if(n != 0)
+            //The "rsa1024-sha1" method specifies a minimum RSA modulus length
+            //of 1024 bits (refer to RFC 4432, section 5)
+            if(kLen < 1024)
             {
-               connection->k[0] &= (1 << n) - 1;
+               //Report an error
+               error = ERROR_INVALID_KEY;
             }
-
-            //Log shared secret (for debugging purpose only)
-            sshDumpKey(connection, "SHARED_SECRET", connection->k,
-               connection->kLen);
-
-            //Convert the shared secret K to mpint representation
-            error = sshConvertArrayToMpint(connection->k, connection->kLen,
-               connection->k, &connection->kLen);
          }
-
-         //Check status code
-         if(!error)
+         else if(sshCompareAlgo(connection->kexAlgo, "rsa2048-sha256"))
          {
-            //The encryption is performed according to the RSAES-OAEP scheme,
-            //with a mask generation function of MGF1-with-HASH, a hash of
-            //HASH, and an empty label (refer to RFC 4432, section 4)
-            error  = rsaesOaepEncrypt(context->prngAlgo, context->prngContext,
-               &rsaPublicKey, connection->hashAlgo, connection->hashAlgo, NULL,
-               0, connection->k, connection->kLen, encryptedSecret,
-               encryptedSecretLen);
+            //The "rsa2048-sha256" method specifies a minimum RSA modulus length
+            //of 2048 bits (refer to RFC 4432, section 6)
+            if(kLen < 2048)
+            {
+               //Report an error
+               error = ERROR_INVALID_KEY;
+            }
+         }
+         else
+         {
+            //Unknown key exchange algorithm
+            error = ERROR_UNSUPPORTED_KEY_EXCH_ALGO;
          }
       }
       else
       {
          //Report an error
          error = ERROR_INVALID_KEY;
+      }
+   }
+
+   //Check status code
+   if(!error)
+   {
+      //Determine the length of the shared secret
+      connection->kLen = (kLen + 7) / 8;
+      connection->kLen -= (2 * connection->hashAlgo->digestSize) + 6;
+
+      //Generate a random integer K
+      error = context->prngAlgo->generate(context->prngContext,
+         connection->k, connection->kLen);
+
+      //Check status code
+      if(!error)
+      {
+         //The mpint encoding of K requires a leading zero bit and padding to a
+         //whole number of bytes
+         n = (kLen + 7) % 8;
+
+         //Ensure K is in the range 0 <= K < 2^(KLEN-2*HLEN-49)
+         if(n != 0)
+         {
+            connection->k[0] &= (1 << n) - 1;
+         }
+
+         //Log shared secret (for debugging purpose only)
+         sshDumpKey(connection, "SHARED_SECRET", connection->k,
+            connection->kLen);
+
+         //Convert the shared secret K to mpint representation
+         error = sshConvertArrayToMpint(connection->k, connection->kLen,
+            connection->k, &connection->kLen);
+      }
+
+      //Check status code
+      if(!error)
+      {
+         //The encryption is performed according to the RSAES-OAEP scheme, with
+         //a mask generation function of MGF1-with-HASH, a hash of HASH, and an
+         //empty label (refer to RFC 4432, section 4)
+         error = rsaesOaepEncrypt(context->prngAlgo, context->prngContext,
+            &rsaPublicKey, connection->hashAlgo, connection->hashAlgo, NULL, 0,
+            connection->k, connection->kLen, encryptedSecret,
+            encryptedSecretLen);
       }
    }
 

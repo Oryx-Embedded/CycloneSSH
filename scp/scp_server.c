@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.6.6
+ * @version 2.6.8
  **/
 
 //Switch to the appropriate trace level
@@ -89,7 +89,9 @@ error_t scpServerInit(ScpServerContext *context,
 
    //Ensure the parameters are valid
    if(context == NULL || settings == NULL)
+   {
       return ERROR_INVALID_PARAMETER;
+   }
 
    //Invalid SCP sessions?
    if(settings->sessions == NULL || settings->numSessions < 1 ||
@@ -167,14 +169,18 @@ error_t scpServerStart(ScpServerContext *context)
 
    //Make sure the SCP server context is valid
    if(context == NULL)
+   {
       return ERROR_INVALID_PARAMETER;
+   }
 
    //Debug message
    TRACE_INFO("Starting SCP server...\r\n");
 
    //Make sure the SCP server is not already running
    if(context->running)
+   {
       return ERROR_ALREADY_RUNNING;
+   }
 
    //Register channel request processing callback
    error = sshServerRegisterChannelRequestCallback(context->sshServerContext,
@@ -226,7 +232,9 @@ error_t scpServerStop(ScpServerContext *context)
 
    //Make sure the SCP server context is valid
    if(context == NULL)
+   {
       return ERROR_INVALID_PARAMETER;
+   }
 
    //Debug message
    TRACE_INFO("Stopping SCP server...\r\n");
@@ -281,7 +289,9 @@ error_t scpServerSetRootDir(ScpServerSession *session, const char_t *rootDir)
 
    //Check parameters
    if(session == NULL || rootDir == NULL)
+   {
       return ERROR_INVALID_PARAMETER;
+   }
 
    //Point to the SCP server context
    context = session->context;
@@ -315,7 +325,9 @@ error_t scpServerSetHomeDir(ScpServerSession *session, const char_t *homeDir)
 
    //Check parameters
    if(session == NULL || homeDir == NULL)
+   {
       return ERROR_INVALID_PARAMETER;
+   }
 
    //Point to the SCP server context
    context = session->context;

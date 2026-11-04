@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.6.6
+ * @version 2.6.8
  **/
 
 //Switch to the appropriate trace level
@@ -89,8 +89,8 @@ error_t sshSendGlobalRequest(SshConnection *connection,
       }
       else
       {
-         //The recipient will not respond to the request
-         connection->requestState = SSH_REQUEST_STATE_IDLE;
+         //If not, the request state is left untouched so that a reply still
+         //awaited for a previous request is processed normally
       }
    }
 
@@ -217,8 +217,8 @@ error_t sshSendChannelRequest(SshChannel *channel, const char_t *requestType,
       }
       else
       {
-         //The recipient will not respond to the request
-         channel->requestState = SSH_REQUEST_STATE_IDLE;
+         //If not, the request state is left untouched so that a reply still
+         //awaited for a previous request is processed normally
       }
    }
 
@@ -258,13 +258,6 @@ error_t sshSendChannelSuccess(SshChannel *channel)
 
       //Send message
       error = sshSendPacket(connection, message, length);
-   }
-
-   //Check status code
-   if(!error)
-   {
-      //An SSH_MSG_CHANNEL_SUCCESS message has been successfully sent
-      channel->channelSuccessSent = TRUE;
    }
 
    //Return status code
@@ -342,7 +335,9 @@ error_t sshFormatGlobalRequest(SshConnection *connection,
    error = sshFormatString(requestName, p, &n);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    p += n;
@@ -405,7 +400,9 @@ error_t sshFormatTcpIpFwdParams(const SshTcpIpFwdParams *params,
 
    //Check parameters
    if(params == NULL)
+   {
       return ERROR_INVALID_PARAMETER;
+   }
 
    //Total length of the request specific data
    *written = 0;
@@ -416,7 +413,9 @@ error_t sshFormatTcpIpFwdParams(const SshTcpIpFwdParams *params,
       params->addrToBind.length, p, &n);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    p += n;
@@ -450,7 +449,9 @@ error_t sshFormatCancelTcpIpFwdParams(const SshCancelTcpIpFwdParams *params,
 
    //Check parameters
    if(params == NULL)
+   {
       return ERROR_INVALID_PARAMETER;
+   }
 
    //Total length of the request specific data
    *written = 0;
@@ -460,7 +461,9 @@ error_t sshFormatCancelTcpIpFwdParams(const SshCancelTcpIpFwdParams *params,
       params->addrToBind.length, p, &n);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    p += n;
@@ -490,7 +493,9 @@ error_t sshFormatElevationParams(const SshElevationParams *params,
 {
    //Check parameters
    if(params == NULL)
+   {
       return ERROR_INVALID_PARAMETER;
+   }
 
    //The server use the 'elevation performed' field to indicates to the client
    //whether elevation was done
@@ -587,7 +592,9 @@ error_t sshFormatChannelRequest(SshChannel *channel, const char_t *requestType,
    error = sshFormatString(requestType, p, &n);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    p += n;
@@ -675,7 +682,9 @@ error_t sshFormatPtyReqParams(const SshPtyReqParams *params,
 
    //Check parameters
    if(params == NULL)
+   {
       return ERROR_INVALID_PARAMETER;
+   }
 
    //Total length of the request specific data
    *written = 0;
@@ -685,7 +694,9 @@ error_t sshFormatPtyReqParams(const SshPtyReqParams *params,
       params->termEnvVar.length, p, &n);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    p += n;
@@ -724,7 +735,9 @@ error_t sshFormatPtyReqParams(const SshPtyReqParams *params,
       params->termModes.length, p, &n);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Total number of bytes that have been written
    *written += n;
@@ -749,7 +762,9 @@ error_t sshFormatExecParams(const SshExecParams *params,
 
    //Check parameters
    if(params == NULL)
+   {
       return ERROR_INVALID_PARAMETER;
+   }
 
    //Set command line
    error = sshFormatBinaryString(params->command.value,
@@ -775,7 +790,9 @@ error_t sshFormatSubsystemParams(const SshSubsystemParams *params,
 
    //Check parameters
    if(params == NULL)
+   {
       return ERROR_INVALID_PARAMETER;
+   }
 
    //Set subsystem name
    error = sshFormatBinaryString(params->subsystemName.value,
@@ -799,7 +816,9 @@ error_t sshFormatWindowChangeParams(const SshWindowChangeParams *params,
 {
    //Check parameters
    if(params == NULL)
+   {
       return ERROR_INVALID_PARAMETER;
+   }
 
    //Total length of the request specific data
    *written = 0;
@@ -851,7 +870,9 @@ error_t sshFormatSignalParams(const SshSignalParams *params,
 
    //Check parameters
    if(params == NULL)
+   {
       return ERROR_INVALID_PARAMETER;
+   }
 
    //Set signal name
    error = sshFormatBinaryString(params->signalName.value,
@@ -875,7 +896,9 @@ error_t sshFormatExitStatusParams(const SshExitStatusParams *params,
 {
    //Check parameters
    if(params == NULL)
+   {
       return ERROR_INVALID_PARAMETER;
+   }
 
    //Set exit status
    STORE32BE(params->exitStatus, p);
@@ -901,7 +924,9 @@ error_t sshFormatBreakParams(const SshBreakParams *params,
 {
    //Check parameters
    if(params == NULL)
+   {
       return ERROR_INVALID_PARAMETER;
+   }
 
    //Set break length (in milliseconds)
    STORE32BE(params->breakLen, p);
@@ -1005,11 +1030,15 @@ error_t sshParseGlobalRequest(SshConnection *connection,
 
    //Check connection state
    if(connection->state != SSH_CONN_STATE_OPEN)
+   {
       return ERROR_UNEXPECTED_MESSAGE;
+   }
 
    //Sanity check
    if(length < sizeof(uint8_t))
+   {
       return ERROR_INVALID_MESSAGE;
+   }
 
    //Point to the first field of the message
    p = message + sizeof(uint8_t);
@@ -1020,7 +1049,9 @@ error_t sshParseGlobalRequest(SshConnection *connection,
    error = sshParseString(p, length, &requestName);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    p += sizeof(uint32_t) + requestName.length;
@@ -1028,7 +1059,9 @@ error_t sshParseGlobalRequest(SshConnection *connection,
 
    //Malformed message?
    if(length < sizeof(uint8_t))
+   {
       return ERROR_INVALID_MESSAGE;
+   }
 
    //Decode want_reply field
    wantReply = p[0];
@@ -1105,7 +1138,9 @@ error_t sshParseTcpIpFwdParams(const uint8_t *p, size_t length,
    error = sshParseString(p, length, &params->addrToBind);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    p += sizeof(uint32_t) + params->addrToBind.length;
@@ -1113,7 +1148,9 @@ error_t sshParseTcpIpFwdParams(const uint8_t *p, size_t length,
 
    //Malformed message?
    if(length != sizeof(uint32_t))
+   {
       return ERROR_INVALID_MESSAGE;
+   }
 
    //The 'port number to bind' field specifies the port on which connections
    //for forwarding are to be accepted
@@ -1121,7 +1158,9 @@ error_t sshParseTcpIpFwdParams(const uint8_t *p, size_t length,
 
    //Invalid port number?
    if(params->portNumToBind > SSH_MAX_PORT_NUM)
+   {
       return ERROR_INVALID_PORT;
+   }
 
    //Debug message
    TRACE_INFO("  Address To Bind = %s\r\n", params->addrToBind.value);
@@ -1149,7 +1188,9 @@ error_t sshParseCancelTcpIpFwdParams(const uint8_t *p, size_t length,
    error = sshParseString(p, length, &params->addrToBind);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    p += sizeof(uint32_t) + params->addrToBind.length;
@@ -1157,14 +1198,18 @@ error_t sshParseCancelTcpIpFwdParams(const uint8_t *p, size_t length,
 
    //Malformed message?
    if(length != sizeof(uint32_t))
+   {
       return ERROR_INVALID_MESSAGE;
+   }
 
    //Parse 'port number to bind' field
    params->portNumToBind = LOAD32BE(p);
 
    //Invalid port number?
    if(params->portNumToBind > SSH_MAX_PORT_NUM)
+   {
       return ERROR_INVALID_PORT;
+   }
 
    //Debug message
    TRACE_INFO("  Address To Bind = %s\r\n", params->addrToBind.value);
@@ -1188,7 +1233,9 @@ error_t sshParseElevationParams(const uint8_t *p, size_t length,
 {
    //Malformed message?
    if(length != sizeof(uint8_t))
+   {
       return ERROR_INVALID_MESSAGE;
+   }
 
    //The server use the 'elevation performed' field to indicates to the client
    //whether elevation was done
@@ -1216,15 +1263,21 @@ error_t sshParseRequestSuccess(SshConnection *connection,
 
    //Check connection state
    if(connection->state != SSH_CONN_STATE_OPEN)
+   {
       return ERROR_UNEXPECTED_MESSAGE;
+   }
 
    //Sanity check
    if(length < sizeof(uint8_t))
+   {
       return ERROR_INVALID_MESSAGE;
+   }
 
    //Check global request state
    if(connection->requestState != SSH_REQUEST_STATE_PENDING)
+   {
       return ERROR_UNEXPECTED_MESSAGE;
+   }
 
    //Update global request state
    connection->requestState = SSH_REQUEST_STATE_SUCCESS;
@@ -1251,15 +1304,21 @@ error_t sshParseRequestFailure(SshConnection *connection,
 
    //Check connection state
    if(connection->state != SSH_CONN_STATE_OPEN)
+   {
       return ERROR_UNEXPECTED_MESSAGE;
+   }
 
    //Malformed message?
    if(length != sizeof(uint8_t))
+   {
       return ERROR_INVALID_MESSAGE;
+   }
 
    //Check global request state
    if(connection->requestState != SSH_REQUEST_STATE_PENDING)
+   {
       return ERROR_UNEXPECTED_MESSAGE;
+   }
 
    //Update global request state
    connection->requestState = SSH_REQUEST_STATE_FAILURE;
@@ -1298,11 +1357,15 @@ error_t sshParseChannelRequest(SshConnection *connection,
 
    //Check connection state
    if(connection->state != SSH_CONN_STATE_OPEN)
+   {
       return ERROR_UNEXPECTED_MESSAGE;
+   }
 
    //Sanity check
    if(length < sizeof(uint8_t))
+   {
       return ERROR_INVALID_MESSAGE;
+   }
 
    //Point to the first field of the message
    p = message + sizeof(uint8_t);
@@ -1311,7 +1374,9 @@ error_t sshParseChannelRequest(SshConnection *connection,
 
    //Malformed message?
    if(length < sizeof(uint32_t))
+   {
       return ERROR_INVALID_MESSAGE;
+   }
 
    //Get recipient channel number
    recipientChannel = LOAD32BE(p);
@@ -1324,7 +1389,9 @@ error_t sshParseChannelRequest(SshConnection *connection,
    error = sshParseString(p, length, &requestType);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    p += sizeof(uint32_t) + requestType.length;
@@ -1332,7 +1399,9 @@ error_t sshParseChannelRequest(SshConnection *connection,
 
    //Malformed message?
    if(length < sizeof(uint8_t))
+   {
       return ERROR_INVALID_MESSAGE;
+   }
 
    //Decode want_reply field
    wantReply = p[0];
@@ -1353,19 +1422,45 @@ error_t sshParseChannelRequest(SshConnection *connection,
       //Check channel state
       if(channel->state == SSH_CHANNEL_STATE_OPEN && !channel->closeReceived)
       {
-         //Initialize status code
-         error = ERROR_UNKNOWN_REQUEST;
-
-         //Multiple callbacks may be registered
-         for(i = 0; i < SSH_MAX_CHANNEL_REQ_CALLBACKS &&
-            error == ERROR_UNKNOWN_REQUEST; i++)
+         //Only one of the "shell", "exec" and "subsystem" requests can succeed
+         //per channel (refer to RFC 4254, section 6.5)
+         if((sshCompareString(&requestType, "shell") ||
+            sshCompareString(&requestType, "exec") ||
+            sshCompareString(&requestType, "subsystem")) &&
+            channel->serviceStarted)
          {
-            //Valid callback function?
-            if(context->channelReqCallback[i] != NULL)
+            //Reject the request without invoking the callbacks
+            error = ERROR_WRONG_STATE;
+         }
+         else
+         {
+            //Initialize status code
+            error = ERROR_UNKNOWN_REQUEST;
+
+            //Multiple callbacks may be registered
+            for(i = 0; i < SSH_MAX_CHANNEL_REQ_CALLBACKS &&
+               error == ERROR_UNKNOWN_REQUEST; i++)
             {
-               //Process channel request
-               error = context->channelReqCallback[i](channel, &requestType, p,
-                  length, context->channelReqParam[i]);
+               //Valid callback function?
+               if(context->channelReqCallback[i] != NULL)
+               {
+                  //Process channel request
+                  error = context->channelReqCallback[i](channel, &requestType,
+                     p, length, context->channelReqParam[i]);
+               }
+            }
+
+            //Check status code
+            if(!error)
+            {
+               //Check whether a "shell", "exec" or "subsystem" request has
+               //succeeded
+               if(sshCompareString(&requestType, "shell") ||
+                  sshCompareString(&requestType, "exec") ||
+                  sshCompareString(&requestType, "subsystem"))
+               {
+                  channel->serviceStarted = TRUE;
+               }
             }
          }
 
@@ -1430,7 +1525,9 @@ error_t sshParsePtyReqParams(const uint8_t *p, size_t length,
    error = sshParseString(p, length, &params->termEnvVar);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    p += sizeof(uint32_t) + params->termEnvVar.length;
@@ -1438,7 +1535,9 @@ error_t sshParsePtyReqParams(const uint8_t *p, size_t length,
 
    //Malformed request?
    if(length < sizeof(uint32_t))
+   {
       return ERROR_INVALID_MESSAGE;
+   }
 
    //Get terminal width (in characters)
    params->termWidthChars = LOAD32BE(p);
@@ -1449,7 +1548,9 @@ error_t sshParsePtyReqParams(const uint8_t *p, size_t length,
 
    //Malformed request?
    if(length < sizeof(uint32_t))
+   {
       return ERROR_INVALID_MESSAGE;
+   }
 
    //Get terminal height (in rows)
    params->termHeightRows = LOAD32BE(p);
@@ -1460,7 +1561,9 @@ error_t sshParsePtyReqParams(const uint8_t *p, size_t length,
 
    //Malformed request?
    if(length < sizeof(uint32_t))
+   {
       return ERROR_INVALID_MESSAGE;
+   }
 
    //Get terminal width (in pixels)
    params->termWidthPixels = LOAD32BE(p);
@@ -1471,7 +1574,9 @@ error_t sshParsePtyReqParams(const uint8_t *p, size_t length,
 
    //Malformed request?
    if(length < sizeof(uint32_t))
+   {
       return ERROR_INVALID_MESSAGE;
+   }
 
    //Get terminal height (in pixels)
    params->termHeightPixels = LOAD32BE(p);
@@ -1484,11 +1589,15 @@ error_t sshParsePtyReqParams(const uint8_t *p, size_t length,
    error = sshParseBinaryString(p, length, &params->termModes);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Malformed request?
    if(length != (sizeof(uint32_t) + params->termModes.length))
+   {
       return ERROR_INVALID_MESSAGE;
+   }
 
    //Debug message
    TRACE_INFO("  Term Width (chars) = %" PRIu32 "\r\n", params->termWidthChars);
@@ -1518,11 +1627,15 @@ error_t sshParseExecParams(const uint8_t *p, size_t length,
    error = sshParseString(p, length, &params->command);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Malformed request?
    if(length != (sizeof(uint32_t) + params->command.length))
+   {
       return ERROR_INVALID_MESSAGE;
+   }
 
    //Successful processing
    return NO_ERROR;
@@ -1596,11 +1709,15 @@ error_t sshParseSubsystemParams(const uint8_t *p, size_t length,
    error = sshParseString(p, length, &params->subsystemName);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Malformed request?
    if(length != (sizeof(uint32_t) + params->subsystemName.length))
+   {
       return ERROR_INVALID_MESSAGE;
+   }
 
    //Successful processing
    return NO_ERROR;
@@ -1620,7 +1737,9 @@ error_t sshParseWindowChangeParams(const uint8_t *p, size_t length,
 {
    //Malformed request?
    if(length < sizeof(uint32_t))
+   {
       return ERROR_INVALID_MESSAGE;
+   }
 
    //Get terminal width (in characters)
    params->termWidthChars = LOAD32BE(p);
@@ -1631,7 +1750,9 @@ error_t sshParseWindowChangeParams(const uint8_t *p, size_t length,
 
    //Malformed request?
    if(length < sizeof(uint32_t))
+   {
       return ERROR_INVALID_MESSAGE;
+   }
 
    //Get terminal height (in rows)
    params->termHeightRows = LOAD32BE(p);
@@ -1642,7 +1763,9 @@ error_t sshParseWindowChangeParams(const uint8_t *p, size_t length,
 
    //Malformed request?
    if(length < sizeof(uint32_t))
+   {
       return ERROR_INVALID_MESSAGE;
+   }
 
    //Get terminal width (in pixels)
    params->termWidthPixels = LOAD32BE(p);
@@ -1653,7 +1776,9 @@ error_t sshParseWindowChangeParams(const uint8_t *p, size_t length,
 
    //Malformed request?
    if(length != sizeof(uint32_t))
+   {
       return ERROR_INVALID_MESSAGE;
+   }
 
    //Get terminal height (in pixels)
    params->termHeightPixels = LOAD32BE(p);
@@ -1686,11 +1811,15 @@ error_t sshParseSignalParams(const uint8_t *p, size_t length,
    error = sshParseString(p, length, &params->signalName);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Malformed request?
    if(length != (sizeof(uint32_t) + params->signalName.length))
+   {
       return ERROR_INVALID_MESSAGE;
+   }
 
    //Successful processing
    return NO_ERROR;
@@ -1710,7 +1839,9 @@ error_t sshParseExitStatusParams(const uint8_t *p, size_t length,
 {
    //Malformed request?
    if(length != sizeof(uint32_t))
+   {
       return ERROR_INVALID_MESSAGE;
+   }
 
    //Get exit status
    params->exitStatus = LOAD32BE(p);
@@ -1735,7 +1866,9 @@ error_t sshParseBreakParams(const uint8_t *p, size_t length,
 {
    //Malformed request?
    if(length != sizeof(uint32_t))
+   {
       return ERROR_INVALID_MESSAGE;
+   }
 
    //Get break length (in milliseconds)
    params->breakLen = LOAD32BE(p);
@@ -1770,11 +1903,15 @@ error_t sshParseChannelSuccess(SshConnection *connection,
 
    //Check connection state
    if(connection->state != SSH_CONN_STATE_OPEN)
+   {
       return ERROR_UNEXPECTED_MESSAGE;
+   }
 
    //Sanity check
    if(length < sizeof(uint8_t))
+   {
       return ERROR_INVALID_MESSAGE;
+   }
 
    //Point to the first field of the message
    p = message + sizeof(uint8_t);
@@ -1783,7 +1920,9 @@ error_t sshParseChannelSuccess(SshConnection *connection,
 
    //Malformed message?
    if(length != sizeof(uint32_t))
+   {
       return ERROR_INVALID_MESSAGE;
+   }
 
    //Decode the recipient channel
    recipientChannel = LOAD32BE(p);
@@ -1860,11 +1999,15 @@ error_t sshParseChannelFailure(SshConnection *connection,
 
    //Check connection state
    if(connection->state != SSH_CONN_STATE_OPEN)
+   {
       return ERROR_UNEXPECTED_MESSAGE;
+   }
 
    //Sanity check
    if(length < sizeof(uint8_t))
+   {
       return ERROR_INVALID_MESSAGE;
+   }
 
    //Point to the first field of the message
    p = message + sizeof(uint8_t);
@@ -1873,7 +2016,9 @@ error_t sshParseChannelFailure(SshConnection *connection,
 
    //Malformed message?
    if(length != sizeof(uint32_t))
+   {
       return ERROR_INVALID_MESSAGE;
+   }
 
    //Decode the recipient channel
    recipientChannel = LOAD32BE(p);

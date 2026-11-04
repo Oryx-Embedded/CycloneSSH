@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.6.6
+ * @version 2.6.8
  **/
 
 #ifndef _SSH_CHANNEL_H
@@ -41,6 +41,14 @@ extern "C" {
 
 //SSH related functions
 SshChannel *sshGetChannel(SshConnection *connection, uint32_t localChannelNum);
+
+SshChannel *sshAllocateChannel(SshConnection *connection);
+
+uint_t sshCountFreeChannels(SshContext *context);
+uint_t sshCountUsedChannels(SshContext *context, SshConnection *connection);
+
+uint_t sshCountReservedChannels(SshContext *context,
+   SshConnection *connection);
 
 uint32_t sshAllocateLocalChannelNum(SshConnection *connection);
 

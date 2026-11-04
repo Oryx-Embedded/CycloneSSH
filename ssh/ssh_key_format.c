@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.6.6
+ * @version 2.6.8
  **/
 
 //Switch to the appropriate trace level
@@ -64,7 +64,9 @@ error_t sshFormatRsaPublicKey(const RsaPublicKey *publicKey,
    error = sshFormatString("ssh-rsa", p, &n);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    p = SSH_INC_POINTER(p, n);
@@ -74,7 +76,9 @@ error_t sshFormatRsaPublicKey(const RsaPublicKey *publicKey,
    error = sshFormatMpint(&publicKey->e, p, &n);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    p = SSH_INC_POINTER(p, n);
@@ -84,7 +88,9 @@ error_t sshFormatRsaPublicKey(const RsaPublicKey *publicKey,
    error = sshFormatMpint(&publicKey->n, p, &n);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Total number of bytes that have been written
    *written += n;
@@ -120,7 +126,9 @@ error_t sshFormatDsaPublicKey(const DsaPublicKey *publicKey,
    error = sshFormatString("ssh-dss", p, &n);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    p = SSH_INC_POINTER(p, n);
@@ -130,7 +138,9 @@ error_t sshFormatDsaPublicKey(const DsaPublicKey *publicKey,
    error = sshFormatMpint(&publicKey->params.p, p, &n);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    p = SSH_INC_POINTER(p, n);
@@ -140,7 +150,9 @@ error_t sshFormatDsaPublicKey(const DsaPublicKey *publicKey,
    error = sshFormatMpint(&publicKey->params.q, p, &n);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    p = SSH_INC_POINTER(p, n);
@@ -150,7 +162,9 @@ error_t sshFormatDsaPublicKey(const DsaPublicKey *publicKey,
    error = sshFormatMpint(&publicKey->params.g, p, &n);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    p = SSH_INC_POINTER(p, n);
@@ -160,7 +174,9 @@ error_t sshFormatDsaPublicKey(const DsaPublicKey *publicKey,
    error = sshFormatMpint(&publicKey->y, p, &n);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Total number of bytes that have been written
    *written += n;
@@ -196,7 +212,9 @@ error_t sshFormatEcdsaPublicKey(const EcPublicKey *publicKey,
 
    //Invalid ECDSA public key?
    if(publicKey->curve == NULL)
+   {
       return ERROR_UNSUPPORTED_ELLIPTIC_CURVE;
+   }
 
    //Check elliptic curve
    if(osStrcmp(publicKey->curve->name, "secp256r1") == 0)
@@ -227,7 +245,9 @@ error_t sshFormatEcdsaPublicKey(const EcPublicKey *publicKey,
    error = sshFormatString(keyFormatId, p, &n);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    p = SSH_INC_POINTER(p, n);
@@ -237,7 +257,9 @@ error_t sshFormatEcdsaPublicKey(const EcPublicKey *publicKey,
    error = sshFormatString(curveName, p, &n);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    p = SSH_INC_POINTER(p, n);
@@ -248,7 +270,9 @@ error_t sshFormatEcdsaPublicKey(const EcPublicKey *publicKey,
       &n, EC_PUBLIC_KEY_FORMAT_X963);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //The octet string value is preceded by a uint32 containing its length
    if(p != NULL)
@@ -290,7 +314,9 @@ error_t sshFormatEd25519PublicKey(const EddsaPublicKey *publicKey,
    error = sshFormatString("ssh-ed25519", p, &n);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    p = SSH_INC_POINTER(p, n);
@@ -301,7 +327,9 @@ error_t sshFormatEd25519PublicKey(const EddsaPublicKey *publicKey,
       SSH_INC_POINTER(p, sizeof(uint32_t)), &n);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //The octet string value is preceded by a uint32 containing its length
    if(p != NULL)
@@ -343,7 +371,9 @@ error_t sshFormatEd448PublicKey(const EddsaPublicKey *publicKey,
    error = sshFormatString("ssh-ed448", p, &n);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    p = SSH_INC_POINTER(p, n);
@@ -354,7 +384,9 @@ error_t sshFormatEd448PublicKey(const EddsaPublicKey *publicKey,
       SSH_INC_POINTER(p, sizeof(uint32_t)), &n);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //The octet string value is preceded by a uint32 containing its length
    if(p != NULL)
@@ -420,7 +452,9 @@ error_t sshFormatMldsaPublicKey(const MldsaPublicKey *publicKey,
    error = sshFormatString(keyFormatId, p, &n);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    p = SSH_INC_POINTER(p, n);
@@ -431,7 +465,9 @@ error_t sshFormatMldsaPublicKey(const MldsaPublicKey *publicKey,
       SSH_INC_POINTER(p, sizeof(uint32_t)), &n);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //The octet string value is preceded by a uint32 containing its length
    if(p != NULL)
@@ -480,7 +516,9 @@ error_t sshFormatOpenSshPrivateKeyHeader(uint8_t *p, size_t *written)
    error = sshFormatString("none", p, &n);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    p = SSH_INC_POINTER(p, n);
@@ -490,7 +528,9 @@ error_t sshFormatOpenSshPrivateKeyHeader(uint8_t *p, size_t *written)
    error = sshFormatString("none", p, &n);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    p = SSH_INC_POINTER(p, n);
@@ -500,7 +540,9 @@ error_t sshFormatOpenSshPrivateKeyHeader(uint8_t *p, size_t *written)
    error = sshFormatString("", p, &n);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    p = SSH_INC_POINTER(p, n);
@@ -554,7 +596,9 @@ error_t sshFormatOpenSshRsaPrivateKey(const RsaPrivateKey *privateKey,
    error = sshFormatString("ssh-rsa", p, &n);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    p = SSH_INC_POINTER(p, n);
@@ -564,7 +608,9 @@ error_t sshFormatOpenSshRsaPrivateKey(const RsaPrivateKey *privateKey,
    error = sshFormatMpint(&privateKey->n, p, &n);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    p = SSH_INC_POINTER(p, n);
@@ -574,7 +620,9 @@ error_t sshFormatOpenSshRsaPrivateKey(const RsaPrivateKey *privateKey,
    error = sshFormatMpint(&privateKey->e, p, &n);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    p = SSH_INC_POINTER(p, n);
@@ -584,7 +632,9 @@ error_t sshFormatOpenSshRsaPrivateKey(const RsaPrivateKey *privateKey,
    error = sshFormatMpint(&privateKey->d, p, &n);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    p = SSH_INC_POINTER(p, n);
@@ -594,7 +644,9 @@ error_t sshFormatOpenSshRsaPrivateKey(const RsaPrivateKey *privateKey,
    error = sshFormatMpint(&privateKey->qinv, p, &n);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    p = SSH_INC_POINTER(p, n);
@@ -604,7 +656,9 @@ error_t sshFormatOpenSshRsaPrivateKey(const RsaPrivateKey *privateKey,
    error = sshFormatMpint(&privateKey->p, p, &n);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    p = SSH_INC_POINTER(p, n);
@@ -614,7 +668,9 @@ error_t sshFormatOpenSshRsaPrivateKey(const RsaPrivateKey *privateKey,
    error = sshFormatMpint(&privateKey->q, p, &n);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    p = SSH_INC_POINTER(p, n);
@@ -624,7 +680,9 @@ error_t sshFormatOpenSshRsaPrivateKey(const RsaPrivateKey *privateKey,
    error = sshFormatString("", p, &n);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    p = SSH_INC_POINTER(p, n);
@@ -685,7 +743,9 @@ error_t sshFormatOpenSshDsaPrivateKey(const DsaPrivateKey *privateKey,
    error = sshFormatString("ssh-dss", p, &n);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    p = SSH_INC_POINTER(p, n);
@@ -695,7 +755,9 @@ error_t sshFormatOpenSshDsaPrivateKey(const DsaPrivateKey *privateKey,
    error = sshFormatMpint(&privateKey->params.p, p, &n);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    p = SSH_INC_POINTER(p, n);
@@ -705,7 +767,9 @@ error_t sshFormatOpenSshDsaPrivateKey(const DsaPrivateKey *privateKey,
    error = sshFormatMpint(&privateKey->params.q, p, &n);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    p = SSH_INC_POINTER(p, n);
@@ -715,7 +779,9 @@ error_t sshFormatOpenSshDsaPrivateKey(const DsaPrivateKey *privateKey,
    error = sshFormatMpint(&privateKey->params.g, p, &n);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    p = SSH_INC_POINTER(p, n);
@@ -725,7 +791,9 @@ error_t sshFormatOpenSshDsaPrivateKey(const DsaPrivateKey *privateKey,
    error = sshFormatMpint(&privateKey->y, p, &n);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    p = SSH_INC_POINTER(p, n);
@@ -735,7 +803,9 @@ error_t sshFormatOpenSshDsaPrivateKey(const DsaPrivateKey *privateKey,
    error = sshFormatMpint(&privateKey->x, p, &n);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    p = SSH_INC_POINTER(p, n);
@@ -745,7 +815,9 @@ error_t sshFormatOpenSshDsaPrivateKey(const DsaPrivateKey *privateKey,
    error = sshFormatString("", p, &n);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    p = SSH_INC_POINTER(p, n);
@@ -840,7 +912,9 @@ error_t sshFormatOpenSshEcdsaPrivateKey(const EcPrivateKey *privateKey,
    error = sshFormatString(keyFormatId, p, &n);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    p = SSH_INC_POINTER(p, n);
@@ -850,7 +924,9 @@ error_t sshFormatOpenSshEcdsaPrivateKey(const EcPrivateKey *privateKey,
    error = sshFormatString(curveName, p, &n);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    p = SSH_INC_POINTER(p, n);
@@ -861,7 +937,9 @@ error_t sshFormatOpenSshEcdsaPrivateKey(const EcPrivateKey *privateKey,
       SSH_INC_POINTER(p, sizeof(uint32_t)), &n, EC_PUBLIC_KEY_FORMAT_X963);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //The octet string value is preceded by a uint32 containing its length
    if(p != NULL)
@@ -880,7 +958,9 @@ error_t sshFormatOpenSshEcdsaPrivateKey(const EcPrivateKey *privateKey,
    error = sshConvertScalarToMpint(privateKey->d, n, p, &n);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    p = SSH_INC_POINTER(p, n);
@@ -890,7 +970,9 @@ error_t sshFormatOpenSshEcdsaPrivateKey(const EcPrivateKey *privateKey,
    error = sshFormatString("", p, &n);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    p = SSH_INC_POINTER(p, n);
@@ -952,7 +1034,9 @@ error_t sshFormatOpenSshEd25519PrivateKey(const EddsaPrivateKey *privateKey,
    error = sshFormatString("ssh-ed25519", p, &n);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    p = SSH_INC_POINTER(p, n);
@@ -963,7 +1047,9 @@ error_t sshFormatOpenSshEd25519PrivateKey(const EddsaPrivateKey *privateKey,
       SSH_INC_POINTER(p, sizeof(uint32_t)), &n);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //The octet string value is preceded by a uint32 containing its length
    if(p != NULL)
@@ -980,14 +1066,18 @@ error_t sshFormatOpenSshEd25519PrivateKey(const EddsaPrivateKey *privateKey,
       SSH_INC_POINTER(p, sizeof(uint32_t)), &m);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Concatenate the Ed25519 public key
    error = eddsaExportPublicKey(&privateKey->q,
       SSH_INC_POINTER(p, sizeof(uint32_t) + m), &n);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //The octet string value is preceded by a uint32 containing its length
    if(p != NULL)
@@ -1003,7 +1093,9 @@ error_t sshFormatOpenSshEd25519PrivateKey(const EddsaPrivateKey *privateKey,
    error = sshFormatString("", p, &n);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    p = SSH_INC_POINTER(p, n);
@@ -1065,7 +1157,9 @@ error_t sshFormatOpenSshEd448PrivateKey(const EddsaPrivateKey *privateKey,
    error = sshFormatString("ssh-ed448", p, &n);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    p = SSH_INC_POINTER(p, n);
@@ -1076,7 +1170,9 @@ error_t sshFormatOpenSshEd448PrivateKey(const EddsaPrivateKey *privateKey,
       SSH_INC_POINTER(p, sizeof(uint32_t)), &n);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //The octet string value is preceded by a uint32 containing its length
    if(p != NULL)
@@ -1093,14 +1189,18 @@ error_t sshFormatOpenSshEd448PrivateKey(const EddsaPrivateKey *privateKey,
       SSH_INC_POINTER(p, sizeof(uint32_t)), &m);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Concatenate the Ed448 public key
    error = eddsaExportPublicKey(&privateKey->q,
       SSH_INC_POINTER(p, sizeof(uint32_t) + m), &n);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //The octet string value is preceded by a uint32 containing its length
    if(p != NULL)
@@ -1116,7 +1216,9 @@ error_t sshFormatOpenSshEd448PrivateKey(const EddsaPrivateKey *privateKey,
    error = sshFormatString("", p, &n);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    p = SSH_INC_POINTER(p, n);

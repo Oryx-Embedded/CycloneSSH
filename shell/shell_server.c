@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.6.6
+ * @version 2.6.8
  **/
 
 //Switch to the appropriate trace level
@@ -94,7 +94,9 @@ error_t shellServerInit(ShellServerContext *context,
 
    //Ensure the parameters are valid
    if(context == NULL || settings == NULL)
+   {
       return ERROR_INVALID_PARAMETER;
+   }
 
    //Invalid shell sessions?
    if(settings->sessions == NULL || settings->numSessions < 1 ||
@@ -132,16 +134,22 @@ error_t shellServerInit(ShellServerContext *context,
 
       //Create an event object to manage session lifetime
       if(!osCreateEvent(&session->startEvent))
+      {
          return ERROR_OUT_OF_RESOURCES;
+      }
 
       //Create an event object to manage session events
       if(!osCreateEvent(&session->event))
+      {
          return ERROR_OUT_OF_RESOURCES;
+      }
    }
 
    //Create an event object to poll the state of channels
    if(!osCreateEvent(&context->event))
+   {
       return ERROR_OUT_OF_RESOURCES;
+   }
 
    //Successful initialization
    return NO_ERROR;
@@ -162,21 +170,27 @@ error_t shellServerStart(ShellServerContext *context)
 
    //Make sure the shell server context is valid
    if(context == NULL)
+   {
       return ERROR_INVALID_PARAMETER;
+   }
 
    //Debug message
    TRACE_INFO("Starting shell server...\r\n");
 
    //Make sure the shell server is not already running
    if(context->running)
+   {
       return ERROR_ALREADY_RUNNING;
+   }
 
    //Register channel request processing callback
    error = sshServerRegisterChannelRequestCallback(context->sshServerContext,
       shellServerChannelRequestCallback, context);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Loop through the shell sessions
    for(i = 0; i < context->numSessions; i++)
@@ -190,7 +204,9 @@ error_t shellServerStart(ShellServerContext *context)
 
       //Failed to create task?
       if(session->taskId == OS_INVALID_TASK_ID)
+      {
          return ERROR_OUT_OF_RESOURCES;
+      }
    }
 
    //Successful processing
@@ -212,14 +228,18 @@ error_t shellServerSetBanner(ShellServerSession *session,
 
    //Check parameters
    if(session == NULL || banner == NULL)
+   {
       return ERROR_INVALID_PARAMETER;
+   }
 
    //Retrieve the length of the banner message
    n = osStrlen(banner);
 
    //Check the length of the string
    if(n > SHELL_SERVER_BUFFER_SIZE)
+   {
       return ERROR_INVALID_LENGTH;
+   }
 
    //Copy the banner message
    osMemcpy(session->buffer, banner, n);
@@ -245,11 +265,15 @@ error_t shellServerSetPrompt(ShellServerSession *session,
 {
    //Check parameters
    if(session == NULL || prompt == NULL)
+   {
       return ERROR_INVALID_PARAMETER;
+   }
 
    //Check the length of the prompt string
    if(osStrlen(prompt) > SHELL_SERVER_MAX_PROMPT_LEN)
+   {
       return ERROR_INVALID_LENGTH;
+   }
 
    //Set the shell prompt to be used
    osStrcpy(session->prompt, prompt);
@@ -399,7 +423,9 @@ error_t shellServerSaveHistory(ShellServerSession *session, char_t *history,
 
    //Check parameters
    if(session == NULL || history == NULL || length == NULL)
+   {
       return ERROR_INVALID_PARAMETER;
+   }
 
    //If the output buffer is not large enough, then the oldest commands are
    //discarded
@@ -448,7 +474,9 @@ error_t shellServerRestoreHistory(ShellServerSession *session,
 
    //Check parameters
    if(session == NULL || history == NULL)
+   {
       return ERROR_INVALID_PARAMETER;
+   }
 
    //If the command history buffer is not large enough, then the oldest commands
    //are discarded
@@ -468,7 +496,7 @@ error_t shellServerRestoreHistory(ShellServerSession *session,
    }
 
    //Restore the most recent commands
-   osMemcpy(session->history, history, length - i);
+   osMemcpy(session->history, history + i, length - i);
 
    //Save the length of the command history
    session->historyLen = length - i;
@@ -500,7 +528,9 @@ error_t shellServerClearHistory(ShellServerSession *session)
 #if (SHELL_SERVER_HISTORY_SUPPORT == ENABLED)
    //Make sure the shell session is valid
    if(session == NULL)
+   {
       return ERROR_INVALID_PARAMETER;
+   }
 
    //Clear all entries from command history
    session->historyLen = 0;
@@ -552,6 +582,30 @@ void shellServerTask(void *param)
 
       //Retrieve SSH channel handle
       channel = session->channel;
+
+      //Until a "shell" or "exec" request is received, the session remains in
+      //INIT state and the channel is monitored, so that the session is closed
+      //if the client closes the channel or disconnects
+      while(session->state == SHELL_SERVER_SESSION_STATE_INIT)
+      {
+         SshChannelEventDesc eventDesc[1];
+
+         //Specifying the events the application is interested in
+         eventDesc[0].channel = channel;
+         eventDesc[0].eventMask = SSH_CHANNEL_EVENT_CLOSED;
+         eventDesc[0].eventFlags = 0;
+
+         //Wait for the channel to be closed (the start event is also signaled
+         //when a "shell" or "exec" request is received)
+         sshPollChannels(eventDesc, 1, &session->startEvent,
+            SHELL_SERVER_TICK_INTERVAL);
+
+         //The channel has been closed?
+         if(eventDesc[0].eventFlags != 0)
+         {
+            break;
+         }
+      }
 
       //Check session state
       if(session->state == SHELL_SERVER_SESSION_STATE_OPEN)

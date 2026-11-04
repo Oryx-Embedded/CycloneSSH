@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.6.6
+ * @version 2.6.8
  **/
 
 //Switch to the appropriate trace level
@@ -137,20 +137,26 @@ error_t scpClientOpenConnection(ScpClientContext *context)
       &context->sshChannel, 1);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Select client operation mode
    error = sshSetOperationMode(&context->sshContext, SSH_OPERATION_MODE_CLIENT);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Register channel request processing callback
    error = sshRegisterChannelRequestCallback(&context->sshContext,
       scpClientChannelRequestCallback, context);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Invoke user-defined callback, if any
    if(context->sshInitCallback != NULL)
@@ -159,7 +165,9 @@ error_t scpClientOpenConnection(ScpClientContext *context)
       error = context->sshInitCallback(context, &context->sshContext);
       //Any error to report?
       if(error)
+      {
          return error;
+      }
    }
 
    //Open a TCP socket
@@ -247,6 +255,62 @@ void scpClientCloseConnection(ScpClientContext *context)
 
    //Release SSH context
    sshDeinit(&context->sshContext);
+}
+
+
+/**
+ * @brief Check the remote path passed to the SCP command line
+ * @param[in] path NULL-terminated string specifying the remote path
+ * @return Error code
+ **/
+
+error_t scpClientCheckPath(const char_t *path)
+{
+   size_t i;
+   size_t n;
+   uint8_t c;
+
+   //Retrieve the length of the path
+   n = osStrlen(path);
+
+   //The SCP command line must fit in the buffer, including the terminating
+   //NULL character
+   if(n == 0 || n > (SCP_CLIENT_BUFFER_SIZE - 8))
+   {
+      return ERROR_INVALID_LENGTH;
+   }
+
+   //A leading dash would be interpreted as an option by the remote scp
+   if(path[0] == '-')
+   {
+      return ERROR_INVALID_PATH;
+   }
+
+   //Check each character of the path
+   for(i = 0; i < n; i++)
+   {
+      //Get current character
+      c = (uint8_t) path[i];
+
+      //Check current character
+      if((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
+         (c >= '0' && c <= '9') || c >= 0x80 || c == '/' || c == '.' ||
+         c == '_' || c == '-' || c == '+' || c == '=' || c == ':' ||
+         c == ',' || c == '@' || c == '~')
+      {
+         //Letters, digits, non-ASCII bytes and the characters that no shell
+         //interprets are accepted
+      }
+      else
+      {
+         //Whitespace, quotes, shell metacharacters, wildcards and control
+         //characters are rejected
+         return ERROR_INVALID_PATH;
+      }
+   }
+
+   //The path can be safely sent to the server
+   return NO_ERROR;
 }
 
 
@@ -526,7 +590,7 @@ error_t scpClientCheckTimeout(ScpClientContext *context)
    time = osGetSystemTime();
 
    //Check whether the timeout has elapsed
-   if(timeCompare(time, context->timestamp + context->timeout) >= 0)
+   if((time - context->timestamp) >= context->timeout)
    {
       //Report a timeout error
       error = ERROR_TIMEOUT;

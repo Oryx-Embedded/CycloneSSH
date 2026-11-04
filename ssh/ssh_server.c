@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.6.6
+ * @version 2.6.8
  **/
 
 //Switch to the appropriate trace level
@@ -86,6 +86,8 @@ void sshServerGetDefaultSettings(SshServerSettings *settings)
    settings->certAuthCallback = NULL;
    //CA public key verification callback function
    settings->caPublicKeyVerifyCallback = NULL;
+   //Check the validity period of certificates
+   settings->certValidityCheck = TRUE;
 #endif
 
 #if (SSH_PASSWORD_AUTH_SUPPORT == ENABLED)
@@ -133,7 +135,9 @@ error_t sshServerInit(SshServerContext *context,
 
    //Ensure the parameters are valid
    if(context == NULL || settings == NULL)
+   {
       return ERROR_INVALID_PARAMETER;
+   }
 
    //Invalid number of SSH connections?
    if(settings->numConnections < 1 ||
@@ -144,7 +148,9 @@ error_t sshServerInit(SshServerContext *context,
 
    //Invalid number of SSH channels?
    if(settings->numChannels < settings->numConnections)
+   {
       return ERROR_INVALID_PARAMETER;
+   }
 
    //Clear SSH server context
    osMemset(context, 0, sizeof(SshServerContext));
@@ -154,7 +160,9 @@ error_t sshServerInit(SshServerContext *context,
       settings->numConnections, settings->channels, settings->numChannels);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Initialize task parameters
    context->taskParams = settings->task;
@@ -187,14 +195,18 @@ error_t sshServerInit(SshServerContext *context,
          SSH_OPERATION_MODE_SERVER);
       //Any error to report?
       if(error)
+      {
          break;
+      }
 
       //Set the pseudo-random number generator to be used
       error = sshSetPrng(&context->sshContext, settings->prngAlgo,
          settings->prngContext);
       //Any error to report?
       if(error)
+      {
          break;
+      }
 
 #if (SSH_PUBLIC_KEY_AUTH_SUPPORT == ENABLED)
       //Valid public key authentication callback function?
@@ -205,7 +217,9 @@ error_t sshServerInit(SshServerContext *context,
             settings->publicKeyAuthCallback);
          //Any error to report?
          if(error)
+         {
             break;
+         }
       }
 #endif
 
@@ -218,7 +232,9 @@ error_t sshServerInit(SshServerContext *context,
             settings->certAuthCallback);
          //Any error to report?
          if(error)
+         {
             break;
+         }
       }
 
       //Valid CA public key verification callback function?
@@ -229,7 +245,18 @@ error_t sshServerInit(SshServerContext *context,
             settings->caPublicKeyVerifyCallback);
          //Any error to report?
          if(error)
+         {
             break;
+         }
+      }
+
+      //Enable or disable the validity period check of certificates
+      error = sshEnableCertValidityCheck(&context->sshContext,
+         settings->certValidityCheck);
+      //Any error to report?
+      if(error)
+      {
+         break;
       }
 #endif
 
@@ -242,7 +269,9 @@ error_t sshServerInit(SshServerContext *context,
             settings->passwordAuthCallback);
          //Any error to report?
          if(error)
+         {
             break;
+         }
       }
 
       //Valid password change callback function?
@@ -253,7 +282,9 @@ error_t sshServerInit(SshServerContext *context,
             settings->passwordChangeCallback);
          //Any error to report?
          if(error)
+         {
             break;
+         }
       }
 #endif
 
@@ -266,7 +297,9 @@ error_t sshServerInit(SshServerContext *context,
             settings->signGenCallback);
          //Any error to report?
          if(error)
+         {
             break;
+         }
       }
 
       //Valid signature verification callback function?
@@ -277,7 +310,9 @@ error_t sshServerInit(SshServerContext *context,
             settings->signVerifyCallback);
          //Any error to report?
          if(error)
+         {
             break;
+         }
       }
 #endif
 
@@ -290,7 +325,9 @@ error_t sshServerInit(SshServerContext *context,
             settings->ecdhKeyPairGenCallback);
          //Any error to report?
          if(error)
+         {
             break;
+         }
       }
 
       //Valid ECDH shared secret calculation callback function?
@@ -301,7 +338,9 @@ error_t sshServerInit(SshServerContext *context,
             settings->ecdhSharedSecretCalcCallback);
          //Any error to report?
          if(error)
+         {
             break;
+         }
       }
 #endif
 
@@ -314,7 +353,9 @@ error_t sshServerInit(SshServerContext *context,
             settings->keyLogCallback);
          //Any error to report?
          if(error)
+         {
             break;
+         }
       }
 #endif
 
@@ -665,14 +706,18 @@ error_t sshServerStart(SshServerContext *context)
 
    //Make sure the SSH server context is valid
    if(context == NULL)
+   {
       return ERROR_INVALID_PARAMETER;
+   }
 
    //Debug message
    TRACE_INFO("Starting SSH server...\r\n");
 
    //Make sure the SSH server is not already running
    if(context->running)
+   {
       return ERROR_ALREADY_RUNNING;
+   }
 
    //Start of exception handling block
    do
@@ -693,25 +738,33 @@ error_t sshServerStart(SshServerContext *context)
       error = socketSetTimeout(context->socket, 0);
       //Any error to report?
       if(error)
+      {
          break;
+      }
 
       //Associate the socket with the relevant interface
       error = socketBindToInterface(context->socket, context->interface);
       //Any error to report?
       if(error)
+      {
          break;
+      }
 
       //The SSH server listens for connection requests on port 22
       error = socketBind(context->socket, &IP_ADDR_ANY, context->port);
       //Any error to report?
       if(error)
+      {
          break;
+      }
 
       //Place socket in listening state
       error = socketListen(context->socket, 0);
       //Any error to report?
       if(error)
+      {
          break;
+      }
 
       //Start the SSH server
       context->stop = FALSE;
@@ -724,7 +777,6 @@ error_t sshServerStart(SshServerContext *context)
       //Failed to create task?
       if(context->taskId == OS_INVALID_TASK_ID)
       {
-         //Report an error
          error = ERROR_OUT_OF_RESOURCES;
          break;
       }
@@ -760,7 +812,9 @@ error_t sshServerStop(SshServerContext *context)
 
    //Make sure the SSH server context is valid
    if(context == NULL)
+   {
       return ERROR_INVALID_PARAMETER;
+   }
 
    //Debug message
    TRACE_INFO("Stopping SSH server...\r\n");

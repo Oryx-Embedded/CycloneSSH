@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.6.6
+ * @version 2.6.8
  **/
 
 //Switch to the appropriate trace level
@@ -218,7 +218,9 @@ error_t sshFormatKexHybridInit(SshConnection *connection, uint8_t *p,
       p + sizeof(uint32_t) + m, &n, EC_PUBLIC_KEY_FORMAT_X963);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //C_INIT is the concatenation of C_PQ and C_CL
    STORE32BE(m + n, p);
@@ -270,7 +272,9 @@ error_t sshFormatKexHybridReply(SshConnection *connection, uint8_t *p,
    error = sshFormatHostKey(connection, p + sizeof(uint32_t), &n);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //The octet string value is preceded by a uint32 containing its length
    STORE32BE(n, p);
@@ -284,7 +288,9 @@ error_t sshFormatKexHybridReply(SshConnection *connection, uint8_t *p,
       context->prngContext, p + sizeof(uint32_t), connection->k);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Get the length of the KEM ciphertext
    m = connection->kemContext.kemAlgo->ciphertextSize;
@@ -301,13 +307,17 @@ error_t sshFormatKexHybridReply(SshConnection *connection, uint8_t *p,
       p + sizeof(uint32_t) + m, &n, EC_PUBLIC_KEY_FORMAT_X963);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Update exchange hash H with S_REPLY (concatenation of S_PQ and S_CL)
    error = sshUpdateExchangeHash(connection, p + sizeof(uint32_t), m + n);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //The octet string value is preceded by a uint32 containing its length
    STORE32BE(m + n, p);
@@ -320,7 +330,9 @@ error_t sshFormatKexHybridReply(SshConnection *connection, uint8_t *p,
    error = sshComputeClassicalSharedSecret(connection);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Derive the shared secret K = HASH(K_PQ, K_CL)
    connection->hashAlgo->update(&hashContext, connection->k, connection->kLen);
@@ -339,14 +351,18 @@ error_t sshFormatKexHybridReply(SshConnection *connection, uint8_t *p,
       connection->kLen);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Compute the signature on the exchange hash
    error = sshGenerateExchangeHashSignature(connection, p + sizeof(uint32_t),
       &n);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //The octet string value is preceded by a uint32 containing its length
    STORE32BE(n, p);
@@ -392,15 +408,21 @@ error_t sshParseKexHybridInit(SshConnection *connection,
 
    //Check operation mode
    if(connection->context->mode != SSH_OPERATION_MODE_SERVER)
+   {
       return ERROR_UNEXPECTED_MESSAGE;
+   }
 
    //Check connection state
    if(connection->state != SSH_CONN_STATE_KEX_HYBRID_INIT)
+   {
       return ERROR_UNEXPECTED_MESSAGE;
+   }
 
    //Sanity check
    if(length < sizeof(uint8_t))
+   {
       return ERROR_INVALID_MESSAGE;
+   }
 
    //Point to the first field of the message
    p = message + sizeof(uint8_t);
@@ -411,7 +433,9 @@ error_t sshParseKexHybridInit(SshConnection *connection,
    error = sshParseBinaryString(p, length, &clientInit);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    p += sizeof(uint32_t) + clientInit.length;
@@ -419,46 +443,60 @@ error_t sshParseKexHybridInit(SshConnection *connection,
 
    //Malformed message?
    if(length != 0)
+   {
       return ERROR_INVALID_MESSAGE;
+   }
 
    //Update exchange hash H with C_INIT (concatenation of C_PQ and C_CL)
    error = sshUpdateExchangeHash(connection, clientInit.value,
       clientInit.length);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Key exchange algorithms are formulated as key encapsulation mechanisms
    error = sshSelectPqAlgo(connection);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Get the length of the KEM public key
    n = connection->kemContext.kemAlgo->publicKeySize;
 
    //Check the length of the C_INIT field
    if(clientInit.length < n)
+   {
       return ERROR_INVALID_MESSAGE;
+   }
 
    //Load client's post-quantum public key (C_PQ)
    error = kemLoadPublicKey(&connection->kemContext, clientInit.value);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Select ECDH domain parameters
    error = sshSelectClassicalAlgo(connection);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Load client's classical public key (C_CL)
    error = ecdhImportPeerPublicKey(&connection->ecdhContext,
       clientInit.value + n, clientInit.length - n, EC_PUBLIC_KEY_FORMAT_X963);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //The server responds with an SSH_MSG_KEX_HYBRID_REPLY message
    return sshSendKexHybridReply(connection);
@@ -500,15 +538,21 @@ error_t sshParseKexHybridReply(SshConnection *connection,
 
    //Check operation mode
    if(context->mode != SSH_OPERATION_MODE_CLIENT)
+   {
       return ERROR_UNEXPECTED_MESSAGE;
+   }
 
    //Check connection state
    if(connection->state != SSH_CONN_STATE_KEX_HYBRID_REPLY)
+   {
       return ERROR_UNEXPECTED_MESSAGE;
+   }
 
    //Sanity check
    if(length < sizeof(uint8_t))
+   {
       return ERROR_INVALID_MESSAGE;
+   }
 
    //Point to the first field of the message
    p = message + sizeof(uint8_t);
@@ -519,7 +563,9 @@ error_t sshParseKexHybridReply(SshConnection *connection,
    error = sshParseBinaryString(p, length, &hostKey);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    p += sizeof(uint32_t) + hostKey.length;
@@ -529,7 +575,9 @@ error_t sshParseKexHybridReply(SshConnection *connection,
    error = sshParseBinaryString(p, length, &serverReply);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    p += sizeof(uint32_t) + serverReply.length;
@@ -539,7 +587,9 @@ error_t sshParseKexHybridReply(SshConnection *connection,
    error = sshParseBinaryString(p, length, &signature);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    p += sizeof(uint32_t) + signature.length;
@@ -547,7 +597,9 @@ error_t sshParseKexHybridReply(SshConnection *connection,
 
    //Malformed message?
    if(length != 0)
+   {
       return ERROR_INVALID_MESSAGE;
+   }
 
    //Get the selected server's host key algorithm
    hostKeyAlgo.value = connection->serverHostKeyAlgo;
@@ -570,26 +622,34 @@ error_t sshParseKexHybridReply(SshConnection *connection,
    //If the client fails to verify the server's host key, it should disconnect
    //from the server by sending an SSH_DISCONNECT_HOST_KEY_NOT_VERIFIABLE message
    if(error)
+   {
       return ERROR_INVALID_KEY;
+   }
 
    //Update exchange hash H with K_S (server's public host key)
    error = sshUpdateExchangeHash(connection, hostKey.value, hostKey.length);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Update exchange hash H with C_INIT (concatenation of C_PQ and C_CL)
    error = sshDigestClientInit(connection);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Update exchange hash H with S_REPLY (concatenation of S_PQ and S_CL)
    error = sshUpdateExchangeHash(connection, serverReply.value,
       serverReply.length);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Get the length of the KEM ciphertext
    n = connection->kemContext.kemAlgo->ciphertextSize;
@@ -598,7 +658,9 @@ error_t sshParseKexHybridReply(SshConnection *connection,
 
    //Check the length of the S_REPLY field
    if(serverReply.length < n)
+   {
       return ERROR_INVALID_MESSAGE;
+   }
 
    //The client decapsulates the ciphertext by using its private key which
    //leads to K_PQ, a post-quantum shared secret
@@ -606,7 +668,9 @@ error_t sshParseKexHybridReply(SshConnection *connection,
       connection->k);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //The shared secret K is derived as the hash algorithm specified in the named
    //hybrid key exchange method name over the concatenation of K_PQ and K_CL
@@ -618,13 +682,17 @@ error_t sshParseKexHybridReply(SshConnection *connection,
       serverReply.value + n, serverReply.length - n, EC_PUBLIC_KEY_FORMAT_X963);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Compute the classical shared secret K_CL
    error = sshComputeClassicalSharedSecret(connection);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Derive the shared secret K = HASH(K_PQ, K_CL)
    connection->hashAlgo->update(&hashContext, connection->k, connection->kLen);
@@ -643,13 +711,17 @@ error_t sshParseKexHybridReply(SshConnection *connection,
       connection->kLen);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Verify the signature on the exchange hash
    error = sshVerifyExchangeHashSignature(connection, &hostKey, &signature);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Destroy classical and post-quantum private keys
    ecdhFree(&connection->ecdhContext);

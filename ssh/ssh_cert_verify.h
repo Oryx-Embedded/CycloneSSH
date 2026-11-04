@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.6.6
+ * @version 2.6.8
  **/
 
 #ifndef _SSH_CERT_VERIFY_H
@@ -49,7 +49,7 @@ error_t sshVerifyServerCertificate(SshConnection *connection,
    const SshString *publicKeyAlgo, const SshBinaryString *hostKey);
 
 error_t sshVerifyPrincipal(const SshCertificate *cert, const char_t *name);
-error_t sshVerifyValidity(const SshCertificate *cert);
+error_t sshVerifyValidity(SshContext *context, const SshCertificate *cert);
 
 error_t sshVerifyCriticalOptions(SshConnection *connection,
    const SshCertificate *cert);

@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.6.6
+ * @version 2.6.8
  **/
 
 //Switch to the appropriate trace level
@@ -53,7 +53,9 @@ error_t sftpClientInit(SftpClientContext *context)
 {
    //Make sure the SFTP client context is valid
    if(context == NULL)
+   {
       return ERROR_INVALID_PARAMETER;
+   }
 
    //Clear SFTP client context
    osMemset(context, 0, sizeof(SftpClientContext));
@@ -83,7 +85,9 @@ error_t sftpClientRegisterSshInitCallback(SftpClientContext *context,
 {
    //Check parameters
    if(context == NULL || callback == NULL)
+   {
       return ERROR_INVALID_PARAMETER;
+   }
 
    //Save callback function
    context->sshInitCallback = callback;
@@ -104,7 +108,9 @@ error_t sftpClientSetTimeout(SftpClientContext *context, systime_t timeout)
 {
    //Make sure the SFTP client context is valid
    if(context == NULL)
+   {
       return ERROR_INVALID_PARAMETER;
+   }
 
    //Save timeout value
    context->timeout = timeout;
@@ -126,7 +132,9 @@ error_t sftpClientBindToInterface(SftpClientContext *context,
 {
    //Make sure the SFTP client context is valid
    if(context == NULL)
+   {
       return ERROR_INVALID_PARAMETER;
+   }
 
    //Explicitly associate the SFTP client with the specified interface
    context->interface = interface;
@@ -153,7 +161,9 @@ error_t sftpClientConnect(SftpClientContext *context,
 
    //Make sure the SFTP client context is valid
    if(context == NULL)
+   {
       return ERROR_INVALID_PARAMETER;
+   }
 
    //Initialize status code
    error = NO_ERROR;
@@ -347,7 +357,9 @@ error_t sftpClientChangeWorkingDir(SftpClientContext *context,
 
    //Make sure the SFTP client context is valid
    if(context == NULL)
+   {
       return ERROR_INVALID_PARAMETER;
+   }
 
    //Initialize status code
    error = NO_ERROR;
@@ -454,7 +466,9 @@ error_t sftpClientOpenDir(SftpClientContext *context, const char_t *path)
 
    //Check parameters
    if(context == NULL || path == NULL)
+   {
       return ERROR_INVALID_PARAMETER;
+   }
 
    //Initialize status code
    error = NO_ERROR;
@@ -516,7 +530,9 @@ error_t sftpClientReadDir(SftpClientContext *context, SftpDirEntry *dirEntry)
 
    //Check parameters
    if(context == NULL || dirEntry == NULL)
+   {
       return ERROR_INVALID_PARAMETER;
+   }
 
    //Initialize status code
    error = NO_ERROR;
@@ -669,7 +685,9 @@ error_t sftpClientCloseDir(SftpClientContext *context)
 
    //Make sure the SFTP client context is valid
    if(context == NULL)
+   {
       return ERROR_INVALID_PARAMETER;
+   }
 
    //Initialize status code
    error = NO_ERROR;
@@ -730,7 +748,9 @@ error_t sftpClientCreateDir(SftpClientContext *context, const char_t *path)
 
    //Check parameters
    if(context == NULL || path == NULL)
+   {
       return ERROR_INVALID_PARAMETER;
+   }
 
    //Initialize status code
    error = NO_ERROR;
@@ -790,7 +810,9 @@ error_t sftpClientDeleteDir(SftpClientContext *context, const char_t *path)
 
    //Check parameters
    if(context == NULL || path == NULL)
+   {
       return ERROR_INVALID_PARAMETER;
+   }
 
    //Initialize status code
    error = NO_ERROR;
@@ -852,7 +874,9 @@ error_t sftpClientOpenFile(SftpClientContext *context, const char_t *path,
 
    //Check parameters
    if(context == NULL || path == NULL)
+   {
       return ERROR_INVALID_PARAMETER;
+   }
 
    //Initialize status code
    error = NO_ERROR;
@@ -921,11 +945,15 @@ error_t sftpClientWriteFile(SftpClientContext *context, const void *data,
 
    //Make sure the SFTP client context is valid
    if(context == NULL)
+   {
       return ERROR_INVALID_PARAMETER;
+   }
 
    //Check parameters
    if(data == NULL && length != 0)
+   {
       return ERROR_INVALID_PARAMETER;
+   }
 
    //Initialize status code
    error = NO_ERROR;
@@ -1094,7 +1122,9 @@ error_t sftpClientReadFile(SftpClientContext *context, void *data, size_t size,
 
    //Check parameters
    if(context == NULL || data == NULL || received == NULL)
+   {
       return ERROR_INVALID_PARAMETER;
+   }
 
    //Initialize status code
    error = NO_ERROR;
@@ -1243,7 +1273,9 @@ error_t sftpClientCloseFile(SftpClientContext *context)
 
    //Make sure the SFTP client context is valid
    if(context == NULL)
+   {
       return ERROR_INVALID_PARAMETER;
+   }
 
    //Initialize status code
    error = NO_ERROR;
@@ -1306,11 +1338,15 @@ error_t sftpClientRenameFile(SftpClientContext *context, const char_t *oldPath,
 
    //Check parameters
    if(context == NULL || oldPath == NULL || newPath == NULL)
+   {
       return ERROR_INVALID_PARAMETER;
+   }
 
    //The SSH_FXP_RENAME message was added in version 2
    if(context->version < SFTP_VERSION_2)
+   {
       return ERROR_INVALID_VERSION;
+   }
 
    //Initialize status code
    error = NO_ERROR;
@@ -1370,7 +1406,9 @@ error_t sftpClientDeleteFile(SftpClientContext *context, const char_t *path)
 
    //Check parameters
    if(context == NULL || path == NULL)
+   {
       return ERROR_INVALID_PARAMETER;
+   }
 
    //Initialize status code
    error = NO_ERROR;
@@ -1456,7 +1494,9 @@ error_t sftpClientDisconnect(SftpClientContext *context)
 
    //Make sure the SFTP client context is valid
    if(context == NULL)
+   {
       return ERROR_INVALID_PARAMETER;
+   }
 
    //Initialize status code
    error = NO_ERROR;
@@ -1575,7 +1615,9 @@ error_t sftpClientClose(SftpClientContext *context)
 {
    //Make sure the SFTP client context is valid
    if(context == NULL)
+   {
       return ERROR_INVALID_PARAMETER;
+   }
 
    //Close network connection
    sftpClientCloseConnection(context);

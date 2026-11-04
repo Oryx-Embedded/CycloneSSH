@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.6.6
+ * @version 2.6.8
  **/
 
 //Switch to the appropriate trace level
@@ -192,7 +192,9 @@ error_t sshFormatKexEcdhInit(SshConnection *connection, uint8_t *p,
       &n, EC_PUBLIC_KEY_FORMAT_X963);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //The octet string value is preceded by a uint32 containing its length
    STORE32BE(n, p);
@@ -238,7 +240,9 @@ error_t sshFormatKexEcdhReply(SshConnection *connection, uint8_t *p,
    error = sshFormatHostKey(connection, p + sizeof(uint32_t), &n);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //The octet string value is preceded by a uint32 containing its length
    STORE32BE(n, p);
@@ -252,13 +256,17 @@ error_t sshFormatKexEcdhReply(SshConnection *connection, uint8_t *p,
       &n, EC_PUBLIC_KEY_FORMAT_X963);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Update exchange hash H with Q_S (server's ephemeral public key octet string)
    error = sshUpdateExchangeHash(connection, p + sizeof(uint32_t), n);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //The octet string value is preceded by a uint32 containing its length
    STORE32BE(n, p);
@@ -271,21 +279,27 @@ error_t sshFormatKexEcdhReply(SshConnection *connection, uint8_t *p,
    error = sshComputeEcdhSharedSecret(connection);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Update exchange hash H with K (shared secret)
    error = sshUpdateExchangeHashRaw(connection, connection->k,
       connection->kLen);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Compute the signature on the exchange hash
    error = sshGenerateExchangeHashSignature(connection, p + sizeof(uint32_t),
       &n);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //The octet string value is preceded by a uint32 containing its length
    STORE32BE(n, p);
@@ -329,15 +343,21 @@ error_t sshParseKexEcdhInit(SshConnection *connection, const uint8_t *message,
 
    //Check operation mode
    if(connection->context->mode != SSH_OPERATION_MODE_SERVER)
+   {
       return ERROR_UNEXPECTED_MESSAGE;
+   }
 
    //Check connection state
    if(connection->state != SSH_CONN_STATE_KEX_ECDH_INIT)
+   {
       return ERROR_UNEXPECTED_MESSAGE;
+   }
 
    //Sanity check
    if(length < sizeof(uint8_t))
+   {
       return ERROR_INVALID_MESSAGE;
+   }
 
    //Point to the first field of the message
    p = message + sizeof(uint8_t);
@@ -348,7 +368,9 @@ error_t sshParseKexEcdhInit(SshConnection *connection, const uint8_t *message,
    error = sshParseBinaryString(p, length, &publicKey);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    p += sizeof(uint32_t) + publicKey.length;
@@ -356,26 +378,34 @@ error_t sshParseKexEcdhInit(SshConnection *connection, const uint8_t *message,
 
    //Malformed message?
    if(length != 0)
+   {
       return ERROR_INVALID_MESSAGE;
+   }
 
    //Update exchange hash H with Q_C (client's ephemeral public key octet string)
    error = sshUpdateExchangeHash(connection, publicKey.value, publicKey.length);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Select ECDH domain parameters
    error = sshSelectEcdhCurve(connection);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Load client's ephemeral public key
    error = ecdhImportPeerPublicKey(&connection->ecdhContext, publicKey.value,
       publicKey.length, EC_PUBLIC_KEY_FORMAT_X963);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //The server responds with an SSH_MSG_KEX_ECDH_REPLY message
    return sshSendKexEcdhReply(connection);
@@ -415,15 +445,21 @@ error_t sshParseKexEcdhReply(SshConnection *connection, const uint8_t *message,
 
    //Check operation mode
    if(context->mode != SSH_OPERATION_MODE_CLIENT)
+   {
       return ERROR_UNEXPECTED_MESSAGE;
+   }
 
    //Check connection state
    if(connection->state != SSH_CONN_STATE_KEX_ECDH_REPLY)
+   {
       return ERROR_UNEXPECTED_MESSAGE;
+   }
 
    //Sanity check
    if(length < sizeof(uint8_t))
+   {
       return ERROR_INVALID_MESSAGE;
+   }
 
    //Point to the first field of the message
    p = message + sizeof(uint8_t);
@@ -434,7 +470,9 @@ error_t sshParseKexEcdhReply(SshConnection *connection, const uint8_t *message,
    error = sshParseBinaryString(p, length, &hostKey);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    p += sizeof(uint32_t) + hostKey.length;
@@ -444,7 +482,9 @@ error_t sshParseKexEcdhReply(SshConnection *connection, const uint8_t *message,
    error = sshParseBinaryString(p, length, &publicKey);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    p += sizeof(uint32_t) + publicKey.length;
@@ -454,7 +494,9 @@ error_t sshParseKexEcdhReply(SshConnection *connection, const uint8_t *message,
    error = sshParseBinaryString(p, length, &signature);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    p += sizeof(uint32_t) + signature.length;
@@ -462,7 +504,9 @@ error_t sshParseKexEcdhReply(SshConnection *connection, const uint8_t *message,
 
    //Malformed message?
    if(length != 0)
+   {
       return ERROR_INVALID_MESSAGE;
+   }
 
    //Get the selected server's host key algorithm
    hostKeyAlgo.value = connection->serverHostKeyAlgo;
@@ -485,20 +529,26 @@ error_t sshParseKexEcdhReply(SshConnection *connection, const uint8_t *message,
    //If the client fails to verify the server's host key, it should disconnect
    //from the server by sending an SSH_DISCONNECT_HOST_KEY_NOT_VERIFIABLE message
    if(error)
+   {
       return ERROR_INVALID_KEY;
+   }
 
    //Update exchange hash H with K_S (server's public host key)
    error = sshUpdateExchangeHash(connection, hostKey.value, hostKey.length);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Update exchange hash H with Q_C (client's ephemeral public key octet
    //string)
    error = sshDigestClientEcdhPublicKey(connection);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Update exchange hash H with Q_S (server's ephemeral public key octet
    //string)
@@ -506,33 +556,43 @@ error_t sshParseKexEcdhReply(SshConnection *connection, const uint8_t *message,
       publicKey.length);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Load server's ephemeral public key
    error = ecdhImportPeerPublicKey(&connection->ecdhContext, publicKey.value,
       publicKey.length, EC_PUBLIC_KEY_FORMAT_X963);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Compute the shared secret K
    error = sshComputeEcdhSharedSecret(connection);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Update exchange hash H with K (shared secret)
    error = sshUpdateExchangeHashRaw(connection, connection->k,
       connection->kLen);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Verify the signature on the exchange hash
    error = sshVerifyExchangeHashSignature(connection, &hostKey, &signature);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //The ephemeral private key shall be destroyed as soon as possible (refer
    //to RFC 9212, section 6)

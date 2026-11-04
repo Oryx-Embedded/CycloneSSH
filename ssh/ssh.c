@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.6.6
+ * @version 2.6.8
  **/
 
 //Switch to the appropriate trace level
@@ -84,13 +84,17 @@ error_t sshInit(SshContext *context, SshConnection *connections,
    context->numChannels = numChannels;
    context->channels = channels;
 
+#if (SSH_CERT_SUPPORT == ENABLED)
+   //The validity period of certificates is checked by default
+   context->certValidityCheck = TRUE;
+#endif
+
    //Start of exception handling block
    do
    {
       //Create a mutex to prevent simultaneous access to the SSH context
       if(!osCreateMutex(&context->mutex))
       {
-         //Report an error
          error = ERROR_OUT_OF_RESOURCES;
          break;
       }
@@ -98,7 +102,6 @@ error_t sshInit(SshContext *context, SshConnection *connections,
       //Create an event object to manage connection events
       if(!osCreateEvent(&context->event))
       {
-         //Report an error
          error = ERROR_OUT_OF_RESOURCES;
          break;
       }
@@ -135,7 +138,6 @@ error_t sshInit(SshContext *context, SshConnection *connections,
          //Create an event object to manage channel events
          if(!osCreateEvent(&channel->event))
          {
-            //Report an error
             error = ERROR_OUT_OF_RESOURCES;
             break;
          }
@@ -168,11 +170,15 @@ error_t sshSetOperationMode(SshContext *context, SshOperationMode mode)
 {
    //Invalid SSH context?
    if(context == NULL)
+   {
       return ERROR_INVALID_PARAMETER;
+   }
 
    //Check parameters
    if(mode != SSH_OPERATION_MODE_CLIENT && mode != SSH_OPERATION_MODE_SERVER)
+   {
       return ERROR_INVALID_PARAMETER;
+   }
 
    //Check whether SSH operates as a client or a server
    context->mode = mode;
@@ -195,11 +201,15 @@ error_t sshSetPrng(SshContext *context, const PrngAlgo *prngAlgo,
 {
    //Invalid SSH context?
    if(context == NULL)
+   {
       return ERROR_INVALID_PARAMETER;
+   }
 
    //Check parameters
    if(prngAlgo == NULL || prngContext == NULL)
+   {
       return ERROR_INVALID_PARAMETER;
+   }
 
    //PRNG algorithm that will be used to generate random numbers
    context->prngAlgo = prngAlgo;
@@ -223,11 +233,15 @@ error_t sshSetUsername(SshContext *context, const char_t *username)
 #if (SSH_CLIENT_SUPPORT == ENABLED)
    //Check parameters
    if(context == NULL || username == NULL)
+   {
       return ERROR_INVALID_PARAMETER;
+   }
 
    //Make sure the length of the user name is acceptable
    if(osStrlen(username) > SSH_MAX_USERNAME_LEN)
+   {
       return ERROR_INVALID_LENGTH;
+   }
 
    //Save user name
    osStrcpy(context->username, username);
@@ -253,14 +267,49 @@ error_t sshSetPassword(SshContext *context, const char_t *password)
 #if (SSH_CLIENT_SUPPORT == ENABLED)
    //Check parameters
    if(context == NULL || password == NULL)
+   {
       return ERROR_INVALID_PARAMETER;
+   }
 
    //Make sure the length of the password is acceptable
    if(osStrlen(password) > SSH_MAX_PASSWORD_LEN)
+   {
       return ERROR_INVALID_LENGTH;
+   }
 
-   //Save password
+   //Erase the existing password, if any
+   cryptoZeroizeMem(context->password, SSH_MAX_PASSWORD_LEN);
+   //Save the new password
    osStrcpy(context->password, password);
+
+   //Successful processing
+   return NO_ERROR;
+#else
+   //Not implemented
+   return ERROR_NOT_IMPLEMENTED;
+#endif
+}
+
+
+/**
+ * @brief Enable or disable the validity period check of certificates
+ * @param[in] context Pointer to the SSH context
+ * @param[in] enable Specifies whether the validity period of certificates
+ *   is checked
+ * @return Error code
+ **/
+
+error_t sshEnableCertValidityCheck(SshContext *context, bool_t enable)
+{
+#if (SSH_CERT_SUPPORT == ENABLED)
+   //Make sure the SSH context is valid
+   if(context == NULL)
+   {
+      return ERROR_INVALID_PARAMETER;
+   }
+
+   //Enable or disable the validity period check
+   context->certValidityCheck = enable;
 
    //Successful processing
    return NO_ERROR;
@@ -283,7 +332,9 @@ error_t sshRegisterHostKeyVerifyCallback(SshContext *context,
 {
    //Check parameters
    if(context == NULL || callback == NULL)
+   {
       return ERROR_INVALID_PARAMETER;
+   }
 
    //Acquire exclusive access to the SSH context
    osAcquireMutex(&context->mutex);
@@ -310,7 +361,9 @@ error_t sshRegisterCertVerifyCallback(SshContext *context,
 #if (SSH_CERT_SUPPORT == ENABLED)
    //Check parameters
    if(context == NULL || callback == NULL)
+   {
       return ERROR_INVALID_PARAMETER;
+   }
 
    //Acquire exclusive access to the SSH context
    osAcquireMutex(&context->mutex);
@@ -341,7 +394,9 @@ error_t sshRegisterCaPublicKeyVerifyCallback(SshContext *context,
 #if (SSH_CERT_SUPPORT == ENABLED)
    //Check parameters
    if(context == NULL || callback == NULL)
+   {
       return ERROR_INVALID_PARAMETER;
+   }
 
    //Acquire exclusive access to the SSH context
    osAcquireMutex(&context->mutex);
@@ -372,7 +427,9 @@ error_t sshRegisterPublicKeyAuthCallback(SshContext *context,
 #if (SSH_PUBLIC_KEY_AUTH_SUPPORT == ENABLED)
    //Check parameters
    if(context == NULL || callback == NULL)
+   {
       return ERROR_INVALID_PARAMETER;
+   }
 
    //Acquire exclusive access to the SSH context
    osAcquireMutex(&context->mutex);
@@ -403,7 +460,9 @@ error_t sshRegisterCertAuthCallback(SshContext *context,
 #if (SSH_PUBLIC_KEY_AUTH_SUPPORT == ENABLED && SSH_CERT_SUPPORT == ENABLED)
    //Check parameters
    if(context == NULL || callback == NULL)
+   {
       return ERROR_INVALID_PARAMETER;
+   }
 
    //Acquire exclusive access to the SSH context
    osAcquireMutex(&context->mutex);
@@ -434,7 +493,9 @@ error_t sshRegisterPasswordAuthCallback(SshContext *context,
 #if (SSH_PASSWORD_AUTH_SUPPORT == ENABLED)
    //Check parameters
    if(context == NULL || callback == NULL)
+   {
       return ERROR_INVALID_PARAMETER;
+   }
 
    //Acquire exclusive access to the SSH context
    osAcquireMutex(&context->mutex);
@@ -465,7 +526,9 @@ error_t sshRegisterPasswordChangeCallback(SshContext *context,
 #if (SSH_PASSWORD_AUTH_SUPPORT == ENABLED)
    //Check parameters
    if(context == NULL || callback == NULL)
+   {
       return ERROR_INVALID_PARAMETER;
+   }
 
    //Acquire exclusive access to the SSH context
    osAcquireMutex(&context->mutex);
@@ -496,7 +559,9 @@ error_t sshRegisterSignGenCallback(SshContext *context,
 #if (SSH_SIGN_CALLBACK_SUPPORT == ENABLED)
    //Check parameters
    if(context == NULL || callback == NULL)
+   {
       return ERROR_INVALID_PARAMETER;
+   }
 
    //Acquire exclusive access to the SSH context
    osAcquireMutex(&context->mutex);
@@ -527,7 +592,9 @@ error_t sshRegisterSignVerifyCallback(SshContext *context,
 #if (SSH_SIGN_CALLBACK_SUPPORT == ENABLED)
    //Check parameters
    if(context == NULL || callback == NULL)
+   {
       return ERROR_INVALID_PARAMETER;
+   }
 
    //Acquire exclusive access to the SSH context
    osAcquireMutex(&context->mutex);
@@ -558,7 +625,9 @@ error_t sshRegisterEcdhKeyPairGenCallback(SshContext *context,
 #if (SSH_ECDH_CALLBACK_SUPPORT == ENABLED)
    //Check parameters
    if(context == NULL || callback == NULL)
+   {
       return ERROR_INVALID_PARAMETER;
+   }
 
    //Acquire exclusive access to the SSH context
    osAcquireMutex(&context->mutex);
@@ -589,7 +658,9 @@ error_t sshRegisterEcdhSharedSecretCalcCallback(SshContext *context,
 #if (SSH_ECDH_CALLBACK_SUPPORT == ENABLED)
    //Check parameters
    if(context == NULL || callback == NULL)
+   {
       return ERROR_INVALID_PARAMETER;
+   }
 
    //Acquire exclusive access to the SSH context
    osAcquireMutex(&context->mutex);
@@ -623,7 +694,9 @@ error_t sshRegisterGlobalRequestCallback(SshContext *context,
 
    //Check parameters
    if(context == NULL || callback == NULL)
+   {
       return ERROR_INVALID_PARAMETER;
+   }
 
    //Acquire exclusive access to the SSH context
    osAcquireMutex(&context->mutex);
@@ -669,7 +742,9 @@ error_t sshUnregisterGlobalRequestCallback(SshContext *context,
 
    //Check parameters
    if(context == NULL || callback == NULL)
+   {
       return ERROR_INVALID_PARAMETER;
+   }
 
    //Acquire exclusive access to the SSH context
    osAcquireMutex(&context->mutex);
@@ -710,7 +785,9 @@ error_t sshRegisterChannelRequestCallback(SshContext *context,
 
    //Check parameters
    if(context == NULL || callback == NULL)
+   {
       return ERROR_INVALID_PARAMETER;
+   }
 
    //Acquire exclusive access to the SSH context
    osAcquireMutex(&context->mutex);
@@ -756,7 +833,9 @@ error_t sshUnregisterChannelRequestCallback(SshContext *context,
 
    //Check parameters
    if(context == NULL || callback == NULL)
+   {
       return ERROR_INVALID_PARAMETER;
+   }
 
    //Acquire exclusive access to the SSH context
    osAcquireMutex(&context->mutex);
@@ -797,7 +876,9 @@ error_t sshRegisterChannelOpenCallback(SshContext *context,
 
    //Check parameters
    if(context == NULL || callback == NULL)
+   {
       return ERROR_INVALID_PARAMETER;
+   }
 
    //Acquire exclusive access to the SSH context
    osAcquireMutex(&context->mutex);
@@ -843,7 +924,9 @@ error_t sshUnregisterChannelOpenCallback(SshContext *context,
 
    //Check parameters
    if(context == NULL || callback == NULL)
+   {
       return ERROR_INVALID_PARAMETER;
+   }
 
    //Acquire exclusive access to the SSH context
    osAcquireMutex(&context->mutex);
@@ -884,7 +967,9 @@ error_t sshRegisterConnectionOpenCallback(SshContext *context,
 
    //Check parameters
    if(context == NULL || callback == NULL)
+   {
       return ERROR_INVALID_PARAMETER;
+   }
 
    //Acquire exclusive access to the SSH context
    osAcquireMutex(&context->mutex);
@@ -930,7 +1015,9 @@ error_t sshUnregisterConnectionOpenCallback(SshContext *context,
 
    //Check parameters
    if(context == NULL || callback == NULL)
+   {
       return ERROR_INVALID_PARAMETER;
+   }
 
    //Acquire exclusive access to the SSH context
    osAcquireMutex(&context->mutex);
@@ -971,7 +1058,9 @@ error_t sshRegisterConnectionCloseCallback(SshContext *context,
 
    //Check parameters
    if(context == NULL || callback == NULL)
+   {
       return ERROR_INVALID_PARAMETER;
+   }
 
    //Acquire exclusive access to the SSH context
    osAcquireMutex(&context->mutex);
@@ -1017,7 +1106,9 @@ error_t sshUnregisterConnectionCloseCallback(SshContext *context,
 
    //Check parameters
    if(context == NULL || callback == NULL)
+   {
       return ERROR_INVALID_PARAMETER;
+   }
 
    //Acquire exclusive access to the SSH context
    osAcquireMutex(&context->mutex);
@@ -1055,7 +1146,9 @@ error_t sshRegisterKeyLogCallback(SshContext *context,
 #if (SSH_KEY_LOG_SUPPORT == ENABLED)
    //Check parameters
    if(context == NULL || callback == NULL)
+   {
       return ERROR_INVALID_PARAMETER;
+   }
 
    //Save key logging callback function
    context->keyLogCallback = callback;
@@ -1096,23 +1189,33 @@ error_t sshLoadRsaKey(SshContext *context, uint_t index,
 
    //Make sure the SSH context is valid
    if(context == NULL)
+   {
       return ERROR_INVALID_PARAMETER;
+   }
 
    //Check index
    if(index >= SSH_MAX_RSA_KEYS)
+   {
       return ERROR_INVALID_PARAMETER;
+   }
 
    //Check public key
    if(publicKey == NULL || publicKeyLen == 0)
+   {
       return ERROR_INVALID_PARAMETER;
+   }
 
    //Check private key
    if(privateKey == NULL || publicKeyLen == 0)
+   {
       return ERROR_INVALID_PARAMETER;
+   }
 
    //The password if required only for encrypted private keys
    if(password != NULL && osStrlen(password) > SSH_MAX_PASSWORD_LEN)
+   {
       return ERROR_INVALID_PASSWORD;
+   }
 
    //Initialize RSA public and private keys
    rsaInitPublicKey(&rsaPublicKey);
@@ -1199,16 +1302,20 @@ error_t sshUnloadRsaKey(SshContext *context, uint_t index)
 #if (SSH_SERVER_SUPPORT == ENABLED && SSH_RSA_KEX_SUPPORT == ENABLED)
    //Make sure the SSH context is valid
    if(context == NULL)
+   {
       return ERROR_INVALID_PARAMETER;
+   }
 
    //Check index
    if(index >= SSH_MAX_RSA_KEYS)
+   {
       return ERROR_INVALID_PARAMETER;
+   }
 
    //Acquire exclusive access to the SSH context
    osAcquireMutex(&context->mutex);
    //Unload the specified transient RSA key
-   osMemset(&context->rsaKeys[index], 0, sizeof(SshRsaKey));
+   cryptoZeroizeMem(&context->rsaKeys[index], sizeof(SshRsaKey));
    //Release exclusive access to the SSH context
    osReleaseMutex(&context->mutex);
 
@@ -1241,16 +1348,22 @@ error_t sshLoadDhGexGroup(SshContext *context, uint_t index,
 
    //Make sure the SSH context is valid
    if(context == NULL)
+   {
       return ERROR_INVALID_PARAMETER;
+   }
 
    //The implementation limits the number of Diffie-Hellman groups that can
    //be loaded
    if(index >= SSH_MAX_DH_GEX_GROUPS)
+   {
       return ERROR_INVALID_PARAMETER;
+   }
 
    //Check Diffie-Hellman parameters
    if(dhParams == NULL || dhParamsLen == 0)
+   {
       return ERROR_INVALID_PARAMETER;
+   }
 
    //Initialize Diffie-Hellman parameters
    dhInitParameters(&params);
@@ -1313,11 +1426,15 @@ error_t sshUnloadDhGexGroup(SshContext *context, uint_t index)
 #if (SSH_SERVER_SUPPORT == ENABLED && SSH_DH_GEX_KEX_SUPPORT == ENABLED)
    //Make sure the SSH context is valid
    if(context == NULL)
+   {
       return ERROR_INVALID_PARAMETER;
+   }
 
    //Check index
    if(index >= SSH_MAX_DH_GEX_GROUPS)
+   {
       return ERROR_INVALID_PARAMETER;
+   }
 
    //Acquire exclusive access to the SSH context
    osAcquireMutex(&context->mutex);
@@ -1360,23 +1477,33 @@ error_t sshLoadHostKey(SshContext *context, uint_t index,
 
    //Make sure the SSH context is valid
    if(context == NULL)
+   {
       return ERROR_INVALID_PARAMETER;
+   }
 
    //The implementation limits the number of host keys that can be loaded
    if(index >= SSH_MAX_HOST_KEYS)
+   {
       return ERROR_INVALID_PARAMETER;
+   }
 
    //Check public key
    if(publicKey == NULL || publicKeyLen == 0)
+   {
       return ERROR_INVALID_PARAMETER;
+   }
 
    //The private key is optional
    if(privateKey == NULL && privateKeyLen != 0)
+   {
       return ERROR_INVALID_PARAMETER;
+   }
 
    //The password if required only for encrypted private keys
    if(password != NULL && osStrlen(password) > SSH_MAX_PASSWORD_LEN)
+   {
       return ERROR_INVALID_PASSWORD;
+   }
 
    //Initialize status code
    error = NO_ERROR;
@@ -1589,13 +1716,6 @@ error_t sshLoadHostKey(SshContext *context, uint_t index,
          osStrcpy(hostKey->password, "");
       }
 
-#if (SSH_CLIENT_SUPPORT == ENABLED)
-      //Select the default public key algorithm to use during user
-      //authentication
-      hostKey->publicKeyAlgo = sshSelectPublicKeyAlgo(context,
-         hostKey->keyFormatId, NULL);
-#endif
-
       //Release exclusive access to the SSH context
       osReleaseMutex(&context->mutex);
    }
@@ -1619,11 +1739,15 @@ error_t sshUnloadHostKey(SshContext *context, uint_t index)
 
    //Make sure the SSH context is valid
    if(context == NULL)
+   {
       return ERROR_INVALID_PARAMETER;
+   }
 
    //Check index
    if(index >= SSH_MAX_HOST_KEYS)
+   {
       return ERROR_INVALID_PARAMETER;
+   }
 
    //Acquire exclusive access to the SSH context
    osAcquireMutex(&context->mutex);
@@ -1650,7 +1774,7 @@ error_t sshUnloadHostKey(SshContext *context, uint_t index)
    }
 
    //Unload the specified key pair
-   osMemset(&context->hostKeys[index], 0, sizeof(SshHostKey));
+   cryptoZeroizeMem(&context->hostKeys[index], sizeof(SshHostKey));
 
    //Release exclusive access to the SSH context
    osReleaseMutex(&context->mutex);
@@ -1686,23 +1810,33 @@ error_t sshLoadCertificate(SshContext *context, uint_t index,
 
    //Make sure the SSH context is valid
    if(context == NULL)
+   {
       return ERROR_INVALID_PARAMETER;
+   }
 
    //The implementation limits the number of certificates that can be loaded
    if(index >= SSH_MAX_HOST_KEYS)
+   {
       return ERROR_INVALID_PARAMETER;
+   }
 
    //Check certificate
    if(cert == NULL || certLen == 0)
+   {
       return ERROR_INVALID_PARAMETER;
+   }
 
    //The private key is optional
    if(privateKey == NULL && privateKeyLen != 0)
+   {
       return ERROR_INVALID_PARAMETER;
+   }
 
    //The password if required only for encrypted private keys
    if(password != NULL && osStrlen(password) > SSH_MAX_PASSWORD_LEN)
+   {
       return ERROR_INVALID_PASSWORD;
+   }
 
    //Initialize status code
    error = NO_ERROR;
@@ -1869,13 +2003,6 @@ error_t sshLoadCertificate(SshContext *context, uint_t index,
          osStrcpy(hostKey->password, "");
       }
 
-#if (SSH_CLIENT_SUPPORT == ENABLED)
-      //Select the default public key algorithm to use during user
-      //authentication
-      hostKey->publicKeyAlgo = sshSelectPublicKeyAlgo(context,
-         hostKey->keyFormatId, NULL);
-#endif
-
       //Release exclusive access to the SSH context
       osReleaseMutex(&context->mutex);
    }
@@ -1904,11 +2031,15 @@ error_t sshUnloadCertificate(SshContext *context, uint_t index)
 
    //Make sure the SSH context is valid
    if(context == NULL)
+   {
       return ERROR_INVALID_PARAMETER;
+   }
 
    //Check index
    if(index >= SSH_MAX_HOST_KEYS)
+   {
       return ERROR_INVALID_PARAMETER;
+   }
 
    //Acquire exclusive access to the SSH context
    osAcquireMutex(&context->mutex);
@@ -1935,7 +2066,7 @@ error_t sshUnloadCertificate(SshContext *context, uint_t index)
    }
 
    //Unload the specified certificate
-   osMemset(&context->hostKeys[index], 0, sizeof(SshHostKey));
+   cryptoZeroizeMem(&context->hostKeys[index], sizeof(SshHostKey));
 
    //Release exclusive access to the SSH context
    osReleaseMutex(&context->mutex);
@@ -1962,11 +2093,15 @@ error_t sshSetPasswordChangePrompt(SshConnection *connection,
 #if (SSH_SERVER_SUPPORT == ENABLED && SSH_PASSWORD_AUTH_SUPPORT == ENABLED)
    //Check parameters
    if(connection == NULL || prompt == NULL)
+   {
       return ERROR_INVALID_PARAMETER;
+   }
 
    //Make sure the length of the prompt string is acceptable
    if(osStrlen(prompt) > SSH_MAX_PASSWORD_CHANGE_PROMPT_LEN)
+   {
       return ERROR_INVALID_LENGTH;
+   }
 
    //Save prompt string
    osStrcpy(connection->passwordChangePrompt, prompt);
@@ -1988,12 +2123,8 @@ error_t sshSetPasswordChangePrompt(SshConnection *connection,
 
 SshChannel *sshCreateChannel(SshConnection *connection)
 {
-   uint_t i;
    SshContext *context;
    SshChannel *channel;
-
-   //Initialize handle
-   channel = NULL;
 
    //Point to the SSH context
    context = connection->context;
@@ -2001,38 +2132,31 @@ SshChannel *sshCreateChannel(SshConnection *connection)
    //Acquire exclusive access to the SSH context
    osAcquireMutex(&context->mutex);
 
-   //Loop through SSH channels
-   for(i = 0; i < context->numChannels; i++)
+   //Allocate a new SSH channel
+   channel = sshAllocateChannel(connection);
+
+   //Any SSH channel available for this connection?
+   if(channel != NULL)
    {
-      //Unused SSH channel?
-      if(context->channels[i].state == SSH_CHANNEL_STATE_UNUSED)
-      {
-         //Point to the current SSH channel
-         channel = &context->channels[i];
+      //Clear the structure keeping the event field untouched
+      osMemset(channel, 0, offsetof(SshChannel, event));
 
-         //Clear the structure keeping the event field untouched
-         osMemset(channel, 0, offsetof(SshChannel, event));
+      osMemset((uint8_t *) channel + offsetof(SshChannel, event) + sizeof(OsEvent),
+         0, sizeof(SshChannel) - offsetof(SshChannel, event) - sizeof(OsEvent));
 
-         osMemset((uint8_t *) channel + offsetof(SshChannel, event) + sizeof(OsEvent),
-            0, sizeof(SshChannel) - offsetof(SshChannel, event) - sizeof(OsEvent));
+      //Initialize channel's parameters
+      channel->context = context;
+      channel->connection = connection;
+      channel->timeout = INFINITE_DELAY;
+      channel->rxWindowSize = SSH_CHANNEL_BUFFER_SIZE;
+      channel->exitStatus = -1;
 
-         //Initialize channel's parameters
-         channel->context = context;
-         channel->connection = connection;
-         channel->timeout = INFINITE_DELAY;
-         channel->rxWindowSize = SSH_CHANNEL_BUFFER_SIZE;
-         channel->exitStatus = -1;
+      //When the implementation wish to open a new channel, it allocates a
+      //local number for the channel (refer to RFC 4254, section 5.1)
+      channel->localChannelNum = sshAllocateLocalChannelNum(connection);
 
-         //When the implementation wish to open a new channel, it allocates a
-         //local number for the channel (refer to RFC 4254, section 5.1)
-         channel->localChannelNum = sshAllocateLocalChannelNum(connection);
-
-         //The SSH channel has been successfully allocated
-         channel->state = SSH_CHANNEL_STATE_RESERVED;
-
-         //We are done
-         break;
-      }
+      //The SSH channel has been successfully allocated
+      channel->state = SSH_CHANNEL_STATE_RESERVED;
    }
 
    //Release exclusive access to the SSH context
@@ -2054,7 +2178,9 @@ error_t sshSetChannelTimeout(SshChannel *channel, systime_t timeout)
 {
    //Make sure the SSH channel handle is valid
    if(channel == NULL)
+   {
       return ERROR_INVALID_PARAMETER;
+   }
 
    //Save timeout value
    channel->timeout = timeout;
@@ -2085,11 +2211,15 @@ error_t sshWriteChannel(SshChannel *channel, const void *data, size_t length,
 
    //Make sure the SSH channel handle is valid
    if(channel == NULL)
+   {
       return ERROR_INVALID_PARAMETER;
+   }
 
    //Check parameters
    if(data == NULL && length != 0)
+   {
       return ERROR_INVALID_PARAMETER;
+   }
 
    //Initialize status code
    error = NO_ERROR;
@@ -2213,7 +2343,9 @@ error_t sshReadChannel(SshChannel *channel, void *data, size_t size,
 
    //Check parameters
    if(channel == NULL || data == NULL || received == NULL)
+   {
       return ERROR_INVALID_PARAMETER;
+   }
 
    //Initialize status code
    error = NO_ERROR;
@@ -2409,7 +2541,9 @@ error_t sshPollChannels(SshChannelEventDesc *eventDesc, uint_t size,
 
    //Check parameters
    if(eventDesc == NULL || size == 0)
+   {
       return ERROR_INVALID_PARAMETER;
+   }
 
    //Try to use the supplied event object to receive notifications
    if(!extEvent)
@@ -2417,7 +2551,6 @@ error_t sshPollChannels(SshChannelEventDesc *eventDesc, uint_t size,
       //Create an event object only if necessary
       if(!osCreateEvent(&eventObject))
       {
-         //Report an error
          return ERROR_OUT_OF_RESOURCES;
       }
 
@@ -2492,7 +2625,9 @@ error_t sshSetExitStatus(SshChannel *channel, int32_t exitStatus)
 {
    //Make sure the SSH channel handle is valid
    if(channel == NULL)
+   {
       return ERROR_INVALID_PARAMETER;
+   }
 
    //A zero 'exit-status' means that the command terminated successfully
    channel->exitStatus = exitStatus;
@@ -2514,7 +2649,9 @@ error_t sshAbortChannel(SshChannel *channel)
 
    //Make sure the SSH channel handle is valid
    if(channel == NULL)
+   {
       return ERROR_INVALID_PARAMETER;
+   }
 
    //Initialize status code
    error = NO_ERROR;
@@ -2562,7 +2699,9 @@ error_t sshCloseChannel(SshChannel *channel)
 
    //Make sure the SSH channel handle is valid
    if(channel == NULL)
+   {
       return ERROR_INVALID_PARAMETER;
+   }
 
    //Initialize status code
    error = NO_ERROR;
@@ -2663,7 +2802,7 @@ void sshDeinit(SshContext *context)
       connection = &context->connections[i];
 
       //Clear associated structure
-      osMemset(connection, 0, sizeof(SshConnection));
+      cryptoZeroizeMem(connection, sizeof(SshConnection));
    }
 
    //Loop through SSH channels
@@ -2675,11 +2814,11 @@ void sshDeinit(SshContext *context)
       //Release event object
       osDeleteEvent(&channel->event);
       //Clear associated structure
-      osMemset(channel, 0, sizeof(SshChannel));
+      cryptoZeroizeMem(channel, sizeof(SshChannel));
    }
 
    //Clear SSH context
-   osMemset(context, 0, sizeof(SshContext));
+   cryptoZeroizeMem(context, sizeof(SshContext));
 }
 
 #endif

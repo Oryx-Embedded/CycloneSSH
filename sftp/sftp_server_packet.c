@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.6.6
+ * @version 2.6.8
  **/
 
 //Switch to the appropriate trace level
@@ -64,15 +64,20 @@ error_t sftpServerParseFxpInit(SftpServerSession *session,
    TRACE_VERBOSE_ARRAY("  ", packet, length);
 
    //Malformed packet?
-   if(length != sizeof(uint32_t))
+   if(length < sizeof(uint32_t))
+   {
       return ERROR_INVALID_PACKET;
+   }
 
-   //The SSH_FXP_INIT packet contains the client version
+   //The SSH_FXP_INIT packet contains the client version, optionally followed
+   //by extension data
    version = LOAD32BE(packet);
 
    //Sanity check
    if(version < SFTP_SERVER_MIN_VERSION)
+   {
       return ERROR_INVALID_VERSION;
+   }
 
    //The server responds with an SSH_FXP_VERSION packet, supplying the lowest
    //of its own and the client's version number. Both parties should from then
@@ -116,9 +121,11 @@ error_t sftpServerParseFxpOpen(SftpServerSession *session,
 
    //Malformed packet?
    if(length < sizeof(uint32_t))
+   {
       return ERROR_INVALID_PACKET;
+   }
 
-   //Get request identifier
+   //All requests start with a request identifier
    id = LOAD32BE(p);
 
    //Point to the next field
@@ -129,7 +136,9 @@ error_t sftpServerParseFxpOpen(SftpServerSession *session,
    error = sshParseString(p, length, &filename);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    p += sizeof(uint32_t) + filename.length;
@@ -137,7 +146,9 @@ error_t sftpServerParseFxpOpen(SftpServerSession *session,
 
    //Malformed packet?
    if(length < sizeof(uint32_t))
+   {
       return ERROR_INVALID_PACKET;
+   }
 
    //Get pflags
    pflags = LOAD32BE(p);
@@ -150,11 +161,15 @@ error_t sftpServerParseFxpOpen(SftpServerSession *session,
    error = sftpParseAttributes(session->version, &attributes, p, length, &n);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Malformed packet?
    if(length != n)
+   {
       return ERROR_INVALID_PACKET;
+   }
 
    //Open the specified file
    error = sftpServerOpenFile(session, &filename, pflags, &attributes,
@@ -171,6 +186,12 @@ error_t sftpServerParseFxpOpen(SftpServerSession *session,
       //Too many files have been open
       error = sftpFormatFxpStatus(session, id, SSH_FX_FAILURE,
          "Too many open files");
+   }
+   else if(error == ERROR_FILE_ALREADY_EXISTS)
+   {
+      //The named file already exists
+      error = sftpFormatFxpStatus(session, id, SSH_FX_FAILURE,
+         "File already exists");
    }
    else if(error == ERROR_ACCESS_DENIED)
    {
@@ -216,9 +237,11 @@ error_t sftpServerParseFxpClose(SftpServerSession *session,
 
    //Malformed packet?
    if(length < sizeof(uint32_t))
+   {
       return ERROR_INVALID_PACKET;
+   }
 
-   //Get request identifier
+   //All requests start with a request identifier
    id = LOAD32BE(p);
 
    //Point to the next field
@@ -229,11 +252,15 @@ error_t sftpServerParseFxpClose(SftpServerSession *session,
    error = sshParseBinaryString(p, length, &handle);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Malformed message?
    if(length != (sizeof(uint32_t) + handle.length))
+   {
       return ERROR_INVALID_PACKET;
+   }
 
    //An SSH_FXP_CLOSE request can be used to close a file
    error = sftpServerCloseFile(session, &handle);
@@ -292,9 +319,11 @@ error_t sftpServerParseFxpRead(SftpServerSession *session,
 
    //Malformed packet?
    if(length < sizeof(uint32_t))
+   {
       return ERROR_INVALID_PACKET;
+   }
 
-   //Get request identifier
+   //All requests start with a request identifier
    id = LOAD32BE(p);
 
    //Point to the next field
@@ -305,7 +334,9 @@ error_t sftpServerParseFxpRead(SftpServerSession *session,
    error = sshParseBinaryString(p, length, &handle);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    p += sizeof(uint32_t) + handle.length;
@@ -313,7 +344,9 @@ error_t sftpServerParseFxpRead(SftpServerSession *session,
 
    //Malformed packet?
    if(length < sizeof(uint64_t))
+   {
       return ERROR_INVALID_PACKET;
+   }
 
    //The 'offset' field is the offset is relative to the beginning of the
    //file from where to start reading
@@ -325,7 +358,9 @@ error_t sftpServerParseFxpRead(SftpServerSession *session,
 
    //Malformed packet?
    if(length != sizeof(uint32_t))
+   {
       return ERROR_INVALID_PACKET;
+   }
 
    //The 'len' field is the maximum number of bytes to read
    dataLen = LOAD32BE(p);
@@ -397,9 +432,11 @@ error_t sftpServerParseFxpWrite(SftpServerSession *session,
 
    //Malformed packet?
    if(fragLen < sizeof(uint32_t) || fragLen > totalLen)
+   {
       return ERROR_INVALID_PACKET;
+   }
 
-   //Get request identifier
+   //All requests start with a request identifier
    session->requestId = LOAD32BE(p);
 
    //Point to the next field
@@ -411,7 +448,9 @@ error_t sftpServerParseFxpWrite(SftpServerSession *session,
    error = sshParseBinaryString(p, fragLen, &handle);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    p += sizeof(uint32_t) + handle.length;
@@ -420,7 +459,9 @@ error_t sftpServerParseFxpWrite(SftpServerSession *session,
 
    //Malformed packet?
    if(fragLen < sizeof(uint64_t))
+   {
       return ERROR_INVALID_PACKET;
+   }
 
    //The 'offset' field is the offset from the beginning of the file where
    //to start writing
@@ -433,17 +474,23 @@ error_t sftpServerParseFxpWrite(SftpServerSession *session,
 
    //Malformed packet?
    if(fragLen < sizeof(uint32_t))
+   {
       return ERROR_INVALID_PACKET;
+   }
 
    //The 'data' field is a byte string containing the data to be written
    error = sshParseBinaryString(p, totalLen, &data);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Malformed packet?
    if(totalLen != (sizeof(uint32_t) + data.length))
+   {
       return ERROR_INVALID_PACKET;
+   }
 
    //Point to the data payload
    p += sizeof(uint32_t);
@@ -484,9 +531,11 @@ error_t sftpServerParseFxpOpenDir(SftpServerSession *session,
 
    //Malformed packet?
    if(length < sizeof(uint32_t))
+   {
       return ERROR_INVALID_PACKET;
+   }
 
-   //Get request identifier
+   //All requests start with a request identifier
    id = LOAD32BE(p);
 
    //Point to the next field
@@ -497,11 +546,15 @@ error_t sftpServerParseFxpOpenDir(SftpServerSession *session,
    error = sshParseString(p, length, &path);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Malformed message?
    if(length != (sizeof(uint32_t) + path.length))
+   {
       return ERROR_INVALID_PACKET;
+   }
 
    //Open the specified directory
    error = sftpServerOpenDir(session, &path, &handle);
@@ -563,9 +616,11 @@ error_t sftpServerParseFxpReadDir(SftpServerSession *session,
 
    //Malformed packet?
    if(length < sizeof(uint32_t))
+   {
       return ERROR_INVALID_PACKET;
+   }
 
-   //Get request identifier
+   //All requests start with a request identifier
    id = LOAD32BE(p);
 
    //Point to the next field
@@ -576,11 +631,15 @@ error_t sftpServerParseFxpReadDir(SftpServerSession *session,
    error = sshParseBinaryString(p, length, &handle);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Malformed message?
    if(length != (sizeof(uint32_t) + handle.length))
+   {
       return ERROR_INVALID_PACKET;
+   }
 
    //Read a new entry from the directory
    error = sftpServerReadDir(session, &handle, &name);
@@ -640,9 +699,11 @@ error_t sftpServerParseFxpRemove(SftpServerSession *session,
 
    //Malformed packet?
    if(length < sizeof(uint32_t))
+   {
       return ERROR_INVALID_PACKET;
+   }
 
-   //Get request identifier
+   //All requests start with a request identifier
    id = LOAD32BE(p);
 
    //Point to the next field
@@ -653,11 +714,15 @@ error_t sftpServerParseFxpRemove(SftpServerSession *session,
    error = sshParseString(p, length, &filename);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Malformed message?
    if(length != (sizeof(uint32_t) + filename.length))
+   {
       return ERROR_INVALID_PACKET;
+   }
 
    //Remove the specified file
    error = sftpServerRemoveFile(session, &filename);
@@ -716,9 +781,11 @@ error_t sftpServerParseFxpMkDir(SftpServerSession *session,
 
    //Malformed packet?
    if(length < sizeof(uint32_t))
+   {
       return ERROR_INVALID_PACKET;
+   }
 
-   //Get request identifier
+   //All requests start with a request identifier
    id = LOAD32BE(p);
 
    //Point to the next field
@@ -729,7 +796,9 @@ error_t sftpServerParseFxpMkDir(SftpServerSession *session,
    error = sshParseString(p, length, &path);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    p += sizeof(uint32_t) + path.length;
@@ -739,11 +808,15 @@ error_t sftpServerParseFxpMkDir(SftpServerSession *session,
    error = sftpParseAttributes(session->version, &attributes, p, length, &n);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Malformed packet?
    if(length != n)
+   {
       return ERROR_INVALID_PACKET;
+   }
 
    //Create the specified directory
    error = sftpServerCreateDir(session, &path, &attributes);
@@ -800,9 +873,11 @@ error_t sftpServerParseFxpRmDir(SftpServerSession *session,
 
    //Malformed packet?
    if(length < sizeof(uint32_t))
+   {
       return ERROR_INVALID_PACKET;
+   }
 
-   //Get request identifier
+   //All requests start with a request identifier
    id = LOAD32BE(p);
 
    //Point to the next field
@@ -813,11 +888,15 @@ error_t sftpServerParseFxpRmDir(SftpServerSession *session,
    error = sshParseString(p, length, &path);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Malformed message?
    if(length != (sizeof(uint32_t) + path.length))
+   {
       return ERROR_INVALID_PACKET;
+   }
 
    //Remove the specified directory
    error = sftpServerRemoveDir(session, &path);
@@ -875,9 +954,11 @@ error_t sftpServerParseFxpRealPath(SftpServerSession *session,
 
    //Malformed packet?
    if(length < sizeof(uint32_t))
+   {
       return ERROR_INVALID_PACKET;
+   }
 
-   //Get request identifier
+   //All requests start with a request identifier
    id = LOAD32BE(p);
 
    //Point to the next field
@@ -888,11 +969,15 @@ error_t sftpServerParseFxpRealPath(SftpServerSession *session,
    error = sshParseString(p, length, &path);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Malformed message?
    if(length != (sizeof(uint32_t) + path.length))
+   {
       return ERROR_INVALID_PACKET;
+   }
 
    //Canonicalize the specified path name to an absolute path
    error = sftpServerGetRealPath(session, &path, &name);
@@ -942,9 +1027,11 @@ error_t sftpServerParseFxpStat(SftpServerSession *session,
 
    //Malformed packet?
    if(length < sizeof(uint32_t))
+   {
       return ERROR_INVALID_PACKET;
+   }
 
-   //Get request identifier
+   //All requests start with a request identifier
    id = LOAD32BE(p);
 
    //Point to the next field
@@ -956,11 +1043,15 @@ error_t sftpServerParseFxpStat(SftpServerSession *session,
    error = sshParseString(p, length, &path);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Malformed message?
    if(length != (sizeof(uint32_t) + path.length))
+   {
       return ERROR_INVALID_PACKET;
+   }
 
    //Retrieve the attributes of the specified file
    error = sftpServerGetFileStat(session, &path, &attributes);
@@ -1016,9 +1107,11 @@ error_t sftpServerParseFxpFstat(SftpServerSession *session,
 
    //Malformed packet?
    if(length < sizeof(uint32_t))
+   {
       return ERROR_INVALID_PACKET;
+   }
 
-   //Get request identifier
+   //All requests start with a request identifier
    id = LOAD32BE(p);
 
    //Point to the next field
@@ -1029,11 +1122,15 @@ error_t sftpServerParseFxpFstat(SftpServerSession *session,
    error = sshParseBinaryString(p, length, &handle);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Malformed message?
    if(length != (sizeof(uint32_t) + handle.length))
+   {
       return ERROR_INVALID_PACKET;
+   }
 
    //Retrieve the attributes of the specified file
    error = sftpServerGetFileStatEx(session, &handle, &attributes);
@@ -1090,9 +1187,11 @@ error_t sftpServerParseFxpSetStat(SftpServerSession *session,
 
    //Malformed packet?
    if(length < sizeof(uint32_t))
+   {
       return ERROR_INVALID_PACKET;
+   }
 
-   //Get request identifier
+   //All requests start with a request identifier
    id = LOAD32BE(p);
 
    //Point to the next field
@@ -1104,7 +1203,9 @@ error_t sftpServerParseFxpSetStat(SftpServerSession *session,
    error = sshParseString(p, length, &path);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    p += sizeof(uint32_t) + path.length;
@@ -1114,11 +1215,15 @@ error_t sftpServerParseFxpSetStat(SftpServerSession *session,
    error = sftpParseAttributes(session->version, &attributes, p, length, &n);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Malformed packet?
    if(length != n)
+   {
       return ERROR_INVALID_PACKET;
+   }
 
    //Modify the attributes of the specified file
    error = sftpServerSetFileStat(session, &path, &attributes);
@@ -1177,9 +1282,11 @@ error_t sftpServerParseFxpSetFstat(SftpServerSession *session,
 
    //Malformed packet?
    if(length < sizeof(uint32_t))
+   {
       return ERROR_INVALID_PACKET;
+   }
 
-   //Get request identifier
+   //All requests start with a request identifier
    id = LOAD32BE(p);
 
    //Point to the next field
@@ -1190,7 +1297,9 @@ error_t sftpServerParseFxpSetFstat(SftpServerSession *session,
    error = sshParseBinaryString(p, length, &handle);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    p += sizeof(uint32_t) + handle.length;
@@ -1200,11 +1309,15 @@ error_t sftpServerParseFxpSetFstat(SftpServerSession *session,
    error = sftpParseAttributes(session->version, &attributes, p, length, &n);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Malformed packet?
    if(length != n)
+   {
       return ERROR_INVALID_PACKET;
+   }
 
    //Modify the attributes of the specified file
    error = sftpServerSetFileStatEx(session, &handle, &attributes);
@@ -1262,9 +1375,11 @@ error_t sftpServerParseFxpRename(SftpServerSession *session,
 
    //Malformed packet?
    if(length < sizeof(uint32_t))
+   {
       return ERROR_INVALID_PACKET;
+   }
 
-   //Get request identifier
+   //All requests start with a request identifier
    id = LOAD32BE(p);
 
    //Point to the next field
@@ -1275,7 +1390,9 @@ error_t sftpServerParseFxpRename(SftpServerSession *session,
    error = sshParseString(p, length, &oldPath);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    p += sizeof(uint32_t) + oldPath.length;
@@ -1285,11 +1402,15 @@ error_t sftpServerParseFxpRename(SftpServerSession *session,
    error = sshParseString(p, length, &newPath);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Malformed message?
    if(length != (sizeof(uint32_t) + newPath.length))
+   {
       return ERROR_INVALID_PACKET;
+   }
 
    //Rename the specified file
    error = sftpServerRenameFile(session, &oldPath, &newPath);
@@ -1322,6 +1443,138 @@ error_t sftpServerParseFxpRename(SftpServerSession *session,
 
 
 /**
+ * @brief Parse SSH_FXP_READLINK packet
+ * @param[in] session Handle referencing an SFTP session
+ * @param[in] packet Pointer to packet
+ * @param[in] length Length of the packet, in bytes
+ * @return Error code
+ **/
+
+error_t sftpServerParseFxpReadLink(SftpServerSession *session,
+   const uint8_t *packet, size_t length)
+{
+   error_t error;
+   uint32_t id;
+   const uint8_t *p;
+   SshString path;
+
+   //Debug message
+   TRACE_INFO("SSH_FXP_READLINK packet received (%" PRIuSIZE " bytes)...\r\n", length);
+   TRACE_VERBOSE_ARRAY("  ", packet, length);
+
+   //Point to the first field of the packet
+   p = packet;
+
+   //Malformed packet?
+   if(length < sizeof(uint32_t))
+   {
+      return ERROR_INVALID_PACKET;
+   }
+
+   //All requests start with a request identifier
+   id = LOAD32BE(p);
+
+   //Point to the next field
+   p += sizeof(uint32_t);
+   length -= sizeof(uint32_t);
+
+   //The 'path' field specifies the path name of the symbolic link to be read
+   error = sshParseString(p, length, &path);
+   //Any error to report?
+   if(error)
+   {
+      return error;
+   }
+
+   //Malformed message?
+   if(length != (sizeof(uint32_t) + path.length))
+   {
+      return ERROR_INVALID_PACKET;
+   }
+
+   //Symbolic links are not supported
+   error = sftpFormatFxpStatus(session, id, SSH_FX_OP_UNSUPPORTED,
+      "Operation not supported");
+
+   //Return status code
+   return error;
+}
+
+
+/**
+ * @brief Parse SSH_FXP_SYMLINK packet
+ * @param[in] session Handle referencing an SFTP session
+ * @param[in] packet Pointer to packet
+ * @param[in] length Length of the packet, in bytes
+ * @return Error code
+ **/
+
+error_t sftpServerParseFxpSymLink(SftpServerSession *session,
+   const uint8_t *packet, size_t length)
+{
+   error_t error;
+   uint32_t id;
+   const uint8_t *p;
+   SshString linkPath;
+   SshString targetPath;
+
+   //Debug message
+   TRACE_INFO("SSH_FXP_SYMLINK packet received (%" PRIuSIZE " bytes)...\r\n", length);
+   TRACE_VERBOSE_ARRAY("  ", packet, length);
+
+   //Point to the first field of the packet
+   p = packet;
+
+   //Malformed packet?
+   if(length < sizeof(uint32_t))
+   {
+      return ERROR_INVALID_PACKET;
+   }
+
+   //All requests start with a request identifier
+   id = LOAD32BE(p);
+
+   //Point to the next field
+   p += sizeof(uint32_t);
+   length -= sizeof(uint32_t);
+
+   //The 'linkpath' field specifies the path name of the symbolic link to be
+   //created
+   error = sshParseString(p, length, &linkPath);
+   //Any error to report?
+   if(error)
+   {
+      return error;
+   }
+
+   //Point to the next field
+   p += sizeof(uint32_t) + linkPath.length;
+   length -= sizeof(uint32_t) + linkPath.length;
+
+   //The 'targetpath' field specifies the target of the symbolic link
+   error = sshParseString(p, length, &targetPath);
+   //Any error to report?
+   if(error)
+   {
+      return error;
+   }
+
+   //Malformed message?
+   if(length != (sizeof(uint32_t) + targetPath.length))
+   {
+      return ERROR_INVALID_PACKET;
+   }
+
+   //Symbolic links are not supported
+   error = sftpFormatFxpStatus(session, id, SSH_FX_OP_UNSUPPORTED,
+      "Operation not supported");
+
+   //Return status code
+   return error;
+}
+
+
+/**
  * @brief Parse SSH_FXP_EXTENDED packet
  * @param[in] session Handle referencing an SFTP session
  * @param[in] packet Pointer to packet
@@ -1346,9 +1599,11 @@ error_t sftpServerParseFxpExtended(SftpServerSession *session,
 
    //Malformed packet?
    if(length < sizeof(uint32_t))
+   {
       return ERROR_INVALID_PACKET;
+   }
 
-   //Get request identifier
+   //All requests start with a request identifier
    id = LOAD32BE(p);
 
    //Point to the next field
@@ -1360,13 +1615,52 @@ error_t sftpServerParseFxpExtended(SftpServerSession *session,
    error = sshParseString(p, length, &extendedRequest);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //If the server does not recognize the 'extended-request' name, then
    //the server must respond with SSH_FXP_STATUS with error/status set to
    //SSH_FX_OP_UNSUPPORTED
    error = sftpFormatFxpStatus(session, id, SSH_FX_OP_UNSUPPORTED,
       "Extended request not supported");
+
+   //Return status code
+   return error;
+}
+
+
+/**
+ * @brief Parse unsupported SFTP request
+ * @param[in] session Handle referencing an SFTP session
+ * @param[in] packet Pointer to packet
+ * @param[in] length Length of the packet, in bytes
+ * @return Error code
+ **/
+
+error_t sftpServerParseUnsupported(SftpServerSession *session,
+   const uint8_t *packet, size_t length)
+{
+   error_t error;
+   uint32_t id;
+
+   //Debug message
+   TRACE_INFO("Unsupported packet received (%" PRIuSIZE " bytes)...\r\n", length);
+   TRACE_VERBOSE_ARRAY("  ", packet, length);
+
+   //Malformed packet?
+   if(length < sizeof(uint32_t))
+   {
+      return ERROR_INVALID_PACKET;
+   }
+
+   //All requests start with a request identifier
+   id = LOAD32BE(packet);
+
+   //SSH_FX_OP_UNSUPPORTED indicates that an attempt was made to perform an
+   //operation which is not supported for the server
+   error = sftpFormatFxpStatus(session, id, SSH_FX_OP_UNSUPPORTED,
+      "Operation not supported");
 
    //Return status code
    return error;
@@ -1452,7 +1746,8 @@ error_t sftpFormatFxpStatus(SftpServerSession *session, uint32_t id,
    //Point the data payload
    p = header->payload;
 
-   //Format request identifier
+   //Each response packet contains a request identifier which can be used to
+   //match each response with the corresponding request
    STORE32BE(id, p);
 
    //Point to the next field
@@ -1466,24 +1761,32 @@ error_t sftpFormatFxpStatus(SftpServerSession *session, uint32_t id,
    p += sizeof(uint32_t);
    length += sizeof(uint32_t);
 
-   //Copy the description string
-   error = sshFormatString(message, p, &n);
-   //Any error to report?
-   if(error)
-      return error;
+   //Check SFTP protocol version
+   if(session->version >= SFTP_VERSION_3)
+   {
+      //Copy the description string
+      error = sshFormatString(message, p, &n);
+      //Any error to report?
+      if(error)
+      {
+         return error;
+      }
 
-   //Point to the next field
-   p += n;
-   length += n;
+      //Point to the next field
+      p += n;
+      length += n;
 
-   //Set language tag
-   error = sshFormatString("en", p, &n);
-   //Any error to report?
-   if(error)
-      return error;
+      //Set language tag
+      error = sshFormatString("en", p, &n);
+      //Any error to report?
+      if(error)
+      {
+         return error;
+      }
 
-   //Total length of the message
-   length += n;
+      //Total length of the message
+      length += n;
+   }
 
    //Convert the length field to network byte order
    header->length = htonl(length);
@@ -1530,7 +1833,8 @@ error_t sftpFormatFxpHandle(SftpServerSession *session, uint32_t id,
    //Point the data payload
    p = header->payload;
 
-   //Format request identifier
+   //Each response packet contains a request identifier which can be used to
+   //match each response with the corresponding request
    STORE32BE(id, p);
 
    //Point to the next field
@@ -1592,7 +1896,8 @@ error_t sftpFormatFxpData(SftpServerSession *session, uint32_t id,
    //Point the data payload
    p = header->payload;
 
-   //Format request identifier
+   //Each response packet contains a request identifier which can be used to
+   //match each response with the corresponding request
    STORE32BE(id, p);
 
    //Point to the next field
@@ -1654,7 +1959,8 @@ error_t sftpFormatFxpName(SftpServerSession *session, uint32_t id,
    //Point the data payload
    p = header->payload;
 
-   //Format request identifier
+   //Each response packet contains a request identifier which can be used to
+   //match each response with the corresponding request
    STORE32BE(id, p);
 
    //Point to the next field
@@ -1672,7 +1978,9 @@ error_t sftpFormatFxpName(SftpServerSession *session, uint32_t id,
    error = sftpFormatName(session->version, name, p, &n);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Total length of the message
    length += n;
@@ -1724,7 +2032,8 @@ error_t sftpFormatFxpAttrs(SftpServerSession *session, uint32_t id,
    //Point the data payload
    p = header->payload;
 
-   //Format request identifier
+   //Each response packet contains a request identifier which can be used to
+   //match each response with the corresponding request
    STORE32BE(id, p);
 
    //Point to the next field
@@ -1735,7 +2044,9 @@ error_t sftpFormatFxpAttrs(SftpServerSession *session, uint32_t id,
    error = sftpFormatAttributes(session->version, attributes, p, &n);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Total length of the message
    length += n;

@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.6.6
+ * @version 2.6.8
  **/
 
 //Switch to the appropriate trace level
@@ -71,36 +71,55 @@ error_t sshVerifyClientCertificate(SshConnection *connection,
    error = sshParseCertificate(hostKey->value, hostKey->length, &cert);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Each host key algorithm is associated with a particular key format
    expectedKeyFormatId = sshGetKeyFormatId(publicKeyAlgo);
 
    //Check whether the supplied key is consistent with the host key algorithm
    if(!sshCompareString(&cert.keyFormatId, expectedKeyFormatId))
+   {
       return ERROR_BAD_CERTIFICATE;
+   }
 
    //Check certificate type
    if(cert.type != SSH_CERT_TYPE_USER)
+   {
       return ERROR_BAD_CERTIFICATE;
+   }
+
+   //A zero-length 'valid principals' field would make the certificate valid
+   //for any user. Such user certificates are rejected
+   if(cert.validPrincipals.length == 0)
+   {
+      return ERROR_BAD_CERTIFICATE;
+   }
 
    //Check whether the certificate is valid for the current user name
    error = sshVerifyPrincipal(&cert, connection->user);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Check the validity period of the certificate
-   error = sshVerifyValidity(&cert);
+   error = sshVerifyValidity(context, &cert);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Check critical options
    error = sshVerifyCriticalOptions(connection, &cert);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Invoke user-defined callback, if any
    if(context->caPublicKeyVerifyCallback != NULL)
@@ -117,7 +136,9 @@ error_t sshVerifyClientCertificate(SshConnection *connection,
 
    //Failed to verify CA public key?
    if(error)
+   {
       return ERROR_UNKNOWN_CA;
+   }
 
    //The client may send an SSH_MSG_USERAUTH_REQUEST message without signature
    //to check whether the provided certificate is acceptable for authentication
@@ -127,7 +148,9 @@ error_t sshVerifyClientCertificate(SshConnection *connection,
       error = sshVerifyCertSignature(connection, &cert);
       //Any error to report?
       if(error)
+      {
          return error;
+      }
 
       //Invoke user-defined callback, if any
       if(context->certAuthCallback != NULL)
@@ -170,28 +193,38 @@ error_t sshVerifyServerCertificate(SshConnection *connection,
    error = sshParseCertificate(hostKey->value, hostKey->length, &cert);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Each host key algorithm is associated with a particular key format
    expectedKeyFormatId = sshGetKeyFormatId(publicKeyAlgo);
 
    //Check whether the supplied key is consistent with the host key algorithm
    if(!sshCompareString(&cert.keyFormatId, expectedKeyFormatId))
+   {
       return ERROR_BAD_CERTIFICATE;
+   }
 
    //Check certificate type
    if(cert.type != SSH_CERT_TYPE_HOST)
+   {
       return ERROR_BAD_CERTIFICATE;
+   }
 
    //Check the validity period of the certificate
-   error = sshVerifyValidity(&cert);
+   error = sshVerifyValidity(context, &cert);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //No critical options are defined for host certificates at present
    if(cert.criticalOptions.length > 0)
+   {
       return ERROR_INVALID_OPTION;
+   }
 
    //Invoke user-defined callback, if any
    if(context->caPublicKeyVerifyCallback != NULL)
@@ -208,13 +241,17 @@ error_t sshVerifyServerCertificate(SshConnection *connection,
 
    //Failed to verify CA public key?
    if(error)
+   {
       return ERROR_UNKNOWN_CA;
+   }
 
    //Verify certificate signature
    error = sshVerifyCertSignature(connection, &cert);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Invoke user-defined callback, if any
    if(context->certVerifyCallback != NULL)
@@ -285,30 +322,44 @@ error_t sshVerifyPrincipal(const SshCertificate *cert, const char_t *name)
 
 /**
  * @brief Verify validity period
+ * @param[in] context Pointer to the SSH context
  * @param[in] cert Pointer to the SSH certificate
  * @return Error code
  **/
 
-error_t sshVerifyValidity(const SshCertificate *cert)
+error_t sshVerifyValidity(SshContext *context, const SshCertificate *cert)
 {
    error_t error;
    uint64_t currentTime;
 
-   //Initialize status code
-   error = NO_ERROR;
-
-   //Retrieve current time
-   currentTime = getCurrentUnixTime();
-
-   //Any real-time clock implemented?
-   if(currentTime != 0)
+   //Check whether the validity period of the certificate should be verified
+   if(context->certValidityCheck)
    {
+      //Retrieve current time
+      currentTime = getCurrentUnixTime();
+
       //Check the validity period
-      if(currentTime < cert->validAfter || currentTime > cert->validBefore)
+      if(currentTime < cert->validAfter || currentTime >= cert->validBefore)
       {
          //The certificate has expired or is not yet valid
-         return ERROR_CERTIFICATE_EXPIRED;
+         error = ERROR_CERTIFICATE_EXPIRED;
       }
+      else if(currentTime == 0 && cert->validBefore != UINT64_MAX)
+      {
+         //Without a real-time clock, only certificates that never expire can
+         //be accepted
+         error = ERROR_CERTIFICATE_EXPIRED;
+      }
+      else
+      {
+         //The certificate is within its validity period
+         error = NO_ERROR;
+      }
+   }
+   else
+   {
+      //The validity period check has been disabled by the application
+      error = NO_ERROR;
    }
 
    //Return status code
@@ -431,12 +482,28 @@ error_t sshVerifySrcAddrOption(SshConnection *connection,
                   error = ipStringToAddr(buffer, &ipAddr);
                   //Malformed CIDR representation?
                   if(error)
+                  {
                      break;
+                  }
+
+                  //The prefix length must consist of 1 to 3 decimal digits
+                  if(!osIsdigit(p[1]) || osStrlen(p + 1) > 3)
+                  {
+                     error = ERROR_INVALID_SYNTAX;
+                     break;
+                  }
 
                   //Convert the CIDR prefix length
                   prefixLen = osStrtoul(p + 1, &p, 10);
                   //Malformed CIDR representation?
                   if(*p != '\0')
+                  {
+                     error = ERROR_INVALID_SYNTAX;
+                     break;
+                  }
+
+                  //The prefix length cannot exceed the length of the address
+                  if(prefixLen > (ipAddr.length * 8))
                   {
                      error = ERROR_INVALID_SYNTAX;
                      break;
@@ -455,7 +522,9 @@ error_t sshVerifySrcAddrOption(SshConnection *connection,
                   error = ipStringToAddr(buffer, &ipAddr);
                   //Malformed IP address?
                   if(error)
+                  {
                      break;
+                  }
 
                   //Compare IP addresses
                   if(ipCompAddr(&clientIpAddr, &ipAddr))

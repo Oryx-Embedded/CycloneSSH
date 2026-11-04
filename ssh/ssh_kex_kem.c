@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.6.6
+ * @version 2.6.8
  **/
 
 //Switch to the appropriate trace level
@@ -237,7 +237,9 @@ error_t sshFormatKexKemReply(SshConnection *connection, uint8_t *p,
    error = sshFormatHostKey(connection, p + sizeof(uint32_t), &n);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //The octet string value is preceded by a uint32 containing its length
    STORE32BE(n, p);
@@ -252,7 +254,9 @@ error_t sshFormatKexKemReply(SshConnection *connection, uint8_t *p,
       sizeof(uint32_t));
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Get the length of the KEM ciphertext
    n = connection->kemContext.kemAlgo->ciphertextSize;
@@ -261,7 +265,9 @@ error_t sshFormatKexKemReply(SshConnection *connection, uint8_t *p,
    error = sshUpdateExchangeHash(connection, p + sizeof(uint32_t), n);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //The octet string value is preceded by a uint32 containing its length
    STORE32BE(n, p);
@@ -285,14 +291,18 @@ error_t sshFormatKexKemReply(SshConnection *connection, uint8_t *p,
       connection->kLen);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Compute the signature on the exchange hash
    error = sshGenerateExchangeHashSignature(connection, p + sizeof(uint32_t),
       &n);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //The octet string value is preceded by a uint32 containing its length
    STORE32BE(n, p);
@@ -335,15 +345,21 @@ error_t sshParseKexKemInit(SshConnection *connection,
 
    //Check operation mode
    if(connection->context->mode != SSH_OPERATION_MODE_SERVER)
+   {
       return ERROR_UNEXPECTED_MESSAGE;
+   }
 
    //Check connection state
    if(connection->state != SSH_CONN_STATE_KEX_KEM_INIT)
+   {
       return ERROR_UNEXPECTED_MESSAGE;
+   }
 
    //Sanity check
    if(length < sizeof(uint8_t))
+   {
       return ERROR_INVALID_MESSAGE;
+   }
 
    //Point to the first field of the message
    p = message + sizeof(uint8_t);
@@ -354,7 +370,9 @@ error_t sshParseKexKemInit(SshConnection *connection,
    error = sshParseBinaryString(p, length, &clientInit);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    p += sizeof(uint32_t) + clientInit.length;
@@ -362,20 +380,26 @@ error_t sshParseKexKemInit(SshConnection *connection,
 
    //Malformed message?
    if(length != 0)
+   {
       return ERROR_INVALID_MESSAGE;
+   }
 
    //Update exchange hash H with C_INIT
    error = sshUpdateExchangeHash(connection, clientInit.value,
       clientInit.length);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Key exchange algorithms are formulated as key encapsulation mechanisms
    error = sshSelectKemAlgo(connection);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Check the length of the C_INIT field
    if(clientInit.length != connection->kemContext.kemAlgo->publicKeySize)
@@ -389,7 +413,9 @@ error_t sshParseKexKemInit(SshConnection *connection,
    error = kemLoadPublicKey(&connection->kemContext, clientInit.value);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //The server responds with an SSH_MSG_KEX_KEM_REPLY message
    return sshSendKexKemReply(connection);
@@ -430,15 +456,21 @@ error_t sshParseKexKemReply(SshConnection *connection,
 
    //Check operation mode
    if(context->mode != SSH_OPERATION_MODE_CLIENT)
+   {
       return ERROR_UNEXPECTED_MESSAGE;
+   }
 
    //Check connection state
    if(connection->state != SSH_CONN_STATE_KEX_KEM_REPLY)
+   {
       return ERROR_UNEXPECTED_MESSAGE;
+   }
 
    //Sanity check
    if(length < sizeof(uint8_t))
+   {
       return ERROR_INVALID_MESSAGE;
+   }
 
    //Point to the first field of the message
    p = message + sizeof(uint8_t);
@@ -449,7 +481,9 @@ error_t sshParseKexKemReply(SshConnection *connection,
    error = sshParseBinaryString(p, length, &hostKey);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    p += sizeof(uint32_t) + hostKey.length;
@@ -459,7 +493,9 @@ error_t sshParseKexKemReply(SshConnection *connection,
    error = sshParseBinaryString(p, length, &serverReply);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    p += sizeof(uint32_t) + serverReply.length;
@@ -469,7 +505,9 @@ error_t sshParseKexKemReply(SshConnection *connection,
    error = sshParseBinaryString(p, length, &signature);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    p += sizeof(uint32_t) + signature.length;
@@ -477,7 +515,9 @@ error_t sshParseKexKemReply(SshConnection *connection,
 
    //Malformed message?
    if(length != 0)
+   {
       return ERROR_INVALID_MESSAGE;
+   }
 
    //Get the selected server's host key algorithm
    hostKeyAlgo.value = connection->serverHostKeyAlgo;
@@ -500,27 +540,35 @@ error_t sshParseKexKemReply(SshConnection *connection,
    //If the client fails to verify the server's host key, it should disconnect
    //from the server by sending an SSH_DISCONNECT_HOST_KEY_NOT_VERIFIABLE message
    if(error)
+   {
       return ERROR_INVALID_KEY;
+   }
 
    //Update exchange hash H with K_S (server's public host key)
    error = sshUpdateExchangeHash(connection, hostKey.value, hostKey.length);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Update exchange hash H with C_INIT
    error = sshUpdateExchangeHash(connection, connection->kemContext.pk,
       connection->kemContext.kemAlgo->publicKeySize);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Update exchange hash H with S_REPLY
    error = sshUpdateExchangeHash(connection, serverReply.value,
       serverReply.length);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Before decapsulating, the client must check if the ciphertext S_CT length
    //matches the selected ML-KEM variant
@@ -537,7 +585,9 @@ error_t sshParseKexKemReply(SshConnection *connection,
       connection->k + sizeof(uint32_t));
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Get the length of the KEM shared secret
    n = connection->kemContext.kemAlgo->sharedSecretSize;
@@ -554,13 +604,17 @@ error_t sshParseKexKemReply(SshConnection *connection,
       connection->kLen);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Verify the signature on the exchange hash
    error = sshVerifyExchangeHashSignature(connection, &hostKey, &signature);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Destroy post-quantum private key
    kemFree(&connection->kemContext);

@@ -25,7 +25,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * @author Oryx Embedded SARL (www.oryx-embedded.com)
- * @version 2.6.6
+ * @version 2.6.8
  **/
 
 //Switch to the appropriate trace level
@@ -115,7 +115,9 @@ error_t sshFormatPasswordAuthParams(SshConnection *connection, uint8_t *p,
    error = sshFormatString("password", p, &n);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the first method-specific field
    p += n;
@@ -132,7 +134,9 @@ error_t sshFormatPasswordAuthParams(SshConnection *connection, uint8_t *p,
    error = sshFormatString(connection->context->password, p, &n);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Total length of the method specific fields
    *written += n;
@@ -176,7 +180,9 @@ error_t sshFormatUserAuthPasswdChangeReq(SshConnection *connection,
    error = sshFormatString(prompt, p, &n);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    p += n;
@@ -186,7 +192,9 @@ error_t sshFormatUserAuthPasswdChangeReq(SshConnection *connection,
    error = sshFormatString("en", p, &n);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Total length of the message
    *length += n;
@@ -225,7 +233,9 @@ error_t sshParsePasswordAuthParams(SshConnection *connection,
 
    //Malformed message?
    if(length < sizeof(uint8_t))
+   {
       return ERROR_INVALID_MESSAGE;
+   }
 
    //Decode flag
    flag = p[0];
@@ -238,7 +248,9 @@ error_t sshParsePasswordAuthParams(SshConnection *connection,
    error = sshParseString(p, length, &oldPassword);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    p += sizeof(uint32_t) + oldPassword.length;
@@ -251,7 +263,9 @@ error_t sshParsePasswordAuthParams(SshConnection *connection,
       error = sshParseString(p, length, &newPassword);
       //Any error to report?
       if(error)
+      {
          return error;
+      }
 
       //Point to the next field
       p += sizeof(uint32_t) + newPassword.length;
@@ -266,7 +280,9 @@ error_t sshParsePasswordAuthParams(SshConnection *connection,
 
    //Malformed message?
    if(length != 0)
+   {
       return ERROR_INVALID_MESSAGE;
+   }
 
    //Check the length of the user name
    if(userName->length <= SSH_MAX_USERNAME_LEN)
@@ -366,7 +382,9 @@ error_t sshParseUserAuthPasswdChangeReq(SshConnection *connection,
 
    //Check operation mode
    if(connection->context->mode != SSH_OPERATION_MODE_CLIENT)
+   {
       return ERROR_UNEXPECTED_MESSAGE;
+   }
 
    //Check connection state
    if(connection->state != SSH_CONN_STATE_SERVER_EXT_INFO_2 &&
@@ -377,7 +395,9 @@ error_t sshParseUserAuthPasswdChangeReq(SshConnection *connection,
 
    //Sanity check
    if(length < sizeof(uint8_t))
+   {
       return ERROR_INVALID_MESSAGE;
+   }
 
    //Point to the first field of the message
    p = message + sizeof(uint8_t);
@@ -388,7 +408,9 @@ error_t sshParseUserAuthPasswdChangeReq(SshConnection *connection,
    error = sshParseString(p, length, &prompt);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    p += sizeof(uint32_t) + prompt.length;
@@ -398,7 +420,9 @@ error_t sshParseUserAuthPasswdChangeReq(SshConnection *connection,
    error = sshParseString(p, length, &languageTag);
    //Any error to report?
    if(error)
+   {
       return error;
+   }
 
    //Point to the next field
    p += sizeof(uint32_t) + languageTag.length;
@@ -406,7 +430,9 @@ error_t sshParseUserAuthPasswdChangeReq(SshConnection *connection,
 
    //Malformed message?
    if(length != 0)
+   {
       return ERROR_INVALID_MESSAGE;
+   }
 
    //The server sends an SSH_MSG_USERAUTH_PASSWD_CHANGEREQ to indicate that
    //the password has expired
