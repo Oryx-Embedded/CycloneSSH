@@ -355,7 +355,7 @@ error_t shellServerInsertChar(ShellServerSession *session, char_t c)
 {
    error_t error;
    uint_t cursorPos;
-   char_t buffer[16];
+   char_t buffer[32];
 
    //Initialize status code
    error = NO_ERROR;
@@ -436,7 +436,7 @@ error_t shellServerProcessBackspaceKey(ShellServerSession *session)
 {
    error_t error;
    uint_t cursorPos;
-   char_t buffer[16];
+   char_t buffer[32];
 
    //Initialize status code
    error = NO_ERROR;
@@ -515,7 +515,7 @@ error_t shellServerProcessBackspaceKey(ShellServerSession *session)
 error_t shellServerProcessDeleteKey(ShellServerSession *session)
 {
    error_t error;
-   char_t buffer[16];
+   char_t buffer[32];
 
    //Initialize status code
    error = NO_ERROR;
@@ -570,7 +570,7 @@ error_t shellServerProcessLeftKey(ShellServerSession *session)
 {
    error_t error;
    uint_t cursorPos;
-   char_t buffer[16];
+   char_t buffer[32];
 
    //Initialize status code
    error = NO_ERROR;
@@ -614,7 +614,7 @@ error_t shellServerProcessRightKey(ShellServerSession *session)
 {
    error_t error;
    uint_t cursorPos;
-   char_t buffer[16];
+   char_t buffer[32];
 
    //Initialize status code
    error = NO_ERROR;
