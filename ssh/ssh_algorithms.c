@@ -486,6 +486,18 @@ static const char_t *const sshSupportedEncAlgos[] =
 
 static const char_t *const sshSupportedMacAlgos[] =
 {
+#if (SSH_UMAC64_SUPPORT == ENABLED && SSH_ETM_SUPPORT == ENABLED)
+   "umac-64-etm@openssh.com",
+#endif
+#if (SSH_UMAC64_SUPPORT == ENABLED)
+   "umac-64@openssh.com",
+#endif
+#if (SSH_UMAC128_SUPPORT == ENABLED && SSH_ETM_SUPPORT == ENABLED)
+   "umac-128-etm@openssh.com",
+#endif
+#if (SSH_UMAC128_SUPPORT == ENABLED)
+   "umac-128@openssh.com",
+#endif
 #if (SSH_HMAC_SUPPORT == ENABLED && SSH_SHA256_SUPPORT == ENABLED && \
    SSH_ETM_SUPPORT == ENABLED)
    "hmac-sha2-256-etm@openssh.com",

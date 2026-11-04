@@ -223,7 +223,7 @@ error_t sshVerifyRsaSignature(const SshString *publicKeyAlgo,
    error_t error;
    const HashAlgo *hashAlgo;
    HashContext hashContext;
-   uint8_t digest[SSH_MAX_HASH_DIGEST_SIZE];
+   uint8_t digest[SSH_MAX_DIGEST_SIZE];
 
 #if (SSH_SHA1_SUPPORT == ENABLED)
    //RSA with SHA-1 public key algorithm?
@@ -504,7 +504,7 @@ error_t sshVerifyEcdsaSignature(const SshString *publicKeyAlgo,
    SshEcdsaSignature signature;
    const HashAlgo *hashAlgo;
    HashContext hashContext;
-   uint8_t digest[SSH_MAX_HASH_DIGEST_SIZE];
+   uint8_t digest[SSH_MAX_DIGEST_SIZE];
 
 #if (SSH_NISTP256_SUPPORT == ENABLED && SSH_SHA256_SUPPORT == ENABLED)
    //ECDSA with NIST P-256 public key algorithm?

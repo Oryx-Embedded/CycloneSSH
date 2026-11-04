@@ -1451,7 +1451,7 @@ error_t sshFormatBinaryString(const void *value, size_t valueLen, uint8_t *p,
    STORE32BE(valueLen, p);
 
    //Copy the value of the string
-   osMemcpy(p + sizeof(uint32_t), value, valueLen);
+   osMemmove(p + sizeof(uint32_t), value, valueLen);
 
    //Total number of bytes that have been written
    *written = sizeof(uint32_t) + valueLen;

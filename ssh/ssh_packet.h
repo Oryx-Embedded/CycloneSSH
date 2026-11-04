@@ -69,7 +69,7 @@ error_t sshDecryptPacketLength(SshConnection *connection, uint8_t *packet);
 error_t sshParseMessage(SshConnection *connection, const uint8_t *message,
    size_t length);
 
-void sshAppendMessageAuthCode(SshEncryptionEngine *encryptionEngine,
+error_t sshGenerateMessageAuthCode(SshEncryptionEngine *encryptionEngine,
    uint8_t *packet, size_t length);
 
 error_t sshVerifyMessageAuthCode(SshEncryptionEngine *decryptionEngine,

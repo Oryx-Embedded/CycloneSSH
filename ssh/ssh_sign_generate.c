@@ -212,7 +212,7 @@ error_t sshGenerateRsaSignature(SshConnection *connection,
    size_t n;
    const HashAlgo *hashAlgo;
    HashContext hashContext;
-   uint8_t digest[SSH_MAX_HASH_DIGEST_SIZE];
+   uint8_t digest[SSH_MAX_DIGEST_SIZE];
 
 #if (SSH_SHA1_SUPPORT == ENABLED)
    //RSA with SHA-1 public key algorithm?
@@ -452,7 +452,7 @@ error_t sshGenerateEcdsaSignature(SshConnection *connection,
    const EcCurve *curve;
    const HashAlgo *hashAlgo;
    HashContext hashContext;
-   uint8_t digest[SSH_MAX_HASH_DIGEST_SIZE];
+   uint8_t digest[SSH_MAX_DIGEST_SIZE];
 
    //Point to the SSH context
    context = connection->context;

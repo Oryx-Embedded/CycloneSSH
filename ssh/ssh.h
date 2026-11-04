@@ -463,6 +463,27 @@
    #error SSH_SEED_SUPPORT parameter is not valid
 #endif
 
+//HMAC support
+#ifndef SSH_HMAC_SUPPORT
+   #define SSH_HMAC_SUPPORT ENABLED
+#elif (SSH_HMAC_SUPPORT != ENABLED && SSH_HMAC_SUPPORT != DISABLED)
+   #error SSH_HMAC_SUPPORT parameter is not valid
+#endif
+
+//UMAC-64 support
+#ifndef SSH_UMAC64_SUPPORT
+   #define SSH_UMAC64_SUPPORT DISABLED
+#elif (SSH_UMAC64_SUPPORT != ENABLED && SSH_UMAC64_SUPPORT != DISABLED)
+   #error SSH_UMAC64_SUPPORT parameter is not valid
+#endif
+
+//UMAC-128 support
+#ifndef SSH_UMAC128_SUPPORT
+   #define SSH_UMAC128_SUPPORT DISABLED
+#elif (SSH_UMAC128_SUPPORT != ENABLED && SSH_UMAC128_SUPPORT != DISABLED)
+   #error SSH_UMAC128_SUPPORT parameter is not valid
+#endif
+
 //MD5 hash support (insecure)
 #ifndef SSH_MD5_SUPPORT
    #define SSH_MD5_SUPPORT DISABLED
@@ -703,7 +724,7 @@
 
 //Minimum acceptable size for Diffie-Hellman prime modulus
 #ifndef SSH_MIN_DH_MODULUS_SIZE
-   #define SSH_MIN_DH_MODULUS_SIZE 1024
+   #define SSH_MIN_DH_MODULUS_SIZE 2048
 #elif (SSH_MIN_DH_MODULUS_SIZE < 1024)
    #error SSH_MIN_DH_MODULUS_SIZE parameter is not valid
 #endif
@@ -717,14 +738,14 @@
 
 //Maximum acceptable size for Diffie-Hellman prime modulus
 #ifndef SSH_MAX_DH_MODULUS_SIZE
-   #define SSH_MAX_DH_MODULUS_SIZE 3072
+   #define SSH_MAX_DH_MODULUS_SIZE 2048
 #elif (SSH_MAX_DH_MODULUS_SIZE < SSH_PREFERRED_DH_MODULUS_SIZE)
    #error SSH_MAX_DH_MODULUS_SIZE parameter is not valid
 #endif
 
 //Minimum acceptable size for RSA modulus
 #ifndef SSH_MIN_RSA_MODULUS_SIZE
-   #define SSH_MIN_RSA_MODULUS_SIZE 1024
+   #define SSH_MIN_RSA_MODULUS_SIZE 2048
 #elif (SSH_MIN_RSA_MODULUS_SIZE < 1024)
    #error SSH_MIN_RSA_MODULUS_SIZE parameter is not valid
 #endif
@@ -738,7 +759,7 @@
 
 //Minimum acceptable size for DSA prime modulus
 #ifndef SSH_MIN_DSA_MODULUS_SIZE
-   #define SSH_MIN_DSA_MODULUS_SIZE 1024
+   #define SSH_MIN_DSA_MODULUS_SIZE 2048
 #elif (SSH_MIN_DSA_MODULUS_SIZE < 1024)
    #error SSH_MIN_DSA_MODULUS_SIZE parameter is not valid
 #endif
@@ -760,74 +781,119 @@
    #define sshFreeMem(p) osFreeMem(p)
 #endif
 
-//HMAC support
-#if (SSH_STREAM_CIPHER_SUPPORT == ENABLED)
-   #define SSH_HMAC_SUPPORT ENABLED
-#elif (SSH_CBC_CIPHER_SUPPORT == ENABLED)
-   #define SSH_HMAC_SUPPORT ENABLED
-#elif (SSH_CTR_CIPHER_SUPPORT == ENABLED)
-   #define SSH_HMAC_SUPPORT ENABLED
-#else
-   #define SSH_HMAC_SUPPORT DISABLED
-#endif
-
-//Maximum key size (encryption algorithms)
+//Maximum encryption key size
 #if (SSH_CHACHA20_POLY1305_SUPPORT == ENABLED)
    #define SSH_MAX_ENC_KEY_SIZE 64
-#else
+#elif (SSH_RC4_256_SUPPORT == ENABLED)
    #define SSH_MAX_ENC_KEY_SIZE 32
-#endif
-
-//Maximum block size (encryption algorithms)
-#if (SSH_AES_128_SUPPORT == ENABLED)
-   #define SSH_MAX_CIPHER_BLOCK_SIZE AES_BLOCK_SIZE
-#elif (SSH_AES_192_SUPPORT == ENABLED)
-   #define SSH_MAX_CIPHER_BLOCK_SIZE AES_BLOCK_SIZE
-#elif (SSH_AES_256_SUPPORT == ENABLED)
-   #define SSH_MAX_CIPHER_BLOCK_SIZE AES_BLOCK_SIZE
-#elif (SSH_TWOFISH_128_SUPPORT == ENABLED)
-   #define SSH_MAX_CIPHER_BLOCK_SIZE TWOFISH_BLOCK_SIZE
-#elif (SSH_TWOFISH_192_SUPPORT == ENABLED)
-   #define SSH_MAX_CIPHER_BLOCK_SIZE TWOFISH_BLOCK_SIZE
-#elif (SSH_TWOFISH_256_SUPPORT == ENABLED)
-   #define SSH_MAX_CIPHER_BLOCK_SIZE TWOFISH_BLOCK_SIZE
-#elif (SSH_SERPENT_128_SUPPORT == ENABLED)
-   #define SSH_MAX_CIPHER_BLOCK_SIZE SERPENT_BLOCK_SIZE
-#elif (SSH_SERPENT_192_SUPPORT == ENABLED)
-   #define SSH_MAX_CIPHER_BLOCK_SIZE SERPENT_BLOCK_SIZE
-#elif (SSH_SERPENT_256_SUPPORT == ENABLED)
-   #define SSH_MAX_CIPHER_BLOCK_SIZE SERPENT_BLOCK_SIZE
-#elif (SSH_CAMELLIA_128_SUPPORT == ENABLED)
-   #define SSH_MAX_CIPHER_BLOCK_SIZE CAMELLIA_BLOCK_SIZE
-#elif (SSH_CAMELLIA_192_SUPPORT == ENABLED)
-   #define SSH_MAX_CIPHER_BLOCK_SIZE CAMELLIA_BLOCK_SIZE
-#elif (SSH_CAMELLIA_256_SUPPORT == ENABLED)
-   #define SSH_MAX_CIPHER_BLOCK_SIZE CAMELLIA_BLOCK_SIZE
-#elif (SSH_SEED_SUPPORT == ENABLED)
-   #define SSH_MAX_CIPHER_BLOCK_SIZE SEED_BLOCK_SIZE
-#elif (SSH_CAST128_SUPPORT == ENABLED)
-   #define SSH_MAX_CIPHER_BLOCK_SIZE CAST128_BLOCK_SIZE
-#elif (SSH_IDEA_SUPPORT == ENABLED)
-   #define SSH_MAX_CIPHER_BLOCK_SIZE IDEA_BLOCK_SIZE
 #elif (SSH_BLOWFISH_SUPPORT == ENABLED)
-   #define SSH_MAX_CIPHER_BLOCK_SIZE BLOWFISH_BLOCK_SIZE
+   #define SSH_MAX_ENC_KEY_SIZE 32
+#elif (SSH_AES_256_SUPPORT == ENABLED)
+   #define SSH_MAX_ENC_KEY_SIZE 32
+#elif (SSH_TWOFISH_256_SUPPORT == ENABLED)
+   #define SSH_MAX_ENC_KEY_SIZE 32
+#elif (SSH_SERPENT_256_SUPPORT == ENABLED)
+   #define SSH_MAX_ENC_KEY_SIZE 32
+#elif (SSH_CAMELLIA_256_SUPPORT == ENABLED)
+   #define SSH_MAX_ENC_KEY_SIZE 32
+#elif (SSH_3DES_SUPPORT == ENABLED)
+   #define SSH_MAX_ENC_KEY_SIZE 24
+#elif (SSH_AES_192_SUPPORT == ENABLED)
+   #define SSH_MAX_ENC_KEY_SIZE 24
+#elif (SSH_TWOFISH_192_SUPPORT == ENABLED)
+   #define SSH_MAX_ENC_KEY_SIZE 24
+#elif (SSH_SERPENT_192_SUPPORT == ENABLED)
+   #define SSH_MAX_ENC_KEY_SIZE 24
+#elif (SSH_CAMELLIA_192_SUPPORT == ENABLED)
+   #define SSH_MAX_ENC_KEY_SIZE 24
 #else
-   #define SSH_MAX_CIPHER_BLOCK_SIZE DES3_BLOCK_SIZE
+   #define SSH_MAX_ENC_KEY_SIZE 16
 #endif
 
-//Maximum digest size (MAC algorithms)
-#if (SSH_SHA512_SUPPORT == ENABLED)
-   #define SSH_MAX_HASH_DIGEST_SIZE SHA512_DIGEST_SIZE
-#elif (SSH_SHA384_SUPPORT == ENABLED)
-   #define SSH_MAX_HASH_DIGEST_SIZE SHA384_DIGEST_SIZE
-#elif (SSH_SHA256_SUPPORT == ENABLED)
-   #define SSH_MAX_HASH_DIGEST_SIZE SHA256_DIGEST_SIZE
-#elif (SSH_SHA1_SUPPORT == ENABLED || SSH_SHA1_96_SUPPORT == ENABLED)
-   #define SSH_MAX_HASH_DIGEST_SIZE SHA1_DIGEST_SIZE
-#elif (SSH_RIPEMD160_SUPPORT == ENABLED)
-   #define SSH_MAX_HASH_DIGEST_SIZE RIPEMD160_DIGEST_SIZE
+//Maximum integrity key size
+#if (SSH_HMAC_SUPPORT == ENABLED && SSH_SHA512_SUPPORT == ENABLED)
+   #define SSH_MAX_MAC_KEY_SIZE SHA512_DIGEST_SIZE
+#elif (SSH_HMAC_SUPPORT == ENABLED && SSH_SHA256_SUPPORT == ENABLED)
+   #define SSH_MAX_MAC_KEY_SIZE SHA256_DIGEST_SIZE
+#elif (SSH_HMAC_SUPPORT == ENABLED && SSH_SHA1_SUPPORT == ENABLED)
+   #define SSH_MAX_MAC_KEY_SIZE SHA1_DIGEST_SIZE
+#elif (SSH_HMAC_SUPPORT == ENABLED && SSH_SHA1_96_SUPPORT == ENABLED)
+   #define SSH_MAX_MAC_KEY_SIZE SHA1_DIGEST_SIZE
+#elif (SSH_HMAC_SUPPORT == ENABLED && SSH_RIPEMD160_SUPPORT == ENABLED)
+   #define SSH_MAX_MAC_KEY_SIZE RIPEMD160_DIGEST_SIZE
+#else (SSH_HMAC_SUPPORT == ENABLED && SSH_MD5_SUPPORT == ENABLED)
+   #define SSH_MAX_MAC_KEY_SIZE MD5_DIGEST_SIZE
+#else (SSH_HMAC_SUPPORT == ENABLED && SSH_MD5_96_SUPPORT == ENABLED)
+   #define SSH_MAX_MAC_KEY_SIZE MD5_DIGEST_SIZE
 #else
-   #define SSH_MAX_HASH_DIGEST_SIZE MD5_DIGEST_SIZE
+   #define SSH_MAX_MAC_KEY_SIZE 16
+#endif
+
+//Maximum IV size
+#if (SSH_AES_128_SUPPORT == ENABLED)
+   #define SSH_MAX_IV_SIZE AES_BLOCK_SIZE
+#elif (SSH_AES_192_SUPPORT == ENABLED)
+   #define SSH_MAX_IV_SIZE AES_BLOCK_SIZE
+#elif (SSH_AES_256_SUPPORT == ENABLED)
+   #define SSH_MAX_IV_SIZE AES_BLOCK_SIZE
+#elif (SSH_TWOFISH_128_SUPPORT == ENABLED)
+   #define SSH_MAX_IV_SIZE TWOFISH_BLOCK_SIZE
+#elif (SSH_TWOFISH_192_SUPPORT == ENABLED)
+   #define SSH_MAX_IV_SIZE TWOFISH_BLOCK_SIZE
+#elif (SSH_TWOFISH_256_SUPPORT == ENABLED)
+   #define SSH_MAX_IV_SIZE TWOFISH_BLOCK_SIZE
+#elif (SSH_SERPENT_128_SUPPORT == ENABLED)
+   #define SSH_MAX_IV_SIZE SERPENT_BLOCK_SIZE
+#elif (SSH_SERPENT_192_SUPPORT == ENABLED)
+   #define SSH_MAX_IV_SIZE SERPENT_BLOCK_SIZE
+#elif (SSH_SERPENT_256_SUPPORT == ENABLED)
+   #define SSH_MAX_IV_SIZE SERPENT_BLOCK_SIZE
+#elif (SSH_CAMELLIA_128_SUPPORT == ENABLED)
+   #define SSH_MAX_IV_SIZE CAMELLIA_BLOCK_SIZE
+#elif (SSH_CAMELLIA_192_SUPPORT == ENABLED)
+   #define SSH_MAX_IV_SIZE CAMELLIA_BLOCK_SIZE
+#elif (SSH_CAMELLIA_256_SUPPORT == ENABLED)
+   #define SSH_MAX_IV_SIZE CAMELLIA_BLOCK_SIZE
+#elif (SSH_SEED_SUPPORT == ENABLED)
+   #define SSH_MAX_IV_SIZE SEED_BLOCK_SIZE
+#else
+   #define SSH_MAX_IV_SIZE 8
+#endif
+
+//Maximum MAC size
+#if (SSH_HMAC_SUPPORT == ENABLED && SSH_SHA512_SUPPORT == ENABLED)
+   #define SSH_MAX_MAC_SIZE SHA512_DIGEST_SIZE
+#elif (SSH_HMAC_SUPPORT == ENABLED && SSH_SHA256_SUPPORT == ENABLED)
+   #define SSH_MAX_MAC_SIZE SHA256_DIGEST_SIZE
+#elif (SSH_HMAC_SUPPORT == ENABLED && SSH_SHA1_SUPPORT == ENABLED)
+   #define SSH_MAX_MAC_SIZE SHA1_DIGEST_SIZE
+#elif (SSH_HMAC_SUPPORT == ENABLED && SSH_RIPEMD160_SUPPORT == ENABLED)
+   #define SSH_MAX_MAC_SIZE RIPEMD160_DIGEST_SIZE
+#elif (SSH_HMAC_SUPPORT == ENABLED && SSH_MD5_SUPPORT == ENABLED)
+   #define SSH_MAX_MAC_SIZE MD5_DIGEST_SIZE
+#elif (SSH_UMAC128_SUPPORT == ENABLED)
+   #define SSH_MAX_MAC_SIZE 16
+#elif (SSH_HMAC_SUPPORT == ENABLED && SSH_SHA1_96_SUPPORT == ENABLED)
+   #define SSH_MAX_MAC_SIZE 12
+#elif (SSH_HMAC_SUPPORT == ENABLED && SSH_MD5_96_SUPPORT == ENABLED)
+   #define SSH_MAX_MAC_SIZE 12
+#else
+   #define SSH_MAX_MAC_SIZE 8
+#endif
+
+//Maximum digest size
+#if (SSH_SHA512_SUPPORT == ENABLED)
+   #define SSH_MAX_DIGEST_SIZE SHA512_DIGEST_SIZE
+#elif (SSH_SHA384_SUPPORT == ENABLED)
+   #define SSH_MAX_DIGEST_SIZE SHA384_DIGEST_SIZE
+#elif (SSH_SHA256_SUPPORT == ENABLED)
+   #define SSH_MAX_DIGEST_SIZE SHA256_DIGEST_SIZE
+#elif (SSH_SHA1_SUPPORT == ENABLED)
+   #define SSH_MAX_DIGEST_SIZE SHA1_DIGEST_SIZE
+#elif (SSH_RIPEMD160_SUPPORT == ENABLED)
+   #define SSH_MAX_DIGEST_SIZE RIPEMD160_DIGEST_SIZE
+#else
+   #define SSH_MAX_DIGEST_SIZE MD5_DIGEST_SIZE
 #endif
 
 //Maximum shared secret length (RSA key exchange)
@@ -1382,14 +1448,16 @@ typedef struct
    CipherMode cipherMode;                    ///<Cipher mode of operation
    const CipherAlgo *cipherAlgo;             ///<Cipher algorithm
    CipherContext cipherContext;              ///<Cipher context
-   const HashAlgo *hashAlgo;                 ///<Hash algorithm for MAC operations
-   HmacContext *hmacContext;                 ///<HMAC context
-   size_t macSize;                           ///<Size of the MAC tag, in bytes
+   MacAlgo macAlgo;                          ///<MAC algorithm
+   const HashAlgo *hashAlgo;                 ///<Hash algorithm
+   MacContext *macContext;                   ///<MAC context
+   size_t macLen;                            ///<Length of the MAC tag, in bytes
    bool_t etm;                               ///<Encrypt-then-MAC
-   uint8_t iv[SSH_MAX_CIPHER_BLOCK_SIZE];    ///<Initialization vector
+   uint8_t iv[SSH_MAX_IV_SIZE];              ///<Initialization vector
    uint8_t encKey[SSH_MAX_ENC_KEY_SIZE];     ///<Encryption key
    size_t encKeyLen;                         ///<Length of the encryption key, in bytes
-   uint8_t macKey[SSH_MAX_HASH_DIGEST_SIZE]; ///<Integrity key
+   uint8_t macKey[SSH_MAX_MAC_KEY_SIZE];     ///<Integrity key
+   size_t macKeyLen;                         ///<Length of the integrity key, in bytes
    uint8_t seqNum[4];                        ///<Sequence number
 #if (SSH_GCM_CIPHER_SUPPORT == ENABLED || SSH_RFC5647_SUPPORT == ENABLED)
    GcmContext gcmContext;                    ///<GCM context
@@ -1488,17 +1556,18 @@ struct _SshConnection
    int_t dhGexGroupIndex;                       ///<Index of the selected Diffie-Hellman group
 #endif
 
-   uint8_t sessionId[SSH_MAX_HASH_DIGEST_SIZE]; ///<Session identifier
+   uint8_t sessionId[SSH_MAX_DIGEST_SIZE];      ///<Session identifier
    size_t sessionIdLen;                         ///<Length of the session identifier, in bytes
-   uint8_t h[SSH_MAX_HASH_DIGEST_SIZE];         ///<Exchange hash H
+   uint8_t h[SSH_MAX_DIGEST_SIZE];              ///<Exchange hash H
    size_t hLen;                                 ///<Length of the exchange hash, in bytes
    uint8_t k[SSH_MAX_SHARED_SECRET_LEN];        ///<Shared secret K
    size_t kLen;                                 ///<Length of the shared secret, in bytes
 
    const HashAlgo *hashAlgo;                    ///<Exchange hash algorithm
    HashContext hashContext;                     ///<Exchange hash context
-#if (SSH_HMAC_SUPPORT == ENABLED)
-   HmacContext hmacContext;                     ///<HMAC context
+#if (SSH_HMAC_SUPPORT == ENABLED || SSH_UMAC64_SUPPORT == ENABLED || \
+   SSH_UMAC128_SUPPORT == ENABLED)
+   MacContext macContext;                       ///<MAC context
 #endif
 #if (SSH_DH_KEX_SUPPORT == ENABLED || SSH_DH_GEX_KEX_SUPPORT == ENABLED)
    DhContext dhContext;                         ///<Diffie-Hellman context

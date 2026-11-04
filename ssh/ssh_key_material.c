@@ -65,8 +65,8 @@ error_t sshInitEncryptionEngine(SshConnection *connection,
    if(error)
       return error;
 
-   //Select the relevant hash algorithm
-   error = sshSelectHashAlgo(encryptionEngine, encAlgo, macAlgo);
+   //Select the relevant integrity algorithm
+   error = sshSelectIntegrityAlgo(encryptionEngine, encAlgo, macAlgo);
    //Any error to report?
    if(error)
       return error;
@@ -88,7 +88,7 @@ error_t sshInitEncryptionEngine(SshConnection *connection,
       error = sshKdf(connection->hashAlgo, connection->k, connection->kLen,
          connection->h, connection->hLen, connection->sessionId,
          connection->sessionIdLen, x + 4, encryptionEngine->macKey,
-         encryptionEngine->hashAlgo->digestSize);
+         encryptionEngine->macKeyLen);
       //Any error to report?
       if(error)
          return error;
@@ -111,8 +111,8 @@ error_t sshInitEncryptionEngine(SshConnection *connection,
             &encryptionEngine->cipherContext, NULL, NULL, 1536);
       }
 
-      //Initialize HMAC context
-      encryptionEngine->hmacContext = &connection->hmacContext;
+      //Point to the MAC context
+      encryptionEngine->macContext = &connection->macContext;
    }
    else
 #endif
@@ -143,7 +143,7 @@ error_t sshInitEncryptionEngine(SshConnection *connection,
       error = sshKdf(connection->hashAlgo, connection->k, connection->kLen,
          connection->h, connection->hLen, connection->sessionId,
          connection->sessionIdLen, x + 4, encryptionEngine->macKey,
-         encryptionEngine->hashAlgo->digestSize);
+         encryptionEngine->macKeyLen);
       //Any error to report?
       if(error)
          return error;
@@ -155,8 +155,8 @@ error_t sshInitEncryptionEngine(SshConnection *connection,
       if(error)
          return error;
 
-      //Initialize HMAC context
-      encryptionEngine->hmacContext = &connection->hmacContext;
+      //Point to the MAC context
+      encryptionEngine->macContext = &connection->macContext;
    }
    else
 #endif
@@ -249,20 +249,22 @@ void sshFreeEncryptionEngine(SshEncryptionEngine *encryptionEngine)
    //Reset encryption parameters
    encryptionEngine->cipherMode = CIPHER_MODE_NULL;
    encryptionEngine->cipherAlgo = NULL;
+   encryptionEngine->macAlgo = MAC_ALGO_NONE;
    encryptionEngine->hashAlgo = NULL;
-   encryptionEngine->hmacContext = NULL;
-   encryptionEngine->macSize = 0;
+   encryptionEngine->macContext = NULL;
+   encryptionEngine->macLen = 0;
    encryptionEngine->etm = FALSE;
 
    //Erase IV
-   osMemset(encryptionEngine->iv, 0, SSH_MAX_CIPHER_BLOCK_SIZE);
+   osMemset(encryptionEngine->iv, 0, SSH_MAX_IV_SIZE);
 
    //Erase encryption key
    osMemset(encryptionEngine->encKey, 0, SSH_MAX_ENC_KEY_SIZE);
    encryptionEngine->encKeyLen = 0;
 
    //Erase integrity key
-   osMemset(encryptionEngine->macKey, 0, SSH_MAX_HASH_DIGEST_SIZE);
+   osMemset(encryptionEngine->macKey, 0, SSH_MAX_MAC_KEY_SIZE);
+   encryptionEngine->macKeyLen = 0;
 }
 
 
@@ -783,7 +785,7 @@ error_t sshSelectCipherAlgo(SshEncryptionEngine *encryptionEngine,
 
 
 /**
- * @brief Select the relevant hash algorithm
+ * @brief Select the relevant integrity algorithm
  * @param[in] encryptionEngine Pointer to the encryption/decryption engine to
  *   be initialized
  * @param[in] encAlgo Encryption algorithm name
@@ -791,7 +793,7 @@ error_t sshSelectCipherAlgo(SshEncryptionEngine *encryptionEngine,
  * @return Error code
  **/
 
-error_t sshSelectHashAlgo(SshEncryptionEngine *encryptionEngine,
+error_t sshSelectIntegrityAlgo(SshEncryptionEngine *encryptionEngine,
    const char_t *encAlgo, const char_t *macAlgo)
 {
    error_t error;
@@ -805,8 +807,10 @@ error_t sshSelectHashAlgo(SshEncryptionEngine *encryptionEngine,
       sshCompareAlgo(encAlgo, "aes128-gcm@openssh.com"))
    {
       //AEAD algorithms offer both encryption and authentication
+      encryptionEngine->macAlgo = MAC_ALGO_NONE;
       encryptionEngine->hashAlgo = NULL;
-      encryptionEngine->macSize = 16;
+      encryptionEngine->macKeyLen = 0;
+      encryptionEngine->macLen = 16;
       encryptionEngine->etm = FALSE;
    }
    else
@@ -817,8 +821,10 @@ error_t sshSelectHashAlgo(SshEncryptionEngine *encryptionEngine,
       sshCompareAlgo(encAlgo, "aes256-gcm@openssh.com"))
    {
       //AEAD algorithms offer both encryption and authentication
+      encryptionEngine->macAlgo = MAC_ALGO_NONE;
       encryptionEngine->hashAlgo = NULL;
-      encryptionEngine->macSize = 16;
+      encryptionEngine->macKeyLen = 0;
+      encryptionEngine->macLen = 16;
       encryptionEngine->etm = FALSE;
    }
    else
@@ -828,8 +834,10 @@ error_t sshSelectHashAlgo(SshEncryptionEngine *encryptionEngine,
    if(sshCompareAlgo(encAlgo, "AEAD_AES_128_GCM"))
    {
       //AEAD algorithms offer both encryption and authentication
+      encryptionEngine->macAlgo = MAC_ALGO_NONE;
       encryptionEngine->hashAlgo = NULL;
-      encryptionEngine->macSize = 16;
+      encryptionEngine->macKeyLen = 0;
+      encryptionEngine->macLen = 16;
       encryptionEngine->etm = FALSE;
    }
    else
@@ -839,8 +847,10 @@ error_t sshSelectHashAlgo(SshEncryptionEngine *encryptionEngine,
    if(sshCompareAlgo(encAlgo, "AEAD_AES_256_GCM"))
    {
       //AEAD algorithms offer both encryption and authentication
+      encryptionEngine->macAlgo = MAC_ALGO_NONE;
       encryptionEngine->hashAlgo = NULL;
-      encryptionEngine->macSize = 16;
+      encryptionEngine->macKeyLen = 0;
+      encryptionEngine->macLen = 16;
       encryptionEngine->etm = FALSE;
    }
    else
@@ -850,8 +860,10 @@ error_t sshSelectHashAlgo(SshEncryptionEngine *encryptionEngine,
    if(sshCompareAlgo(encAlgo, "AEAD_CAMELLIA_128_GCM"))
    {
       //AEAD algorithms offer both encryption and authentication
+      encryptionEngine->macAlgo = MAC_ALGO_NONE;
       encryptionEngine->hashAlgo = NULL;
-      encryptionEngine->macSize = 16;
+      encryptionEngine->macKeyLen = 0;
+      encryptionEngine->macLen = 16;
       encryptionEngine->etm = FALSE;
    }
    else
@@ -861,8 +873,10 @@ error_t sshSelectHashAlgo(SshEncryptionEngine *encryptionEngine,
    if(sshCompareAlgo(encAlgo, "AEAD_CAMELLIA_256_GCM"))
    {
       //AEAD algorithms offer both encryption and authentication
+      encryptionEngine->macAlgo = MAC_ALGO_NONE;
       encryptionEngine->hashAlgo = NULL;
-      encryptionEngine->macSize = 16;
+      encryptionEngine->macKeyLen = 0;
+      encryptionEngine->macLen = 16;
       encryptionEngine->etm = FALSE;
    }
    else
@@ -873,8 +887,10 @@ error_t sshSelectHashAlgo(SshEncryptionEngine *encryptionEngine,
       sshCompareAlgo(encAlgo, "chacha20-poly1305@openssh.com"))
    {
       //AEAD algorithms offer both encryption and authentication
+      encryptionEngine->macAlgo = MAC_ALGO_NONE;
       encryptionEngine->hashAlgo = NULL;
-      encryptionEngine->macSize = 16;
+      encryptionEngine->macKeyLen = 0;
+      encryptionEngine->macLen = 16;
       encryptionEngine->etm = FALSE;
    }
    else
@@ -884,8 +900,10 @@ error_t sshSelectHashAlgo(SshEncryptionEngine *encryptionEngine,
    if(sshCompareAlgo(macAlgo, "hmac-md5"))
    {
       //Select MAC-then-encrypt mode
+      encryptionEngine->macAlgo = MAC_ALGO_HMAC;
       encryptionEngine->hashAlgo = MD5_HASH_ALGO;
-      encryptionEngine->macSize = MD5_DIGEST_SIZE;
+      encryptionEngine->macKeyLen = MD5_DIGEST_SIZE;
+      encryptionEngine->macLen = MD5_DIGEST_SIZE;
       encryptionEngine->etm = FALSE;
    }
    else
@@ -896,8 +914,10 @@ error_t sshSelectHashAlgo(SshEncryptionEngine *encryptionEngine,
    if(sshCompareAlgo(macAlgo, "hmac-md5-etm@openssh.com"))
    {
       //Select encrypt-then-MAC mode
+      encryptionEngine->macAlgo = MAC_ALGO_HMAC;
       encryptionEngine->hashAlgo = MD5_HASH_ALGO;
-      encryptionEngine->macSize = MD5_DIGEST_SIZE;
+      encryptionEngine->macKeyLen = MD5_DIGEST_SIZE;
+      encryptionEngine->macLen = MD5_DIGEST_SIZE;
       encryptionEngine->etm = TRUE;
    }
    else
@@ -907,8 +927,10 @@ error_t sshSelectHashAlgo(SshEncryptionEngine *encryptionEngine,
    if(sshCompareAlgo(macAlgo, "hmac-md5-96"))
    {
       //Select MAC-then-encrypt mode
+      encryptionEngine->macAlgo = MAC_ALGO_HMAC;
       encryptionEngine->hashAlgo = MD5_HASH_ALGO;
-      encryptionEngine->macSize = 12;
+      encryptionEngine->macKeyLen = MD5_DIGEST_SIZE;
+      encryptionEngine->macLen = 12;
       encryptionEngine->etm = FALSE;
    }
    else
@@ -919,8 +941,10 @@ error_t sshSelectHashAlgo(SshEncryptionEngine *encryptionEngine,
    if(sshCompareAlgo(macAlgo, "hmac-md5-96-etm@openssh.com"))
    {
       //Select encrypt-then-MAC mode
+      encryptionEngine->macAlgo = MAC_ALGO_HMAC;
       encryptionEngine->hashAlgo = MD5_HASH_ALGO;
-      encryptionEngine->macSize = 12;
+      encryptionEngine->macKeyLen = MD5_DIGEST_SIZE;
+      encryptionEngine->macLen = 12;
       encryptionEngine->etm = TRUE;
    }
    else
@@ -931,8 +955,10 @@ error_t sshSelectHashAlgo(SshEncryptionEngine *encryptionEngine,
       sshCompareAlgo(macAlgo, "hmac-ripemd160@openssh.com"))
    {
       //Select MAC-then-encrypt mode
+      encryptionEngine->macAlgo = MAC_ALGO_HMAC;
       encryptionEngine->hashAlgo = RIPEMD160_HASH_ALGO;
-      encryptionEngine->macSize = RIPEMD160_DIGEST_SIZE;
+      encryptionEngine->macKeyLen = RIPEMD160_DIGEST_SIZE;
+      encryptionEngine->macLen = RIPEMD160_DIGEST_SIZE;
       encryptionEngine->etm = FALSE;
    }
    else
@@ -943,8 +969,10 @@ error_t sshSelectHashAlgo(SshEncryptionEngine *encryptionEngine,
    if(sshCompareAlgo(macAlgo, "hmac-ripemd160-etm@openssh.com"))
    {
       //Select encrypt-then-MAC mode
+      encryptionEngine->macAlgo = MAC_ALGO_HMAC;
       encryptionEngine->hashAlgo = RIPEMD160_HASH_ALGO;
-      encryptionEngine->macSize = RIPEMD160_DIGEST_SIZE;
+      encryptionEngine->macKeyLen = RIPEMD160_DIGEST_SIZE;
+      encryptionEngine->macLen = RIPEMD160_DIGEST_SIZE;
       encryptionEngine->etm = TRUE;
    }
    else
@@ -954,8 +982,10 @@ error_t sshSelectHashAlgo(SshEncryptionEngine *encryptionEngine,
    if(sshCompareAlgo(macAlgo, "hmac-sha1"))
    {
       //Select MAC-then-encrypt mode
+      encryptionEngine->macAlgo = MAC_ALGO_HMAC;
       encryptionEngine->hashAlgo = SHA1_HASH_ALGO;
-      encryptionEngine->macSize = SHA1_DIGEST_SIZE;
+      encryptionEngine->macKeyLen = SHA1_DIGEST_SIZE;
+      encryptionEngine->macLen = SHA1_DIGEST_SIZE;
       encryptionEngine->etm = FALSE;
    }
    else
@@ -966,8 +996,10 @@ error_t sshSelectHashAlgo(SshEncryptionEngine *encryptionEngine,
    if(sshCompareAlgo(macAlgo, "hmac-sha1-etm@openssh.com"))
    {
       //Select encrypt-then-MAC mode
+      encryptionEngine->macAlgo = MAC_ALGO_HMAC;
       encryptionEngine->hashAlgo = SHA1_HASH_ALGO;
-      encryptionEngine->macSize = SHA1_DIGEST_SIZE;
+      encryptionEngine->macKeyLen = SHA1_DIGEST_SIZE;
+      encryptionEngine->macLen = SHA1_DIGEST_SIZE;
       encryptionEngine->etm = TRUE;
    }
    else
@@ -977,8 +1009,10 @@ error_t sshSelectHashAlgo(SshEncryptionEngine *encryptionEngine,
    if(sshCompareAlgo(macAlgo, "hmac-sha1-96"))
    {
       //Select MAC-then-encrypt mode
+      encryptionEngine->macAlgo = MAC_ALGO_HMAC;
       encryptionEngine->hashAlgo = SHA1_HASH_ALGO;
-      encryptionEngine->macSize = 12;
+      encryptionEngine->macKeyLen = SHA1_DIGEST_SIZE;
+      encryptionEngine->macLen = 12;
       encryptionEngine->etm = FALSE;
    }
    else
@@ -989,8 +1023,10 @@ error_t sshSelectHashAlgo(SshEncryptionEngine *encryptionEngine,
    if(sshCompareAlgo(macAlgo, "hmac-sha1-96-etm@openssh.com"))
    {
       //Select encrypt-then-MAC mode
+      encryptionEngine->macAlgo = MAC_ALGO_HMAC;
       encryptionEngine->hashAlgo = SHA1_HASH_ALGO;
-      encryptionEngine->macSize = 12;
+      encryptionEngine->macKeyLen = SHA1_DIGEST_SIZE;
+      encryptionEngine->macLen = 12;
       encryptionEngine->etm = TRUE;
    }
    else
@@ -1000,8 +1036,10 @@ error_t sshSelectHashAlgo(SshEncryptionEngine *encryptionEngine,
    if(sshCompareAlgo(macAlgo, "hmac-sha2-256"))
    {
       //Select MAC-then-encrypt mode
+      encryptionEngine->macAlgo = MAC_ALGO_HMAC;
       encryptionEngine->hashAlgo = SHA256_HASH_ALGO;
-      encryptionEngine->macSize = SHA256_DIGEST_SIZE;
+      encryptionEngine->macKeyLen = SHA256_DIGEST_SIZE;
+      encryptionEngine->macLen = SHA256_DIGEST_SIZE;
       encryptionEngine->etm = FALSE;
    }
    else
@@ -1012,8 +1050,10 @@ error_t sshSelectHashAlgo(SshEncryptionEngine *encryptionEngine,
    if(sshCompareAlgo(macAlgo, "hmac-sha2-256-etm@openssh.com"))
    {
       //Select encrypt-then-MAC mode
+      encryptionEngine->macAlgo = MAC_ALGO_HMAC;
       encryptionEngine->hashAlgo = SHA256_HASH_ALGO;
-      encryptionEngine->macSize = SHA256_DIGEST_SIZE;
+      encryptionEngine->macKeyLen = SHA256_DIGEST_SIZE;
+      encryptionEngine->macLen = SHA256_DIGEST_SIZE;
       encryptionEngine->etm = TRUE;
    }
    else
@@ -1023,8 +1063,10 @@ error_t sshSelectHashAlgo(SshEncryptionEngine *encryptionEngine,
    if(sshCompareAlgo(macAlgo, "hmac-sha2-512"))
    {
       //Select MAC-then-encrypt mode
+      encryptionEngine->macAlgo = MAC_ALGO_HMAC;
       encryptionEngine->hashAlgo = SHA512_HASH_ALGO;
-      encryptionEngine->macSize = SHA512_DIGEST_SIZE;
+      encryptionEngine->macKeyLen = SHA512_DIGEST_SIZE;
+      encryptionEngine->macLen = SHA512_DIGEST_SIZE;
       encryptionEngine->etm = FALSE;
    }
    else
@@ -1035,8 +1077,62 @@ error_t sshSelectHashAlgo(SshEncryptionEngine *encryptionEngine,
    if(sshCompareAlgo(macAlgo, "hmac-sha2-512-etm@openssh.com"))
    {
       //Select encrypt-then-MAC mode
+      encryptionEngine->macAlgo = MAC_ALGO_HMAC;
       encryptionEngine->hashAlgo = SHA512_HASH_ALGO;
-      encryptionEngine->macSize = SHA512_DIGEST_SIZE;
+      encryptionEngine->macKeyLen = SHA512_DIGEST_SIZE;
+      encryptionEngine->macLen = SHA512_DIGEST_SIZE;
+      encryptionEngine->etm = TRUE;
+   }
+   else
+#endif
+#if (SSH_UMAC64_SUPPORT == ENABLED)
+   //UMAC-64 integrity algorithm?
+   if(sshCompareAlgo(macAlgo, "umac-64@openssh.com"))
+   {
+      //Select MAC-then-encrypt mode
+      encryptionEngine->macAlgo = MAC_ALGO_UMAC;
+      encryptionEngine->hashAlgo = NULL;
+      encryptionEngine->macKeyLen = 16;
+      encryptionEngine->macLen = 8;
+      encryptionEngine->etm = FALSE;
+   }
+   else
+#endif
+#if (SSH_UMAC64_SUPPORT == ENABLED && SSH_ETM_SUPPORT == ENABLED)
+   //UMAC-64 integrity algorithm (EtM mode)?
+   if(sshCompareAlgo(macAlgo, "umac-64-etm@openssh.com"))
+   {
+      //Select encrypt-then-MAC mode
+      encryptionEngine->macAlgo = MAC_ALGO_UMAC;
+      encryptionEngine->hashAlgo = NULL;
+      encryptionEngine->macKeyLen = 16;
+      encryptionEngine->macLen = 8;
+      encryptionEngine->etm = TRUE;
+   }
+   else
+#endif
+#if (SSH_UMAC128_SUPPORT == ENABLED)
+   //UMAC-128 integrity algorithm?
+   if(sshCompareAlgo(macAlgo, "umac-128@openssh.com"))
+   {
+      //Select MAC-then-encrypt mode
+      encryptionEngine->macAlgo = MAC_ALGO_UMAC;
+      encryptionEngine->hashAlgo = NULL;
+      encryptionEngine->macKeyLen = 16;
+      encryptionEngine->macLen = 16;
+      encryptionEngine->etm = FALSE;
+   }
+   else
+#endif
+#if (SSH_UMAC128_SUPPORT == ENABLED && SSH_ETM_SUPPORT == ENABLED)
+   //UMAC-128 integrity algorithm (EtM mode)?
+   if(sshCompareAlgo(macAlgo, "umac-128-etm@openssh.com"))
+   {
+      //Select encrypt-then-MAC mode
+      encryptionEngine->macAlgo = MAC_ALGO_UMAC;
+      encryptionEngine->hashAlgo = NULL;
+      encryptionEngine->macKeyLen = 16;
+      encryptionEngine->macLen = 16;
       encryptionEngine->etm = TRUE;
    }
    else

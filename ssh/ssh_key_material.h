@@ -49,7 +49,7 @@ void sshFreeEncryptionEngine(SshEncryptionEngine *encryptionEngine);
 error_t sshSelectCipherAlgo(SshEncryptionEngine *encryptionEngine,
    const char_t *encAlgo);
 
-error_t sshSelectHashAlgo(SshEncryptionEngine *encryptionEngine,
+error_t sshSelectIntegrityAlgo(SshEncryptionEngine *encryptionEngine,
    const char_t *encAlgo, const char_t *macAlgo);
 
 void sshDumpKey(SshConnection *connection, const char_t *label,
