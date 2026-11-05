@@ -122,7 +122,7 @@ error_t sshSendPacket(SshConnection *connection, uint8_t *payload,
    }
 
    //There must be at least four bytes of padding
-   if(paddingLen < 4)
+   if(paddingLen < SSH_MIN_PADDING_LEN)
    {
       paddingLen += blockSize;
    }
@@ -227,22 +227,10 @@ error_t sshReceivePacket(SshConnection *connection)
          //Check whether an SSH_MSG_NEWKEYS message has been received
          if(connection->newKeysReceived)
          {
-            //Stream or AEAD cipher?
-            if(decryptionEngine->cipherMode == CIPHER_MODE_STREAM ||
-               decryptionEngine->cipherMode == CIPHER_MODE_GCM ||
-               decryptionEngine->cipherMode == CIPHER_MODE_CHACHA20_POLY1305)
-            {
-               //The packet_length field is to be treated as additional
-               //authenticated data, not as plaintext
-               blockSize = sizeof(uint32_t);
-            }
-            else
-            {
-               //Implementations should decrypt the length after receiving the
-               //first 8 (or cipher block size, whichever is larger) bytes of
-               //a packet
-               blockSize = decryptionEngine->cipherAlgo->blockSize;
-            }
+            //Implementations should decrypt the length after receiving the
+            //first 8 (or cipher block size, whichever is larger) bytes of a
+            //packet (refer to RFC 4253, section 6)
+            blockSize = sshGetBlockSize(connection);
          }
          else
          {
@@ -271,13 +259,16 @@ error_t sshReceivePacket(SshConnection *connection)
                   //Check whether an SSH_MSG_NEWKEYS message has been received
                   if(connection->newKeysReceived)
                   {
-                     //When receiving a packet, the length must be decrypted first
-                     error = sshDecryptPacketLength(connection, connection->buffer);
+                     //When receiving a packet, the length must be decrypted
+                     //first
+                     error = sshDecryptPacketLength(connection,
+                        connection->buffer);
                   }
                   else
                   {
                      //The packet_length field is not encrypted
-                     error = sshParsePacketLength(connection, connection->buffer);
+                     error = sshParsePacketLength(connection,
+                        connection->buffer);
                   }
                }
             }
@@ -333,7 +324,7 @@ error_t sshParsePacket(SshConnection *connection, uint8_t *packet,
    size_t length)
 {
    error_t error;
-   size_t n;
+   size_t packetLen;
    size_t paddingLen;
 
    //Initialize status code
@@ -354,26 +345,27 @@ error_t sshParsePacket(SshConnection *connection, uint8_t *packet,
    //Check status code
    if(!error)
    {
-      //Check the length of the received packet
+      //The minimum size of a packet is 16 bytes (refer to RFC 4253, section 6)
       if(length >= SSH_MIN_PACKET_SIZE)
       {
          //Parse SSH packet header
-         n = LOAD32BE(packet);
+         packetLen = LOAD32BE(packet);
          paddingLen = packet[4];
 
-         //Sanity check
-         if(length == (n + sizeof(uint32_t)))
+         //Check the length of the packet
+         if(packetLen == (length - sizeof(uint32_t)) &&
+            packetLen >= (paddingLen + sizeof(uint8_t)))
          {
-            //Check the length of the padding string
-            if(n >= (paddingLen + sizeof(uint8_t)))
+            //There must be at least four bytes of padding
+            if(paddingLen >= SSH_MIN_PADDING_LEN)
             {
                //Point to the payload
                packet += SSH_PACKET_HEADER_SIZE;
                //Retrieve the length of the payload
-               n -= paddingLen + sizeof(uint8_t);
+               packetLen -= paddingLen + sizeof(uint8_t);
 
                //Parse the received message
-               error = sshParseMessage(connection, packet, n);
+               error = sshParseMessage(connection, packet, packetLen);
             }
             else
             {
@@ -383,13 +375,13 @@ error_t sshParsePacket(SshConnection *connection, uint8_t *packet,
          }
          else
          {
-            //Invalid length
+            //Invalid packet length
             error = ERROR_INVALID_MESSAGE;
          }
       }
       else
       {
-         //Invalid length
+         //Invalid packet length
          error = ERROR_INVALID_MESSAGE;
       }
    }
@@ -694,27 +686,8 @@ error_t sshDecryptPacket(SshConnection *connection, uint8_t *packet,
    //Point to the decryption engine
    decryptionEngine = &connection->decryptionEngine;
 
-   //Block cipher algorithm?
-   if(decryptionEngine->cipherMode == CIPHER_MODE_CBC ||
-      decryptionEngine->cipherMode == CIPHER_MODE_CTR)
-   {
-      //Encrypt-then-MAC mode?
-      if(decryptionEngine->etm)
-      {
-         //The packet_length field is not encrypted
-         blockSize = 4;
-      }
-      else
-      {
-         //Retrieve the cipher block size
-         blockSize = decryptionEngine->cipherAlgo->blockSize;
-      }
-   }
-   else
-   {
-      //The packet_length field is a 32-bit integer
-      blockSize = 4;
-   }
+   //Determine the size of the first block
+   blockSize = sshGetBlockSize(connection);
 
    //Get the actual length of the packet
    n = *length;
@@ -925,8 +898,9 @@ error_t sshParsePacketLength(SshConnection *connection, uint8_t *packet)
    //The length of the packet does not include the packet_length field itself
    packetLen += sizeof(uint32_t);
 
-   //Sanity check
-   if(packetLen <= SSH_BUFFER_SIZE && packetLen > LOAD32BE(packet))
+   //Check the length of the packet
+   if(packetLen >= connection->rxBufferPos && packetLen <= SSH_BUFFER_SIZE &&
+      packetLen >= LOAD32BE(packet))
    {
       //Save the total length of the packet
       connection->rxBufferLen = packetLen;
@@ -965,34 +939,12 @@ error_t sshDecryptPacketLength(SshConnection *connection, uint8_t *packet)
    //Point to the decryption engine
    decryptionEngine = &connection->decryptionEngine;
 
-#if (SSH_STREAM_CIPHER_SUPPORT == ENABLED || SSH_CBC_CIPHER_SUPPORT == ENABLED || \
-   SSH_CTR_CIPHER_SUPPORT == ENABLED || SSH_CHACHA20_POLY1305_SUPPORT == ENABLED)
-   //Block cipher algorithm?
-   if(decryptionEngine->cipherMode == CIPHER_MODE_CBC ||
-      decryptionEngine->cipherMode == CIPHER_MODE_CTR)
-   {
-      //Encrypt-then-MAC mode?
-      if(decryptionEngine->etm)
-      {
-         //The packet_length field is not encrypted
-         blockSize = 4;
-      }
-      else
-      {
-         //Retrieve the cipher block size
-         blockSize = decryptionEngine->cipherAlgo->blockSize;
-      }
-   }
-   else
-   {
-      //The packet_length field is a 32-bit integer
-      blockSize = 4;
-   }
+   //Determine the size of the first block
+   blockSize = sshGetBlockSize(connection);
 
    //Debug message
    TRACE_VERBOSE("Block to be decrypted (%" PRIuSIZE " bytes):\r\n", blockSize);
    TRACE_VERBOSE_ARRAY("  ", packet, blockSize);
-#endif
 
 #if (SSH_STREAM_CIPHER_SUPPORT == ENABLED)
    //Stream cipher?
@@ -1104,8 +1056,9 @@ error_t sshDecryptPacketLength(SshConnection *connection, uint8_t *packet)
       //packet_length field itself
       packetLen += decryptionEngine->macLen + sizeof(uint32_t);
 
-      //Sanity check
-      if(packetLen <= SSH_BUFFER_SIZE && packetLen > LOAD32BE(packet))
+      //Check the length of the packet
+      if(packetLen >= connection->rxBufferPos && packetLen <= SSH_BUFFER_SIZE &&
+         packetLen >= LOAD32BE(packet))
       {
          //Save the total length of the packet
          connection->rxBufferLen = packetLen;
@@ -1518,6 +1471,47 @@ error_t sshVerifyMessageAuthCode(SshEncryptionEngine *decryptionEngine,
 
    //Return status code
    return error;
+}
+
+
+/**
+ * @brief Determine the number of bytes to decrypt in the first block
+ * @param[in] connection Pointer to the SSH connection
+ * @return Number of bytes to decrypt in the first block
+ **/
+
+size_t sshGetBlockSize(SshConnection *connection)
+{
+   size_t blockSize;
+   SshEncryptionEngine *decryptionEngine;
+
+   //Point to the decryption engine
+   decryptionEngine = &connection->decryptionEngine;
+
+   //Block cipher algorithm?
+   if(decryptionEngine->cipherMode == CIPHER_MODE_CBC ||
+      decryptionEngine->cipherMode == CIPHER_MODE_CTR)
+   {
+      //Encrypt-then-MAC mode?
+      if(decryptionEngine->etm)
+      {
+         //The packet_length field is not encrypted
+         blockSize = sizeof(uint32_t);
+      }
+      else
+      {
+         //Retrieve the cipher block size
+         blockSize = decryptionEngine->cipherAlgo->blockSize;
+      }
+   }
+   else
+   {
+      //The packet_length field is a 32-bit integer
+      blockSize = sizeof(uint32_t);
+   }
+
+   //Return the number of bytes to decrypt in the first block
+   return blockSize;
 }
 
 
