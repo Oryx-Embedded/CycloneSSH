@@ -85,6 +85,174 @@ SshChannel *sshGetChannel(SshConnection *connection, uint32_t localChannelNum)
 
 
 /**
+ * @brief Allocate an SSH channel
+ *
+ * The channel table is shared by all SSH connections. In order to prevent a
+ * single SSH connection from exhausting it, the server limits the number of
+ * channels per connection, and keeps one channel available for each other
+ * connection (active or not) that does not own any channel yet
+ *
+ * @param[in] connection Pointer to the SSH connection
+ * @return Pointer to a free SSH channel, or NULL if none is available
+ **/
+
+SshChannel *sshAllocateChannel(SshConnection *connection)
+{
+   uint_t i;
+   uint_t n;
+   bool_t allowed;
+   SshContext *context;
+   SshChannel *channel;
+
+   //Point to the SSH context
+   context = connection->context;
+
+   //Initialize pointer
+   channel = NULL;
+
+   //Check whether SSH operates as a client or a server
+   if(context->mode == SSH_OPERATION_MODE_SERVER)
+   {
+      //Retrieve the number of channels owned by the connection
+      n = sshCountUsedChannels(context, connection);
+
+      //Limit the number of channels per connection
+      if(n >= SSH_MAX_CHANNELS_PER_CONNECTION)
+      {
+         allowed = FALSE;
+      }
+      else if(n > 0 && sshCountFreeChannels(context) <=
+         sshCountReservedChannels(context, connection))
+      {
+         allowed = FALSE;
+      }
+      else
+      {
+         allowed = TRUE;
+      }
+   }
+   else
+   {
+      //The client opens its own channels
+      allowed = TRUE;
+   }
+
+   //Check whether a new channel can be allocated
+   if(allowed)
+   {
+      //Loop through SSH channels
+      for(i = 0; i < context->numChannels; i++)
+      {
+         //Unused SSH channel?
+         if(context->channels[i].state == SSH_CHANNEL_STATE_UNUSED)
+         {
+            channel = &context->channels[i];
+            break;
+         }
+      }
+   }
+
+   //Return a pointer to the free SSH channel
+   return channel;
+}
+
+
+/**
+ * @brief Count the free SSH channels
+ * @param[in] context Pointer to the SSH context
+ * @return Number of free SSH channels
+ **/
+
+uint_t sshCountFreeChannels(SshContext *context)
+{
+   uint_t i;
+   uint_t n;
+
+   //Loop through SSH channels
+   for(i = 0, n = 0; i < context->numChannels; i++)
+   {
+      //Unused SSH channel?
+      if(context->channels[i].state == SSH_CHANNEL_STATE_UNUSED)
+      {
+         n++;
+      }
+   }
+
+   //Return the number of free SSH channels
+   return n;
+}
+
+
+/**
+ * @brief Count the SSH channels in use by a given SSH connection
+ * @param[in] context Pointer to the SSH context
+ * @param[in] connection Pointer to the SSH connection
+ * @return Number of SSH channels in use by the connection
+ **/
+
+uint_t sshCountUsedChannels(SshContext *context, SshConnection *connection)
+{
+   uint_t i;
+   uint_t n;
+
+   //Loop through SSH channels
+   for(i = 0, n = 0; i < context->numChannels; i++)
+   {
+      //SSH channel in use by the specified connection?
+      if(context->channels[i].state != SSH_CHANNEL_STATE_UNUSED &&
+         context->channels[i].connection == connection)
+      {
+         n++;
+      }
+   }
+
+   //Return the number of SSH channels
+   return n;
+}
+
+
+/**
+ * @brief Count the SSH channels reserved for the other SSH connections
+ *
+ * One channel is reserved for each connection (other than the specified
+ * one) that does not own any channel yet. Inactive connections are counted as
+ * well, so that a client connecting later can always open its first channel
+ *
+ * @param[in] context Pointer to the SSH context
+ * @param[in] connection Pointer to the SSH connection to exclude
+ * @return Number of reserved SSH channels
+ **/
+
+uint_t sshCountReservedChannels(SshContext *context,
+   SshConnection *connection)
+{
+   uint_t i;
+   uint_t n;
+   SshConnection *otherConnection;
+
+   //Loop through SSH connections
+   for(i = 0, n = 0; i < context->numConnections; i++)
+   {
+      //Point to the current connection
+      otherConnection = &context->connections[i];
+
+      //Connection other than the specified one?
+      if(otherConnection != connection)
+      {
+         //No channel owned yet?
+         if(sshCountUsedChannels(context, otherConnection) == 0)
+         {
+            n++;
+         }
+      }
+   }
+
+   //Return the number of reserved SSH channels
+   return n;
+}
+
+
+/**
  * @brief Generate a local channel number
  * @param[in] connection Pointer to the SSH connection
  * @return Channel number

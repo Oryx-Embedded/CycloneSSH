@@ -73,7 +73,7 @@
 //Size of the buffer for input/output operations
 #ifndef SFTP_CLIENT_BUFFER_SIZE
    #define SFTP_CLIENT_BUFFER_SIZE 1024
-#elif (SFTP_CLIENT_BUFFER_SIZE < 256)
+#elif (SFTP_CLIENT_BUFFER_SIZE < 512)
    #error SFTP_CLIENT_BUFFER_SIZE parameter is not valid
 #endif
 

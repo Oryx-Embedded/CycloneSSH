@@ -50,6 +50,8 @@ error_t scpClientOpenConnection(ScpClientContext *context);
 error_t scpClientEstablishConnection(ScpClientContext *context);
 void scpClientCloseConnection(ScpClientContext *context);
 
+error_t scpClientCheckPath(const char_t *path);
+
 error_t scpClientSendDirective(ScpClientContext *context,
    const ScpDirective *directive);
 

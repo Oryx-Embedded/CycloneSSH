@@ -78,6 +78,9 @@ uint_t scpServerGetFilePermissions(ScpServerSession *session,
 error_t scpServerGetPath(ScpServerSession *session, const SshString *path,
    char_t *fullPath, size_t maxLen);
 
+bool_t scpServerIsPathInRootDir(ScpServerSession *session,
+   const char_t *path);
+
 const char_t *scpServerStripRootDir(ScpServerSession *session,
    const char_t *path);
 

@@ -67,11 +67,26 @@ error_t sftpServerParsePacket(SftpServerSession *session,
 
 uint32_t sftpServerGenerateHandle(SftpServerSession *session);
 
+SftpFileObject *sftpServerAllocateFileObject(SftpServerSession *session);
+
+uint_t sftpServerCountFreeFileObjects(SftpServerContext *context);
+
+uint_t sftpServerCountUsedFileObjects(SftpServerContext *context,
+   SshConnection *connection);
+
+uint_t sftpServerCountReservedFileObjects(SftpServerContext *context,
+   SshConnection *connection);
+
+SshConnection *sftpServerGetConnection(SftpServerSession *session);
+
 uint_t sftpServerGetFilePermissions(SftpServerSession *session,
    const char_t *path);
 
 error_t sftpServerGetPath(SftpServerSession *session, const SshString *path,
    char_t *fullPath, size_t maxLen);
+
+bool_t sftpServerIsPathInRootDir(SftpServerSession *session,
+   const char_t *path);
 
 const char_t *sftpServerStripRootDir(SftpServerContext *context,
    const char_t *path);

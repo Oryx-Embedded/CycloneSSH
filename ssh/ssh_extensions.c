@@ -457,34 +457,17 @@ error_t sshParseServerSigAlgsExt(SshConnection *connection, const char_t *p,
    if(connection->state == SSH_CONN_STATE_SERVER_EXT_INFO_1 ||
       connection->state == SSH_CONN_STATE_SERVER_EXT_INFO_2)
    {
-      uint_t i;
-      SshContext *context;
-      SshHostKey *hostKey;
       SshNameList publicKeyAlgoList;
-
-      //Point to the SSH context
-      context = connection->context;
 
       //In this extension, a server must enumerate all public key algorithms
       //it might accept during user authentication
       publicKeyAlgoList.value = p;
       publicKeyAlgoList.length = length;
 
-      //Loop through the client's host keys
-      for(i = 0; i < SSH_MAX_HOST_KEYS; i++)
-      {
-         //Point to the current host key
-         hostKey = &context->hostKeys[i];
-
-         //Valid host key?
-         if(hostKey->keyFormatId != NULL)
-         {
-            //Select the appropriate public key algorithm to use during user
-            //authentication, rather than resorting to trial and error
-            hostKey->publicKeyAlgo = sshSelectPublicKeyAlgo(context,
-               hostKey->keyFormatId, &publicKeyAlgoList);
-         }
-      }
+      //Save the public key algorithms accepted by the server, so that the
+      //client can select the appropriate algorithm to use during user
+      //authentication, rather than resorting to trial and error
+      connection->peerSigAlgos = sshGetPeerPublicKeyAlgos(&publicKeyAlgoList);
 
       //Successful processing
       error = NO_ERROR;

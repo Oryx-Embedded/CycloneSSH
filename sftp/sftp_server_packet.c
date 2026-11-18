@@ -64,10 +64,11 @@ error_t sftpServerParseFxpInit(SftpServerSession *session,
    TRACE_VERBOSE_ARRAY("  ", packet, length);
 
    //Malformed packet?
-   if(length != sizeof(uint32_t))
+   if(length < sizeof(uint32_t))
       return ERROR_INVALID_PACKET;
 
-   //The SSH_FXP_INIT packet contains the client version
+   //The SSH_FXP_INIT packet contains the client version, optionally followed
+   //by extension data
    version = LOAD32BE(packet);
 
    //Sanity check
@@ -118,7 +119,7 @@ error_t sftpServerParseFxpOpen(SftpServerSession *session,
    if(length < sizeof(uint32_t))
       return ERROR_INVALID_PACKET;
 
-   //Get request identifier
+   //All requests start with a request identifier
    id = LOAD32BE(p);
 
    //Point to the next field
@@ -172,6 +173,12 @@ error_t sftpServerParseFxpOpen(SftpServerSession *session,
       error = sftpFormatFxpStatus(session, id, SSH_FX_FAILURE,
          "Too many open files");
    }
+   else if(error == ERROR_FILE_ALREADY_EXISTS)
+   {
+      //The named file already exists
+      error = sftpFormatFxpStatus(session, id, SSH_FX_FAILURE,
+         "File already exists");
+   }
    else if(error == ERROR_ACCESS_DENIED)
    {
       //The authenticated user does not have sufficient permissions to perform
@@ -218,7 +225,7 @@ error_t sftpServerParseFxpClose(SftpServerSession *session,
    if(length < sizeof(uint32_t))
       return ERROR_INVALID_PACKET;
 
-   //Get request identifier
+   //All requests start with a request identifier
    id = LOAD32BE(p);
 
    //Point to the next field
@@ -294,7 +301,7 @@ error_t sftpServerParseFxpRead(SftpServerSession *session,
    if(length < sizeof(uint32_t))
       return ERROR_INVALID_PACKET;
 
-   //Get request identifier
+   //All requests start with a request identifier
    id = LOAD32BE(p);
 
    //Point to the next field
@@ -399,7 +406,7 @@ error_t sftpServerParseFxpWrite(SftpServerSession *session,
    if(fragLen < sizeof(uint32_t) || fragLen > totalLen)
       return ERROR_INVALID_PACKET;
 
-   //Get request identifier
+   //All requests start with a request identifier
    session->requestId = LOAD32BE(p);
 
    //Point to the next field
@@ -486,7 +493,7 @@ error_t sftpServerParseFxpOpenDir(SftpServerSession *session,
    if(length < sizeof(uint32_t))
       return ERROR_INVALID_PACKET;
 
-   //Get request identifier
+   //All requests start with a request identifier
    id = LOAD32BE(p);
 
    //Point to the next field
@@ -565,7 +572,7 @@ error_t sftpServerParseFxpReadDir(SftpServerSession *session,
    if(length < sizeof(uint32_t))
       return ERROR_INVALID_PACKET;
 
-   //Get request identifier
+   //All requests start with a request identifier
    id = LOAD32BE(p);
 
    //Point to the next field
@@ -642,7 +649,7 @@ error_t sftpServerParseFxpRemove(SftpServerSession *session,
    if(length < sizeof(uint32_t))
       return ERROR_INVALID_PACKET;
 
-   //Get request identifier
+   //All requests start with a request identifier
    id = LOAD32BE(p);
 
    //Point to the next field
@@ -718,7 +725,7 @@ error_t sftpServerParseFxpMkDir(SftpServerSession *session,
    if(length < sizeof(uint32_t))
       return ERROR_INVALID_PACKET;
 
-   //Get request identifier
+   //All requests start with a request identifier
    id = LOAD32BE(p);
 
    //Point to the next field
@@ -802,7 +809,7 @@ error_t sftpServerParseFxpRmDir(SftpServerSession *session,
    if(length < sizeof(uint32_t))
       return ERROR_INVALID_PACKET;
 
-   //Get request identifier
+   //All requests start with a request identifier
    id = LOAD32BE(p);
 
    //Point to the next field
@@ -877,7 +884,7 @@ error_t sftpServerParseFxpRealPath(SftpServerSession *session,
    if(length < sizeof(uint32_t))
       return ERROR_INVALID_PACKET;
 
-   //Get request identifier
+   //All requests start with a request identifier
    id = LOAD32BE(p);
 
    //Point to the next field
@@ -944,7 +951,7 @@ error_t sftpServerParseFxpStat(SftpServerSession *session,
    if(length < sizeof(uint32_t))
       return ERROR_INVALID_PACKET;
 
-   //Get request identifier
+   //All requests start with a request identifier
    id = LOAD32BE(p);
 
    //Point to the next field
@@ -1018,7 +1025,7 @@ error_t sftpServerParseFxpFstat(SftpServerSession *session,
    if(length < sizeof(uint32_t))
       return ERROR_INVALID_PACKET;
 
-   //Get request identifier
+   //All requests start with a request identifier
    id = LOAD32BE(p);
 
    //Point to the next field
@@ -1092,7 +1099,7 @@ error_t sftpServerParseFxpSetStat(SftpServerSession *session,
    if(length < sizeof(uint32_t))
       return ERROR_INVALID_PACKET;
 
-   //Get request identifier
+   //All requests start with a request identifier
    id = LOAD32BE(p);
 
    //Point to the next field
@@ -1179,7 +1186,7 @@ error_t sftpServerParseFxpSetFstat(SftpServerSession *session,
    if(length < sizeof(uint32_t))
       return ERROR_INVALID_PACKET;
 
-   //Get request identifier
+   //All requests start with a request identifier
    id = LOAD32BE(p);
 
    //Point to the next field
@@ -1264,7 +1271,7 @@ error_t sftpServerParseFxpRename(SftpServerSession *session,
    if(length < sizeof(uint32_t))
       return ERROR_INVALID_PACKET;
 
-   //Get request identifier
+   //All requests start with a request identifier
    id = LOAD32BE(p);
 
    //Point to the next field
@@ -1322,6 +1329,124 @@ error_t sftpServerParseFxpRename(SftpServerSession *session,
 
 
 /**
+ * @brief Parse SSH_FXP_READLINK packet
+ * @param[in] session Handle referencing an SFTP session
+ * @param[in] packet Pointer to packet
+ * @param[in] length Length of the packet, in bytes
+ * @return Error code
+ **/
+
+error_t sftpServerParseFxpReadLink(SftpServerSession *session,
+   const uint8_t *packet, size_t length)
+{
+   error_t error;
+   uint32_t id;
+   const uint8_t *p;
+   SshString path;
+
+   //Debug message
+   TRACE_INFO("SSH_FXP_READLINK packet received (%" PRIuSIZE " bytes)...\r\n", length);
+   TRACE_VERBOSE_ARRAY("  ", packet, length);
+
+   //Point to the first field of the packet
+   p = packet;
+
+   //Malformed packet?
+   if(length < sizeof(uint32_t))
+      return ERROR_INVALID_PACKET;
+
+   //All requests start with a request identifier
+   id = LOAD32BE(p);
+
+   //Point to the next field
+   p += sizeof(uint32_t);
+   length -= sizeof(uint32_t);
+
+   //The 'path' field specifies the path name of the symbolic link to be read
+   error = sshParseString(p, length, &path);
+   //Any error to report?
+   if(error)
+      return error;
+
+   //Malformed message?
+   if(length != (sizeof(uint32_t) + path.length))
+      return ERROR_INVALID_PACKET;
+
+   //Symbolic links are not supported
+   error = sftpFormatFxpStatus(session, id, SSH_FX_OP_UNSUPPORTED,
+      "Operation not supported");
+
+   //Return status code
+   return error;
+}
+
+
+/**
+ * @brief Parse SSH_FXP_SYMLINK packet
+ * @param[in] session Handle referencing an SFTP session
+ * @param[in] packet Pointer to packet
+ * @param[in] length Length of the packet, in bytes
+ * @return Error code
+ **/
+
+error_t sftpServerParseFxpSymLink(SftpServerSession *session,
+   const uint8_t *packet, size_t length)
+{
+   error_t error;
+   uint32_t id;
+   const uint8_t *p;
+   SshString linkPath;
+   SshString targetPath;
+
+   //Debug message
+   TRACE_INFO("SSH_FXP_SYMLINK packet received (%" PRIuSIZE " bytes)...\r\n", length);
+   TRACE_VERBOSE_ARRAY("  ", packet, length);
+
+   //Point to the first field of the packet
+   p = packet;
+
+   //Malformed packet?
+   if(length < sizeof(uint32_t))
+      return ERROR_INVALID_PACKET;
+
+   //All requests start with a request identifier
+   id = LOAD32BE(p);
+
+   //Point to the next field
+   p += sizeof(uint32_t);
+   length -= sizeof(uint32_t);
+
+   //The 'linkpath' field specifies the path name of the symbolic link to be
+   //created
+   error = sshParseString(p, length, &linkPath);
+   //Any error to report?
+   if(error)
+      return error;
+
+   //Point to the next field
+   p += sizeof(uint32_t) + linkPath.length;
+   length -= sizeof(uint32_t) + linkPath.length;
+
+   //The 'targetpath' field specifies the target of the symbolic link
+   error = sshParseString(p, length, &targetPath);
+   //Any error to report?
+   if(error)
+      return error;
+
+   //Malformed message?
+   if(length != (sizeof(uint32_t) + targetPath.length))
+      return ERROR_INVALID_PACKET;
+
+   //Symbolic links are not supported
+   error = sftpFormatFxpStatus(session, id, SSH_FX_OP_UNSUPPORTED,
+      "Operation not supported");
+
+   //Return status code
+   return error;
+}
+
+
+/**
  * @brief Parse SSH_FXP_EXTENDED packet
  * @param[in] session Handle referencing an SFTP session
  * @param[in] packet Pointer to packet
@@ -1348,7 +1473,7 @@ error_t sftpServerParseFxpExtended(SftpServerSession *session,
    if(length < sizeof(uint32_t))
       return ERROR_INVALID_PACKET;
 
-   //Get request identifier
+   //All requests start with a request identifier
    id = LOAD32BE(p);
 
    //Point to the next field
@@ -1367,6 +1492,41 @@ error_t sftpServerParseFxpExtended(SftpServerSession *session,
    //SSH_FX_OP_UNSUPPORTED
    error = sftpFormatFxpStatus(session, id, SSH_FX_OP_UNSUPPORTED,
       "Extended request not supported");
+
+   //Return status code
+   return error;
+}
+
+
+/**
+ * @brief Parse unsupported SFTP request
+ * @param[in] session Handle referencing an SFTP session
+ * @param[in] packet Pointer to packet
+ * @param[in] length Length of the packet, in bytes
+ * @return Error code
+ **/
+
+error_t sftpServerParseUnsupported(SftpServerSession *session,
+   const uint8_t *packet, size_t length)
+{
+   error_t error;
+   uint32_t id;
+
+   //Debug message
+   TRACE_INFO("Unsupported packet received (%" PRIuSIZE " bytes)...\r\n", length);
+   TRACE_VERBOSE_ARRAY("  ", packet, length);
+
+   //Malformed packet?
+   if(length < sizeof(uint32_t))
+      return ERROR_INVALID_PACKET;
+
+   //All requests start with a request identifier
+   id = LOAD32BE(packet);
+
+   //SSH_FX_OP_UNSUPPORTED indicates that an attempt was made to perform an
+   //operation which is not supported for the server
+   error = sftpFormatFxpStatus(session, id, SSH_FX_OP_UNSUPPORTED,
+      "Operation not supported");
 
    //Return status code
    return error;
@@ -1452,7 +1612,8 @@ error_t sftpFormatFxpStatus(SftpServerSession *session, uint32_t id,
    //Point the data payload
    p = header->payload;
 
-   //Format request identifier
+   //Each response packet contains a request identifier which can be used to
+   //match each response with the corresponding request
    STORE32BE(id, p);
 
    //Point to the next field
@@ -1466,24 +1627,28 @@ error_t sftpFormatFxpStatus(SftpServerSession *session, uint32_t id,
    p += sizeof(uint32_t);
    length += sizeof(uint32_t);
 
-   //Copy the description string
-   error = sshFormatString(message, p, &n);
-   //Any error to report?
-   if(error)
-      return error;
+   //Check SFTP protocol version
+   if(session->version >= SFTP_VERSION_3)
+   {
+      //Copy the description string
+      error = sshFormatString(message, p, &n);
+      //Any error to report?
+      if(error)
+         return error;
 
-   //Point to the next field
-   p += n;
-   length += n;
+      //Point to the next field
+      p += n;
+      length += n;
 
-   //Set language tag
-   error = sshFormatString("en", p, &n);
-   //Any error to report?
-   if(error)
-      return error;
+      //Set language tag
+      error = sshFormatString("en", p, &n);
+      //Any error to report?
+      if(error)
+         return error;
 
-   //Total length of the message
-   length += n;
+      //Total length of the message
+      length += n;
+   }
 
    //Convert the length field to network byte order
    header->length = htonl(length);
@@ -1530,7 +1695,8 @@ error_t sftpFormatFxpHandle(SftpServerSession *session, uint32_t id,
    //Point the data payload
    p = header->payload;
 
-   //Format request identifier
+   //Each response packet contains a request identifier which can be used to
+   //match each response with the corresponding request
    STORE32BE(id, p);
 
    //Point to the next field
@@ -1592,7 +1758,8 @@ error_t sftpFormatFxpData(SftpServerSession *session, uint32_t id,
    //Point the data payload
    p = header->payload;
 
-   //Format request identifier
+   //Each response packet contains a request identifier which can be used to
+   //match each response with the corresponding request
    STORE32BE(id, p);
 
    //Point to the next field
@@ -1654,7 +1821,8 @@ error_t sftpFormatFxpName(SftpServerSession *session, uint32_t id,
    //Point the data payload
    p = header->payload;
 
-   //Format request identifier
+   //Each response packet contains a request identifier which can be used to
+   //match each response with the corresponding request
    STORE32BE(id, p);
 
    //Point to the next field
@@ -1724,7 +1892,8 @@ error_t sftpFormatFxpAttrs(SftpServerSession *session, uint32_t id,
    //Point the data payload
    p = header->payload;
 
-   //Format request identifier
+   //Each response packet contains a request identifier which can be used to
+   //match each response with the corresponding request
    STORE32BE(id, p);
 
    //Point to the next field

@@ -944,8 +944,8 @@ error_t sshParseChannelOpen(SshConnection *connection,
    TRACE_DEBUG("  Initial Window Size = %" PRIu32 "\r\n", initialWindowSize);
    TRACE_DEBUG("  Max Packet Size = %" PRIu32 "\r\n", maxPacketSize);
 
-   //Sanity check
-   if(maxPacketSize == 0)
+   //Make sure the maximum packet size is acceptable
+   if(maxPacketSize < SSH_MIN_CHANNEL_PACKET_SIZE)
       return ERROR_ILLEGAL_PARAMETER;
 
    //Each side must associate a unique number to the channel
@@ -1241,8 +1241,8 @@ error_t sshParseChannelOpenConfirmation(SshConnection *connection,
    TRACE_DEBUG("  Initial Window Size = %" PRIu32 "\r\n", initialWindowSize);
    TRACE_DEBUG("  Max Packet Size = %" PRIu32 "\r\n", maxPacketSize);
 
-   //Sanity check
-   if(maxPacketSize == 0)
+   //Make sure the maximum packet size is acceptable
+   if(maxPacketSize < SSH_MIN_CHANNEL_PACKET_SIZE)
       return ERROR_ILLEGAL_PARAMETER;
 
    //Acquire exclusive access to the SSH context
@@ -1493,8 +1493,9 @@ error_t sshParseChannelWindowAdjust(SshConnection *connection,
       //Check channel state
       if(channel->state == SSH_CHANNEL_STATE_OPEN && !channel->closeReceived)
       {
-         //Check whether the window size increment is valid
-         if((channel->txWindowSize + windowSizeInc) >= channel->txWindowSize)
+         //The window must not be increased above 2^32 - 1 bytes (refer to
+         //RFC 4254, section 5.2)
+         if(windowSizeInc <= (SSH_MAX_WINDOW_SIZE - channel->txWindowSize))
          {
             //After receiving this message, the recipient may send the given
             //number of bytes more than it was previously allowed to send. The
@@ -1906,7 +1907,7 @@ error_t sshParseChannelClose(SshConnection *connection,
          channel->state == SSH_CHANNEL_STATE_CLOSED)
       {
          //Release SSH channel
-         if(channel->closeRequest || !channel->channelSuccessSent)
+         if(channel->closeRequest || !channel->owned)
          {
             channel->state = SSH_CHANNEL_STATE_UNUSED;
          }

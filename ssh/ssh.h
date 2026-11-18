@@ -38,6 +38,7 @@
 #include "ssh_cert_parse.h"
 #include "core/net.h"
 #include "core/crypto.h"
+#include "core/crypto_mem.h"
 #include "cipher/cipher_algorithms.h"
 #include "cipher_modes/cipher_modes.h"
 #include "hash/hash_algorithms.h"
@@ -190,6 +191,13 @@
    #error SSH_MAX_CONNECTIONS parameter is not valid
 #endif
 
+//Maximum number of channels per connection
+#ifndef SSH_MAX_CHANNELS_PER_CONNECTION
+   #define SSH_MAX_CHANNELS_PER_CONNECTION 4
+#elif (SSH_MAX_CHANNELS_PER_CONNECTION < 1)
+   #error SSH_MAX_CHANNELS_PER_CONNECTION parameter is not valid
+#endif
+
 //Maximum number of global request callbacks that can be attached
 #ifndef SSH_MAX_GLOBAL_REQ_CALLBACKS
    #define SSH_MAX_GLOBAL_REQ_CALLBACKS 3
@@ -228,28 +236,35 @@
 //Maximum number of authentication attempts
 #ifndef SSH_MAX_AUTH_ATTEMPTS
    #define SSH_MAX_AUTH_ATTEMPTS 10
-#elif (SSH_MAX_AUTH_ATTEMPTS < 1 && SSH_MAX_AUTH_ATTEMPTS > 20)
+#elif (SSH_MAX_AUTH_ATTEMPTS < 1 || SSH_MAX_AUTH_ATTEMPTS > 20)
    #error SSH_MAX_AUTH_ATTEMPTS parameter is not valid
 #endif
 
 //Maximum packet size
 #ifndef SSH_MAX_PACKET_SIZE
    #define SSH_MAX_PACKET_SIZE 2048
-#elif (SSH_MAX_PACKET_SIZE < 128)
+#elif (SSH_MAX_PACKET_SIZE < 1024)
    #error SSH_MAX_PACKET_SIZE parameter is not valid
 #endif
 
 //Size of channel TX/RX buffers
 #ifndef SSH_CHANNEL_BUFFER_SIZE
    #define SSH_CHANNEL_BUFFER_SIZE 2048
-#elif (SSH_CHANNEL_BUFFER_SIZE < 128)
+#elif (SSH_CHANNEL_BUFFER_SIZE < 1024)
    #error SSH_CHANNEL_BUFFER_SIZE parameter is not valid
+#endif
+
+//Minimum acceptable value for the maximum packet size advertised by the peer
+#ifndef SSH_MIN_CHANNEL_PACKET_SIZE
+   #define SSH_MIN_CHANNEL_PACKET_SIZE 256
+#elif (SSH_MIN_CHANNEL_PACKET_SIZE < 1)
+   #error SSH_MIN_CHANNEL_PACKET_SIZE parameter is not valid
 #endif
 
 //Maximum length of identification string
 #ifndef SSH_MAX_ID_LEN
-   #define SSH_MAX_ID_LEN 80
-#elif (SSH_MAX_ID_LEN < 1)
+   #define SSH_MAX_ID_LEN 253
+#elif (SSH_MAX_ID_LEN < 1 || SSH_MAX_ID_LEN > 253)
    #error SSH_MAX_ID_LEN parameter is not valid
 #endif
 
@@ -757,6 +772,13 @@
    #error SSH_MAX_RSA_MODULUS_SIZE parameter is not valid
 #endif
 
+//Maximum acceptable size for RSA public exponent
+#ifndef SSH_MAX_RSA_PUBLIC_EXPONENT_SIZE
+   #define SSH_MAX_RSA_PUBLIC_EXPONENT_SIZE 64
+#elif (SSH_MAX_RSA_PUBLIC_EXPONENT_SIZE < 17)
+   #error SSH_MAX_RSA_PUBLIC_EXPONENT_SIZE parameter is not valid
+#endif
+
 //Minimum acceptable size for DSA prime modulus
 #ifndef SSH_MIN_DSA_MODULUS_SIZE
    #define SSH_MIN_DSA_MODULUS_SIZE 2048
@@ -821,9 +843,9 @@
    #define SSH_MAX_MAC_KEY_SIZE SHA1_DIGEST_SIZE
 #elif (SSH_HMAC_SUPPORT == ENABLED && SSH_RIPEMD160_SUPPORT == ENABLED)
    #define SSH_MAX_MAC_KEY_SIZE RIPEMD160_DIGEST_SIZE
-#else (SSH_HMAC_SUPPORT == ENABLED && SSH_MD5_SUPPORT == ENABLED)
+#elif (SSH_HMAC_SUPPORT == ENABLED && SSH_MD5_SUPPORT == ENABLED)
    #define SSH_MAX_MAC_KEY_SIZE MD5_DIGEST_SIZE
-#else (SSH_HMAC_SUPPORT == ENABLED && SSH_MD5_96_SUPPORT == ENABLED)
+#elif (SSH_HMAC_SUPPORT == ENABLED && SSH_MD5_96_SUPPORT == ENABLED)
    #define SSH_MAX_MAC_KEY_SIZE MD5_DIGEST_SIZE
 #else
    #define SSH_MAX_MAC_KEY_SIZE 16
@@ -867,16 +889,16 @@
    #define SSH_MAX_MAC_SIZE SHA256_DIGEST_SIZE
 #elif (SSH_HMAC_SUPPORT == ENABLED && SSH_SHA1_SUPPORT == ENABLED)
    #define SSH_MAX_MAC_SIZE SHA1_DIGEST_SIZE
+#elif (SSH_HMAC_SUPPORT == ENABLED && SSH_SHA1_96_SUPPORT == ENABLED)
+   #define SSH_MAX_MAC_SIZE SHA1_DIGEST_SIZE
 #elif (SSH_HMAC_SUPPORT == ENABLED && SSH_RIPEMD160_SUPPORT == ENABLED)
    #define SSH_MAX_MAC_SIZE RIPEMD160_DIGEST_SIZE
 #elif (SSH_HMAC_SUPPORT == ENABLED && SSH_MD5_SUPPORT == ENABLED)
    #define SSH_MAX_MAC_SIZE MD5_DIGEST_SIZE
+#elif (SSH_HMAC_SUPPORT == ENABLED && SSH_MD5_96_SUPPORT == ENABLED)
+   #define SSH_MAX_MAC_SIZE MD5_DIGEST_SIZE
 #elif (SSH_UMAC128_SUPPORT == ENABLED)
    #define SSH_MAX_MAC_SIZE 16
-#elif (SSH_HMAC_SUPPORT == ENABLED && SSH_SHA1_96_SUPPORT == ENABLED)
-   #define SSH_MAX_MAC_SIZE 12
-#elif (SSH_HMAC_SUPPORT == ENABLED && SSH_MD5_96_SUPPORT == ENABLED)
-   #define SSH_MAX_MAC_SIZE 12
 #else
    #define SSH_MAX_MAC_SIZE 8
 #endif
@@ -988,6 +1010,8 @@
 #define SSH_MAX_MPINT_OVERHEAD 5
 //Data overhead caused by packet encryption
 #define SSH_MAX_PACKET_OVERHEAD 128
+//Maximum size of the flow-control window
+#define SSH_MAX_WINDOW_SIZE 0xFFFFFFFF
 
 //Size of buffer used for input/output operations
 #define SSH_BUFFER_SIZE (SSH_MAX_PACKET_SIZE + SSH_MAX_PACKET_OVERHEAD)
@@ -1097,6 +1121,8 @@ typedef enum
    SSH_MSG_USERAUTH_PASSWD_CHANGEREQ = 60,
    SSH_MSG_USERAUTH_INFO_REQUEST     = 60,
    SSH_MSG_USERAUTH_INFO_RESPONSE    = 61,
+   SSH_MSG_USERAUTH_KEM_CHALLENGE    = 60,
+   SSH_MSG_USERAUTH_KEM_RESPONSE     = 61,
    SSH_MSG_GLOBAL_REQUEST            = 80,
    SSH_MSG_REQUEST_SUCCESS           = 81,
    SSH_MSG_REQUEST_FAILURE           = 82,
@@ -1278,9 +1304,6 @@ typedef struct
    const char_t *privateKey;                  ///<Private key (PEM or OpenSSH format)
    size_t privateKeyLen;                      ///<Length of the private key
    char_t password[SSH_MAX_PASSWORD_LEN + 1]; ///<Password used to decrypt the private key
-#if (SSH_CLIENT_SUPPORT == ENABLED)
-   const char_t *publicKeyAlgo;               ///<Public key algorithm to use during user authentication
-#endif
 } SshHostKey;
 
 
@@ -1505,7 +1528,8 @@ struct _SshChannel
    size_t txWindowSize;          ///<TX flow-control window
    size_t rxWindowSize;          ///<RX flow-control window
    size_t rxWindowSizeInc;       ///<Window size increment
-   bool_t channelSuccessSent;    ///<An SSH_MSG_CHANNEL_SUCCESS message has been sent
+   bool_t owned;                 ///<The channel is owned by an application session
+   bool_t serviceStarted;        ///<A "shell", "exec" or "subsystem" request has succeeded
    bool_t eofRequest;            ///<Channel EOF request
    bool_t eofSent;               ///<An SSH_MSG_CHANNEL_EOF message has been sent
    bool_t eofReceived;           ///<An SSH_MSG_CHANNEL_EOF message has been received
@@ -1529,6 +1553,8 @@ struct _SshConnection
    SshContext *context;                         ///<SSH context
    Socket *socket;                              ///<Underlying socket
    systime_t timestamp;                         ///<Time stamp to manage connection timeout
+   systime_t authTimestamp;                     ///<Time stamp to manage authentication timeout
+   bool_t authenticated;                        ///<User authentication successfully completed
 
    char_t remoteId[SSH_MAX_ID_LEN + 1];         ///<Peer's identification string
    uint8_t cookie[SSH_COOKIE_SIZE];             ///<Random value generated by the sender
@@ -1592,6 +1618,7 @@ struct _SshConnection
    bool_t wrongGuess;                           ///<A wrong guessed key exchange packet follows
    uint_t authAttempts;                         ///<Number of authentication attempts
    bool_t publicKeyOk;                          ///<The provided host key is acceptable
+   uint32_t peerSigAlgos;                       ///<Signature algorithms supported by the peer (bitmap)
    uint32_t localChannelNum;                    ///<Current channel number
 
 #if (SSH_EXT_INFO_SUPPORT == ENABLED)
@@ -1599,6 +1626,7 @@ struct _SshConnection
 #endif
 #if (SSH_KEX_STRICT_SUPPORT == ENABLED)
    bool_t kexStrictReceived;                    ///<"strict KEX" pseudo-algorithm received
+   bool_t seqNumWrap;                           ///<The receive sequence number has wrapped
 #endif
 
    uint8_t buffer[SSH_BUFFER_SIZE];             ///<Internal buffer
@@ -1641,6 +1669,7 @@ struct _SshContext
 #if (SSH_CERT_SUPPORT == ENABLED)
    SshCertVerifyCallback certVerifyCallback;                     ///<Certificate verification callback
    SshCaPublicKeyVerifyCallback caPublicKeyVerifyCallback;       ///<CA public key verification callback
+   bool_t certValidityCheck;                                     ///<Check the validity period of certificates
 #endif
 #if (SSH_PUBLIC_KEY_AUTH_SUPPORT == ENABLED)
    SshPublicKeyAuthCallback publicKeyAuthCallback;               ///<Public key authentication callback
@@ -1704,6 +1733,8 @@ error_t sshSetPrng(SshContext *context, const PrngAlgo *prngAlgo,
 
 error_t sshSetUsername(SshContext *context, const char_t *username);
 error_t sshSetPassword(SshContext *context, const char_t *password);
+
+error_t sshEnableCertValidityCheck(SshContext *context, bool_t enable);
 
 error_t sshRegisterHostKeyVerifyCallback(SshContext *context,
    SshHostKeyVerifyCallback callback);

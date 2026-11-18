@@ -49,7 +49,7 @@ error_t sshVerifyServerCertificate(SshConnection *connection,
    const SshString *publicKeyAlgo, const SshBinaryString *hostKey);
 
 error_t sshVerifyPrincipal(const SshCertificate *cert, const char_t *name);
-error_t sshVerifyValidity(const SshCertificate *cert);
+error_t sshVerifyValidity(SshContext *context, const SshCertificate *cert);
 
 error_t sshVerifyCriticalOptions(SshConnection *connection,
    const SshCertificate *cert);

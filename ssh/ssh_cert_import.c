@@ -166,12 +166,28 @@ error_t sshImportRsaCertPublicKey(RsaPublicKey *publicKey,
    if(error)
       return error;
 
+   //The public exponent must be an odd integer greater than 1
+   if(mpiCompInt(&publicKey->e, 1) <= 0 || mpiIsEven(&publicKey->e))
+      return ERROR_INVALID_KEY;
+
+   //Get the length of the public exponent, in bits
+   k = mpiGetBitLength(&publicKey->e);
+
+   //Limit the size of the public exponent to bound the cost of the RSA
+   //public operation
+   if(k > SSH_MAX_RSA_PUBLIC_EXPONENT_SIZE)
+      return ERROR_INVALID_KEY;
+
    //Import RSA modulus
    error = mpiImport(&publicKey->n, cert->publicKey.rsaPublicKey.n.value,
       cert->publicKey.rsaPublicKey.n.length, MPI_FORMAT_BIG_ENDIAN);
    //Any error to report?
    if(error)
       return error;
+
+   //The RSA modulus must be an odd integer
+   if(mpiIsEven(&publicKey->n))
+      return ERROR_INVALID_KEY;
 
    //Get the length of the modulus, in bits
    k = mpiGetBitLength(&publicKey->n);

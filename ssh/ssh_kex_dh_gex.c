@@ -581,6 +581,13 @@ error_t sshParseKexDhGexRequest(SshConnection *connection,
    TRACE_DEBUG("  n = %" PRIu32 "\r\n", preferredDhModulusSize);
    TRACE_DEBUG("  max = %" PRIu32 "\r\n", maxDhModulusSize);
 
+   //Invalid parameter set?
+   if(minDhModulusSize > preferredDhModulusSize ||
+      maxDhModulusSize < preferredDhModulusSize)
+   {
+      return ERROR_INVALID_MESSAGE;
+   }
+
    //The server finds a group that best matches the client's request (refer
    //to RFC 4419, section 3)
    connection->dhGexGroupIndex = sshSelectDhGexGroup(connection->context,

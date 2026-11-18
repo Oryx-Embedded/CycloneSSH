@@ -110,6 +110,11 @@ error_t sftpServerChannelRequestCallback(SshChannel *channel,
             //succeed per channel (refer to RFC 4254, section 6.5)
             return ERROR_WRONG_STATE;
          }
+         else if(channel->owned)
+         {
+            //The channel is already owned by another service
+            return ERROR_WRONG_STATE;
+         }
          else
          {
             //Open a new SFTP session
@@ -138,6 +143,10 @@ error_t sftpServerChannelRequestCallback(SshChannel *channel,
 
             //Set initial session state
             session->state = SFTP_SERVER_SESSION_STATE_RECEIVING;
+
+            //The channel is now owned by the SFTP session, so the SSH layer
+            //must not release it before the session closes it
+            channel->owned = TRUE;
 
             //Notify the SFTP server that the session is ready to accept data
             osSetEvent(&session->context->event);
@@ -760,6 +769,18 @@ error_t sftpServerParsePacket(SftpServerSession *session,
             //message
             error = sftpServerParseFxpRename(session, header->payload, fragLen);
          }
+         else if(header->type == SSH_FXP_READLINK)
+         {
+            //The SSH_FXP_READLINK request may be used to read the target of a
+            //symbolic link
+            error = sftpServerParseFxpReadLink(session, header->payload, fragLen);
+         }
+         else if(header->type == SSH_FXP_SYMLINK)
+         {
+            //The SSH_FXP_SYMLINK request will create a symbolic link on the
+            //server
+            error = sftpServerParseFxpSymLink(session, header->payload, fragLen);
+         }
          else if(header->type == SSH_FXP_EXTENDED)
          {
             //The SSH_FXP_EXTENDED request provides a generic extension
@@ -768,10 +789,8 @@ error_t sftpServerParsePacket(SftpServerSession *session,
          }
          else
          {
-            //Debug message
-            TRACE_WARNING("Unknown SFTP packet type!\r\n");
-            //Unknown packet type
-            error = ERROR_INVALID_TYPE;
+            //Unsupported SFTP request
+            error = sftpServerParseUnsupported(session, header->payload, fragLen);
          }
       }
    }
@@ -791,6 +810,211 @@ error_t sftpServerParsePacket(SftpServerSession *session,
 
    //Return status code
    return error;
+}
+
+
+/**
+ * @brief Allocate a file object
+ *
+ * The file object table is shared by all SFTP sessions. In order to prevent a
+ * single SSH connection from exhausting it, the number of file objects per
+ * connection is limited, and one file object is kept available for each other
+ * connection that does not own any file object yet, as well as for each unused
+ * SFTP session slot
+ *
+ * @param[in] session Handle referencing an SFTP session
+ * @return Pointer to a free file object, or NULL if none is available
+ **/
+
+SftpFileObject *sftpServerAllocateFileObject(SftpServerSession *session)
+{
+   uint_t i;
+   uint_t n;
+   SshConnection *connection;
+   SftpServerContext *context;
+   SftpFileObject *fileObject;
+
+   //Point to the SFTP server context
+   context = session->context;
+   //Point to the underlying SSH connection
+   connection = session->channel->connection;
+
+   //Initialize pointer
+   fileObject = NULL;
+
+   //Retrieve the number of file objects owned by the connection
+   n = sftpServerCountUsedFileObjects(context, connection);
+
+   //Limit the number of file objects per connection
+   if(n < SFTP_SERVER_MAX_FILE_OBJECTS_PER_CONNECTION)
+   {
+      //Except for its first file object, a connection cannot use the file
+      //objects that are reserved for the other connections
+      if(n == 0 || sftpServerCountFreeFileObjects(context) >
+         sftpServerCountReservedFileObjects(context, connection))
+      {
+         //Loop through file objects
+         for(i = 0; i < context->numFileObjects; i++)
+         {
+            //Unused file object?
+            if(context->fileObjects[i].type == SSH_FILEXFER_TYPE_INVALID)
+            {
+               fileObject = &context->fileObjects[i];
+               break;
+            }
+         }
+      }
+   }
+
+   //Return a pointer to the free file object
+   return fileObject;
+}
+
+
+/**
+ * @brief Count the free file objects
+ * @param[in] context Pointer to the SFTP server context
+ * @return Number of free file objects
+ **/
+
+uint_t sftpServerCountFreeFileObjects(SftpServerContext *context)
+{
+   uint_t i;
+   uint_t n;
+
+   //Loop through file objects
+   for(i = 0, n = 0; i < context->numFileObjects; i++)
+   {
+      //Unused file object?
+      if(context->fileObjects[i].type == SSH_FILEXFER_TYPE_INVALID)
+      {
+         n++;
+      }
+   }
+
+   //Return the number of free file objects
+   return n;
+}
+
+
+/**
+ * @brief Count the file objects in use by a given SSH connection
+ * @param[in] context Pointer to the SFTP server context
+ * @param[in] connection Handle referencing an SSH connection
+ * @return Number of file objects in use by the connection
+ **/
+
+uint_t sftpServerCountUsedFileObjects(SftpServerContext *context,
+   SshConnection *connection)
+{
+   uint_t i;
+   uint_t n;
+   SftpFileObject *fileObject;
+
+   //Loop through file objects
+   for(i = 0, n = 0; i < context->numFileObjects; i++)
+   {
+      //Point to the current file object
+      fileObject = &context->fileObjects[i];
+
+      //File object in use by the specified connection?
+      if(fileObject->type != SSH_FILEXFER_TYPE_INVALID &&
+         sftpServerGetConnection(fileObject->session) == connection)
+      {
+         n++;
+      }
+   }
+
+   //Return the number of file objects
+   return n;
+}
+
+
+/**
+ * @brief Count the file objects reserved for the other SSH connections
+ *
+ * One file object is reserved for each active connection (other than the
+ * specified one) that does not own any file object yet, and for each unused
+ * SFTP session slot, so that a client opening an SFTP session later can always
+ * open its first file or directory
+ *
+ * @param[in] context Pointer to the SFTP server context
+ * @param[in] connection Handle referencing the SSH connection to exclude
+ * @return Number of reserved file objects
+ **/
+
+uint_t sftpServerCountReservedFileObjects(SftpServerContext *context,
+   SshConnection *connection)
+{
+   uint_t i;
+   uint_t j;
+   uint_t n;
+   SshConnection *otherConnection;
+
+   //Loop through SFTP sessions
+   for(i = 0, n = 0; i < context->numSessions; i++)
+   {
+      //Retrieve the connection that owns the current session
+      otherConnection = sftpServerGetConnection(&context->sessions[i]);
+
+      //Active session?
+      if(otherConnection != NULL)
+      {
+         //Session owned by another connection?
+         if(otherConnection != connection)
+         {
+            //A connection with several SFTP sessions is counted only once
+            for(j = 0; j < i; j++)
+            {
+               if(sftpServerGetConnection(&context->sessions[j]) ==
+                  otherConnection)
+               {
+                  break;
+               }
+            }
+
+            //Connection not already counted with a previous session?
+            if(j == i)
+            {
+               //No file object owned yet?
+               if(sftpServerCountUsedFileObjects(context, otherConnection) == 0)
+               {
+                  n++;
+               }
+            }
+         }
+      }
+      else
+      {
+         //Keep one file object for a client that opens a new SFTP session
+         //in this unused slot
+         n++;
+      }
+   }
+
+   //Return the number of reserved file objects
+   return n;
+}
+
+
+/**
+ * @brief Get the SSH connection that owns an SFTP session
+ * @param[in] session Handle referencing an SFTP session
+ * @return Handle referencing the SSH connection (NULL if the session is closed)
+ **/
+
+SshConnection *sftpServerGetConnection(SftpServerSession *session)
+{
+   //Active session?
+   if(session != NULL && session->state != SFTP_SERVER_SESSION_STATE_CLOSED &&
+      session->channel != NULL)
+   {
+      return session->channel->connection;
+   }
+   else
+   {
+      return NULL;
+   }
 }
 
 
@@ -852,18 +1076,14 @@ uint32_t sftpServerGenerateHandle(SftpServerSession *session)
 uint_t sftpServerGetFilePermissions(SftpServerSession *session,
    const char_t *path)
 {
-   size_t n;
    uint_t perm;
    SftpServerContext *context;
 
    //Point to the SFTP server context
    context = session->context;
 
-   //Calculate the length of the root directory
-   n = osStrlen(session->rootDir);
-
-   //Make sure the pathname is valid
-   if(osStrncmp(path, session->rootDir, n) == 0)
+   //Make sure the pathname lies within the user's root directory
+   if(sftpServerIsPathInRootDir(session, path))
    {
       //Strip root directory from the pathname
       path = sftpServerStripRootDir(context, path);
@@ -949,17 +1169,55 @@ error_t sftpServerGetPath(SftpServerSession *session, const SshString *path,
    pathCanonicalize(fullPath);
    pathRemoveSlash(fullPath);
 
-   //Calculate the length of the root directory
-   n = osStrlen(session->rootDir);
-
    //If the server implementation limits access to certain parts of the file
    //system, it must be extra careful in parsing file names when enforcing
    //such restrictions
-   if(osStrncmp(fullPath, session->rootDir, n) != 0)
+   if(!sftpServerIsPathInRootDir(session, fullPath))
       return ERROR_INVALID_PATH;
 
    //Successful processing
    return NO_ERROR;
+}
+
+
+/**
+ * @brief Check whether a pathname lies within the user's root directory
+ * @param[in] session Handle referencing an SFTP session
+ * @param[in] path Canonical pathname
+ * @return TRUE if the pathname lies within the root directory, else FALSE
+ **/
+
+bool_t sftpServerIsPathInRootDir(SftpServerSession *session, const char_t *path)
+{
+   size_t n;
+   bool_t valid;
+
+   //Calculate the length of the root directory
+   n = osStrlen(session->rootDir);
+
+   //The pathname must begin with the root directory
+   if(osStrncmp(path, session->rootDir, n) == 0)
+   {
+      //The root directory must be followed by the end of the pathname or by
+      //a separator (unless the root directory already ends with a separator
+      //or is empty)
+      if(n == 0 || path[n] == '\0' || path[n] == '/' ||
+         session->rootDir[n - 1] == '/')
+      {
+         valid = TRUE;
+      }
+      else
+      {
+         valid = FALSE;
+      }
+   }
+   else
+   {
+      valid = FALSE;
+   }
+
+   //Return TRUE if the pathname lies within the root directory
+   return valid;
 }
 
 

@@ -468,7 +468,7 @@ error_t shellServerRestoreHistory(ShellServerSession *session,
    }
 
    //Restore the most recent commands
-   osMemcpy(session->history, history, length - i);
+   osMemcpy(session->history, history + i, length - i);
 
    //Save the length of the command history
    session->historyLen = length - i;
@@ -552,6 +552,30 @@ void shellServerTask(void *param)
 
       //Retrieve SSH channel handle
       channel = session->channel;
+
+      //Until a "shell" or "exec" request is received, the session remains in
+      //INIT state and the channel is monitored, so that the session is closed
+      //if the client closes the channel or disconnects
+      while(session->state == SHELL_SERVER_SESSION_STATE_INIT)
+      {
+         SshChannelEventDesc eventDesc[1];
+
+         //Specifying the events the application is interested in
+         eventDesc[0].channel = channel;
+         eventDesc[0].eventMask = SSH_CHANNEL_EVENT_CLOSED;
+         eventDesc[0].eventFlags = 0;
+
+         //Wait for the channel to be closed (the start event is also signaled
+         //when a "shell" or "exec" request is received)
+         sshPollChannels(eventDesc, 1, &session->startEvent,
+            SHELL_SERVER_TICK_INTERVAL);
+
+         //The channel has been closed?
+         if(eventDesc[0].eventFlags != 0)
+         {
+            break;
+         }
+      }
 
       //Check session state
       if(session->state == SHELL_SERVER_SESSION_STATE_OPEN)

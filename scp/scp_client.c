@@ -253,6 +253,12 @@ error_t scpClientOpenFileForWriting(ScpClientContext *context,
    if(context == NULL || path == NULL)
       return ERROR_INVALID_PARAMETER;
 
+   //The path is sent to the server as part of the SCP command line
+   error = scpClientCheckPath(path);
+   //Any error to report?
+   if(error)
+      return error;
+
    //Initialize SCP directive
    osMemset(&directive, 0, sizeof(ScpDirective));
 
@@ -342,7 +348,7 @@ error_t scpClientOpenFileForWriting(ScpClientContext *context,
          SshExecParams requestParams;
 
          //Format SCP command line
-         sprintf(context->buffer, "scp -t %s", path);
+         osSprintf(context->buffer, "scp -t %s", path);
 
          //Set "exec" request parameters
          requestParams.command.value = context->buffer;
@@ -520,6 +526,12 @@ error_t scpClientOpenFileForReading(ScpClientContext *context,
    //Check parameters
    if(context == NULL || path == NULL)
       return ERROR_INVALID_PARAMETER;
+
+   //The path is sent to the server as part of the SCP command line
+   error = scpClientCheckPath(path);
+   //Any error to report?
+   if(error)
+      return error;
 
    //Initialize SCP directive
    osMemset(&directive, 0, sizeof(ScpDirective));

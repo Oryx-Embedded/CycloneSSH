@@ -42,6 +42,14 @@ extern "C" {
 //SSH related functions
 SshChannel *sshGetChannel(SshConnection *connection, uint32_t localChannelNum);
 
+SshChannel *sshAllocateChannel(SshConnection *connection);
+
+uint_t sshCountFreeChannels(SshContext *context);
+uint_t sshCountUsedChannels(SshContext *context, SshConnection *connection);
+
+uint_t sshCountReservedChannels(SshContext *context,
+   SshConnection *connection);
+
 uint32_t sshAllocateLocalChannelNum(SshConnection *connection);
 
 bool_t sshCheckRemoteChannelNum(SshConnection *connection,

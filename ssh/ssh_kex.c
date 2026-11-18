@@ -204,7 +204,6 @@ error_t sshSendKexInit(SshConnection *connection)
 error_t sshSendNewKeys(SshConnection *connection)
 {
    error_t error;
-   uint8_t x;
    size_t length;
    uint8_t *message;
 
@@ -228,16 +227,23 @@ error_t sshSendNewKeys(SshConnection *connection)
    //Check status code
    if(!error)
    {
-      //Check whether SSH operates as a client or a server
-      x = (connection->context->mode == SSH_OPERATION_MODE_CLIENT) ? 'A' : 'B';
-
       //Release encryption engine
       sshFreeEncryptionEngine(&connection->encryptionEngine);
 
       //The key exchange method specifies how one-time session keys are
       //generated for encryption and for authentication
-      error = sshInitEncryptionEngine(connection, &connection->encryptionEngine,
-         connection->serverEncAlgo, connection->serverMacAlgo, x);
+      if(connection->context->mode == SSH_OPERATION_MODE_CLIENT)
+      {
+         error = sshInitEncryptionEngine(connection,
+            &connection->encryptionEngine, connection->clientEncAlgo,
+            connection->clientMacAlgo, 'A');
+      }
+      else
+      {
+         error = sshInitEncryptionEngine(connection,
+            &connection->encryptionEngine, connection->serverEncAlgo,
+            connection->serverMacAlgo, 'B');
+      }
    }
 
    //Check status code
@@ -250,7 +256,8 @@ error_t sshSendNewKeys(SshConnection *connection)
       //Strict key exchange?
       if(connection->kexStrictReceived)
       {
-         //Reset the packet sequence number to zero
+         //The sequence number used when sending packets must be reset to zero
+         //immediately after any SSH_MSG_NEWKEYS packet is sent
          osMemset(connection->encryptionEngine.seqNum, 0, 4);
       }
 #endif
@@ -527,7 +534,7 @@ error_t sshParseKexInit(SshConnection *connection, const uint8_t *message,
    n = length - sizeof(uint8_t);
 
    //Maformed message?
-   if(length < SSH_COOKIE_SIZE)
+   if(n < SSH_COOKIE_SIZE)
       return ERROR_INVALID_MESSAGE;
 
    //Debug message
@@ -553,6 +560,19 @@ error_t sshParseKexInit(SshConnection *connection, const uint8_t *message,
    //No matching algorithm found?
    if(connection->kexAlgo == NULL)
       return ERROR_UNSUPPORTED_ALGO;
+
+#if (SSH_KEX_STRICT_SUPPORT == ENABLED)
+   //Strict key exchange?
+   if(!connection->newKeysReceived && connection->kexStrictReceived)
+   {
+      //Implementations must verify that the SSH_MSG_KEXINIT was the first
+      //message received from the peer
+      if(LOAD32BE(connection->decryptionEngine.seqNum) != 0)
+      {
+         return ERROR_UNEXPECTED_MESSAGE;
+      }
+   }
+#endif
 
    //Point to the next field
    p += sizeof(uint32_t) + kexAlgoList.length;
@@ -1035,7 +1055,6 @@ error_t sshParseNewKeys(SshConnection *connection, const uint8_t *message,
    size_t length)
 {
    error_t error;
-   uint8_t x;
 
    //Debug message
    TRACE_INFO("SSH_MSG_NEWKEYS message received (%" PRIuSIZE " bytes)...\r\n", length);
@@ -1059,25 +1078,40 @@ error_t sshParseNewKeys(SshConnection *connection, const uint8_t *message,
    if(length != sizeof(uint8_t))
       return ERROR_INVALID_MESSAGE;
 
-   //Check whether SSH operates as a client or a server
-   x = (connection->context->mode == SSH_OPERATION_MODE_CLIENT) ? 'B' : 'A';
-
    //Release decryption engine
    sshFreeEncryptionEngine(&connection->decryptionEngine);
 
    //The key exchange method specifies how one-time session keys are generated
    //for encryption and for authentication
-   error = sshInitEncryptionEngine(connection, &connection->decryptionEngine,
-      connection->clientEncAlgo, connection->clientMacAlgo, x);
+   if(connection->context->mode == SSH_OPERATION_MODE_CLIENT)
+   {
+      error = sshInitEncryptionEngine(connection, &connection->decryptionEngine,
+         connection->serverEncAlgo, connection->serverMacAlgo, 'B');
+   }
+   else
+   {
+      error = sshInitEncryptionEngine(connection, &connection->decryptionEngine,
+         connection->clientEncAlgo, connection->clientMacAlgo, 'A');
+   }
 
    //Check status code
    if(!error)
    {
+      //The shared secret shall be destroyed immediately after its use (refer
+      //to RFC 9212, section 6)
+      cryptoZeroizeMem(connection->k, SSH_MAX_SHARED_SECRET_LEN);
+      connection->kLen = 0;
+
+      //The exchange hash H is no longer needed
+      cryptoZeroizeMem(connection->h, SSH_MAX_DIGEST_SIZE);
+      connection->hLen = 0;
+
 #if (SSH_KEX_STRICT_SUPPORT == ENABLED)
       //Strict key exchange?
       if(connection->kexStrictReceived)
       {
-         //Reset the packet sequence number to zero
+         //The expected sequence number for packets received from the peer must
+         //be reset after a SSH_MSG_NEWKEYS is received
          osMemset(connection->decryptionEngine.seqNum, 0xFF, 4);
       }
 #endif

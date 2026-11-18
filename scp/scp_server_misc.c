@@ -111,6 +111,11 @@ error_t scpServerChannelRequestCallback(SshChannel *channel,
             //succeed per channel (refer to RFC 4254, section 6.5)
             return ERROR_WRONG_STATE;
          }
+         else if(channel->owned)
+         {
+            //The channel is already owned by another service
+            return ERROR_WRONG_STATE;
+         }
          else
          {
             //Open a new SCP session
@@ -139,6 +144,10 @@ error_t scpServerChannelRequestCallback(SshChannel *channel,
 
             //Parse SCP command line
             scpServerParseCommandLine(session, &requestParams);
+
+            //The channel is now owned by the SCP session, so the SSH layer must
+            //not release it before the session closes it
+            channel->owned = TRUE;
 
             //Notify the SCP server that the session is ready
             osSetEvent(&session->context->event);
@@ -1023,8 +1032,9 @@ void scpServerProcessDirective(ScpServerSession *session,
    //Check directive opcode
    if(directive->opcode == SCP_OPCODE_FILE)
    {
-      //The file name must not contain illegal characters
-      if(osStrcmp(directive->filename, ".") == 0 ||
+      //The file name must not be empty or contain illegal characters
+      if(directive->filename[0] == '\0' ||
+         osStrcmp(directive->filename, ".") == 0 ||
          osStrcmp(directive->filename, "..") == 0 ||
          osStrchr(directive->filename, '*') != NULL ||
          osStrchr(directive->filename, '/') != NULL ||
@@ -1058,36 +1068,48 @@ void scpServerProcessDirective(ScpServerSession *session,
    }
    else if(directive->opcode == SCP_OPCODE_DIR)
    {
-      //The file name must not contain illegal characters
-      if(osStrcmp(directive->filename, ".") == 0 ||
-         osStrcmp(directive->filename, "..") == 0 ||
-         osStrchr(directive->filename, '*') != NULL ||
-         osStrchr(directive->filename, '/') != NULL ||
-         osStrchr(directive->filename, '\\') != NULL)
+      //Directories can only be received in recursive mode
+      if(session->recursive)
       {
-         //Save status code
-         session->statusCode = ERROR_INVALID_PATH;
-         //Send a status directive to indicate an error
-         session->state = SCP_SERVER_SESSION_STATE_ERROR;
-      }
-      else
-      {
-         //If the folder does not exist, then create it
-         error = scpServerCreateDir(session, directive->filename);
-
-         //Check status code
-         if(!error)
-         {
-            //Wait for the next command
-            session->state = SCP_SERVER_SESSION_STATE_WRITE_INIT;
-         }
-         else
+         //The file name must not be empty or contain illegal characters
+         if(directive->filename[0] == '\0' ||
+            osStrcmp(directive->filename, ".") == 0 ||
+            osStrcmp(directive->filename, "..") == 0 ||
+            osStrchr(directive->filename, '*') != NULL ||
+            osStrchr(directive->filename, '/') != NULL ||
+            osStrchr(directive->filename, '\\') != NULL)
          {
             //Save status code
-            session->statusCode = error;
+            session->statusCode = ERROR_INVALID_PATH;
             //Send a status directive to indicate an error
             session->state = SCP_SERVER_SESSION_STATE_ERROR;
          }
+         else
+         {
+            //If the folder does not exist, then create it
+            error = scpServerCreateDir(session, directive->filename);
+
+            //Check status code
+            if(!error)
+            {
+               //Wait for the next command
+               session->state = SCP_SERVER_SESSION_STATE_WRITE_INIT;
+            }
+            else
+            {
+               //Save status code
+               session->statusCode = error;
+               //Send a status directive to indicate an error
+               session->state = SCP_SERVER_SESSION_STATE_ERROR;
+            }
+         }
+      }
+      else
+      {
+         //Report an error
+         session->statusCode = ERROR_INVALID_COMMAND;
+         //Send a status directive to indicate an error
+         session->state = SCP_SERVER_SESSION_STATE_ERROR;
       }
    }
    else if(directive->opcode == SCP_OPCODE_END)
@@ -1135,18 +1157,14 @@ void scpServerProcessDirective(ScpServerSession *session,
 uint_t scpServerGetFilePermissions(ScpServerSession *session,
    const char_t *path)
 {
-   size_t n;
    uint_t perm;
    ScpServerContext *context;
 
    //Point to the SCP server context
    context = session->context;
 
-   //Calculate the length of the root directory
-   n = osStrlen(session->rootDir);
-
-   //Make sure the pathname is valid
-   if(osStrncmp(path, session->rootDir, n) == 0)
+   //Make sure the pathname lies within the user's root directory
+   if(scpServerIsPathInRootDir(session, path))
    {
       //Strip root directory from the pathname
       path = scpServerStripRootDir(session, path);
@@ -1232,17 +1250,55 @@ error_t scpServerGetPath(ScpServerSession *session, const SshString *path,
    pathCanonicalize(fullPath);
    pathRemoveSlash(fullPath);
 
-   //Calculate the length of the root directory
-   n = osStrlen(session->rootDir);
-
    //If the server implementation limits access to certain parts of the file
    //system, it must be extra careful in parsing file names when enforcing
    //such restrictions
-   if(osStrncmp(fullPath, session->rootDir, n) != 0)
+   if(!scpServerIsPathInRootDir(session, fullPath))
       return ERROR_INVALID_PATH;
 
    //Successful processing
    return NO_ERROR;
+}
+
+
+/**
+ * @brief Check whether a pathname lies within the user's root directory
+ * @param[in] session Handle referencing an SCP session
+ * @param[in] path Canonical pathname
+ * @return TRUE if the pathname lies within the root directory, else FALSE
+ **/
+
+bool_t scpServerIsPathInRootDir(ScpServerSession *session, const char_t *path)
+{
+   size_t n;
+   bool_t valid;
+
+   //Calculate the length of the root directory
+   n = osStrlen(session->rootDir);
+
+   //The pathname must begin with the root directory
+   if(osStrncmp(path, session->rootDir, n) == 0)
+   {
+      //The root directory must be followed by the end of the pathname or by
+      //a separator (unless the root directory already ends with a separator
+      //or is empty)
+      if(n == 0 || path[n] == '\0' || path[n] == '/' ||
+         session->rootDir[n - 1] == '/')
+      {
+         valid = TRUE;
+      }
+      else
+      {
+         valid = FALSE;
+      }
+   }
+   else
+   {
+      valid = FALSE;
+   }
+
+   //Return TRUE if the pathname lies within the root directory
+   return valid;
 }
 
 

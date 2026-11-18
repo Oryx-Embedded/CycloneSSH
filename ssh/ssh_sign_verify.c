@@ -703,7 +703,14 @@ error_t sshVerifyEd25519Signature(const SshString *publicKeyAlgo,
       if(!error)
       {
          //The Ed25519 public key consists of 32 octets
-         ed25519PublicKey = cert.publicKey.eddsaPublicKey.q.value;
+         if(cert.publicKey.eddsaPublicKey.q.length == ED25519_PUBLIC_KEY_LEN)
+         {
+            ed25519PublicKey = cert.publicKey.eddsaPublicKey.q.value;
+         }
+         else
+         {
+            error = ERROR_INVALID_SYNTAX;
+         }
       }
    }
    else
@@ -810,7 +817,14 @@ error_t sshVerifyEd448Signature(const SshString *publicKeyAlgo,
       if(!error)
       {
          //The Ed448 public key consists of 57 octets
-         ed448PublicKey = cert.publicKey.eddsaPublicKey.q.value;
+         if(cert.publicKey.eddsaPublicKey.q.length == ED448_PUBLIC_KEY_LEN)
+         {
+            ed448PublicKey = cert.publicKey.eddsaPublicKey.q.value;
+         }
+         else
+         {
+            error = ERROR_INVALID_SYNTAX;
+         }
       }
    }
    else

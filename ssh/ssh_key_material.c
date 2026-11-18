@@ -243,7 +243,7 @@ void sshFreeEncryptionEngine(SshEncryptionEngine *encryptionEngine)
 
 #if (SSH_GCM_CIPHER_SUPPORT == ENABLED || SSH_RFC5647_SUPPORT == ENABLED)
    //Erase GCM context
-   osMemset(&encryptionEngine->gcmContext, 0, sizeof(GcmContext));
+   gcmDeinit(&encryptionEngine->gcmContext);
 #endif
 
    //Reset encryption parameters
@@ -256,14 +256,14 @@ void sshFreeEncryptionEngine(SshEncryptionEngine *encryptionEngine)
    encryptionEngine->etm = FALSE;
 
    //Erase IV
-   osMemset(encryptionEngine->iv, 0, SSH_MAX_IV_SIZE);
+   cryptoZeroizeMem(encryptionEngine->iv, SSH_MAX_IV_SIZE);
 
    //Erase encryption key
-   osMemset(encryptionEngine->encKey, 0, SSH_MAX_ENC_KEY_SIZE);
+   cryptoZeroizeMem(encryptionEngine->encKey, SSH_MAX_ENC_KEY_SIZE);
    encryptionEngine->encKeyLen = 0;
 
    //Erase integrity key
-   osMemset(encryptionEngine->macKey, 0, SSH_MAX_MAC_KEY_SIZE);
+   cryptoZeroizeMem(encryptionEngine->macKey, SSH_MAX_MAC_KEY_SIZE);
    encryptionEngine->macKeyLen = 0;
 }
 

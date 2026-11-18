@@ -56,19 +56,23 @@ error_t scpServerCreateDir(ScpServerSession *session, const char_t *name)
    error_t error;
    uint_t perm;
 
+   //The directory name must fit in the path buffer
+   if((osStrlen(session->path) + 1 + osStrlen(name)) > SCP_SERVER_MAX_PATH_LEN)
+      return ERROR_INVALID_PATH;
+
    //Change current directory
    pathCombine(session->path, name, SCP_SERVER_MAX_PATH_LEN);
    pathCanonicalize(session->path);
    pathRemoveSlash(session->path);
 
-   //Check whether the directory exists or not
-   if(!fsDirExists(session->path))
-   {
-      //Retrieve permissions for the specified directory
-      perm = scpServerGetFilePermissions(session, session->path);
+   //Retrieve permissions for the specified directory
+   perm = scpServerGetFilePermissions(session, session->path);
 
-      //Check access rights
-      if((perm & SCP_FILE_PERM_WRITE) != 0)
+   //Check access rights
+   if((perm & SCP_FILE_PERM_WRITE) != 0)
+   {
+      //Check whether the directory exists or not
+      if(!fsDirExists(session->path))
       {
          //Create a new directory
          error = fsCreateDir(session->path);
@@ -82,14 +86,14 @@ error_t scpServerCreateDir(ScpServerSession *session, const char_t *name)
       }
       else
       {
-         //Insufficient access rights
-         error = ERROR_ACCESS_DENIED;
+         //The directory already exists
+         error = NO_ERROR;
       }
    }
    else
    {
-      //The directory already exists
-      error = NO_ERROR;
+      //Insufficient access rights
+      error = ERROR_ACCESS_DENIED;
    }
 
    //Check status code
@@ -97,6 +101,13 @@ error_t scpServerCreateDir(ScpServerSession *session, const char_t *name)
    {
       //Increment recursion level
       session->dirLevel++;
+   }
+   else
+   {
+      //Restore the parent directory, so that the path keeps matching the
+      //recursion level
+      pathRemoveFilename(session->path);
+      pathRemoveSlash(session->path);
    }
 
    //Return status code
@@ -176,6 +187,11 @@ void scpServerGetNextDirEntry(ScpServerSession *session)
             osStrcmp(dirEntry.name, "..") == 0)
          {
             //Discard "." and ".." entries
+         }
+         else if((osStrlen(session->path) + 1 + osStrlen(dirEntry.name)) >
+            SCP_SERVER_MAX_PATH_LEN)
+         {
+            //Discard entries whose path name would be truncated
          }
          else
          {

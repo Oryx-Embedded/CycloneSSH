@@ -65,6 +65,7 @@ error_t sshDecryptPrivateKey(const char_t *input, size_t inputLen,
    error_t error;
    size_t n;
    size_t length;
+   size_t bufferLen;
    uint8_t *p;
    uint8_t *buffer;
    SshPrivateKeyHeader privateKeyHeader;
@@ -74,13 +75,13 @@ error_t sshDecryptPrivateKey(const char_t *input, size_t inputLen,
       return ERROR_INVALID_PARAMETER;
 
    //Retrieve the length of the private key structure
-   error = sshDecodeOpenSshPrivateKeyFile(input, inputLen, NULL, &n);
+   error = sshDecodeOpenSshPrivateKeyFile(input, inputLen, NULL, &bufferLen);
 
    //Check status code
    if(!error)
    {
       //Allocate a memory buffer to hold the private key structure
-      buffer = sshAllocMem(n);
+      buffer = sshAllocMem(bufferLen);
 
       //Successful memory allocation?
       if(buffer != NULL)
@@ -155,6 +156,8 @@ error_t sshDecryptPrivateKey(const char_t *input, size_t inputLen,
                outputLen);
          }
 
+         //Erase the decrypted private key material
+         cryptoZeroizeMem(buffer, bufferLen);
          //Release previously allocated memory
          sshFreeMem(buffer);
       }
@@ -194,67 +197,108 @@ error_t sshDecryptOpenSshPrivateKey(const SshPrivateKeyHeader *privateKeyHeader,
    const char_t *password, const uint8_t *ciphertext, uint8_t *plaintext,
    size_t length)
 {
+   error_t error;
+
+   //Initialize status code
+   error = NO_ERROR;
+
    //Check KDF and cipher algorithms
    if(sshCompareString(&privateKeyHeader->kdfName, "none") &&
       sshCompareString(&privateKeyHeader->cipherName, "none"))
    {
       //The length of the 'encrypted' section must be a multiple of 8
-      if((privateKeyHeader->encrypted.length % 8) != 0)
-         return ERROR_INVALID_SYNTAX;
-
-      //The key is not encrypted
-      osMemmove(plaintext, ciphertext, length);
+      if((length % 8) == 0)
+      {
+         //The key is not encrypted
+         osMemmove(plaintext, ciphertext, length);
+      }
+      else
+      {
+         //Report an error
+         error = ERROR_INVALID_SYNTAX;
+      }
    }
    else if(sshCompareString(&privateKeyHeader->kdfName, "bcrypt") &&
       sshCompareString(&privateKeyHeader->cipherName, "aes256-ctr"))
    {
-#if (SSH_ENCRYPTED_KEY_SUPPORT == ENABLED)
-      error_t error;
-      uint32_t checkInt1;
-      uint32_t checkInt2;
-      size_t passwordLen;
+      size_t n;
       uint8_t k[48];
       SshBcryptKdfOptions kdfOptions;
-      AesContext *aesContext;
-
-      //Sanity check
-      if(privateKeyHeader->encrypted.length < 8)
-         return ERROR_INVALID_SYNTAX;
-
-      //The length of the 'encrypted' section must be a multiple of the
-      //block size
-      if((privateKeyHeader->encrypted.length % AES_BLOCK_SIZE) != 0)
-         return ERROR_DECRYPTION_FAILED;
 
       //Parse KDF options
       error = sshParseBcryptKdfOptions(privateKeyHeader->kdfOptions.value,
          privateKeyHeader->kdfOptions.length, &kdfOptions);
-      //Any error to report?
-      if(error)
-         return error;
 
-      //Retrieve the length of the password
-      passwordLen = osStrlen(password);
+      //Check status code
+      if(!error)
+      {
+         //Retrieve the length of the password
+         n = osStrlen(password);
 
-      //The KDF is used to derive a key, IV from the passphrase
-      error = sshBcryptKdf(password, passwordLen, kdfOptions.salt.value,
-         kdfOptions.salt.length, kdfOptions.rounds, k, 48);
+         //The KDF is used to derive a key, IV from the passphrase
+         error = sshBcryptKdf(password, n, kdfOptions.salt.value,
+            kdfOptions.salt.length, kdfOptions.rounds, k, sizeof(k));
+      }
 
+      //Check status code
+      if(!error)
+      {
+         //Decrypt the private key using AES-256 in CTR mode
+         error = sshDecryptOpenSshPrivateKeyAes256Ctr(k, k + 32, ciphertext,
+            plaintext, length);
+      }
+
+      //Erase the derived key and IV
+      cryptoZeroizeMem(k, sizeof(k));
+   }
+   else
+   {
+      //Unknown KDF or cipher algorithm
+      error = ERROR_DECRYPTION_FAILED;
+   }
+
+   //Return status code
+   return error;
+}
+
+
+/**
+ * @brief Decrypt a private key using AES-256 in CTR mode
+ * @param[in] key 256-bit decryption key
+ * @param[in,out] iv 128-bit initial counter block (updated by the decryption)
+ * @param[in] ciphertext Pointer to the ciphertext data
+ * @param[out] plaintext Pointer to the plaintext data
+ * @param[in] length Total number of data bytes to be decrypted
+ * @return Error code
+ **/
+
+error_t sshDecryptOpenSshPrivateKeyAes256Ctr(const uint8_t *key, uint8_t *iv,
+   const uint8_t *ciphertext, uint8_t *plaintext, size_t length)
+{
+#if (SSH_ENCRYPTED_KEY_SUPPORT == ENABLED)
+   error_t error;
+   uint32_t checkInt1;
+   uint32_t checkInt2;
+   AesContext *aesContext;
+
+   //The length of the 'encrypted' section must be a multiple of the block size
+   if((length % AES_BLOCK_SIZE) == 0 && length != 0)
+   {
       //Allocate a memory buffer to hold the AES context
       aesContext = sshAllocMem(sizeof(AesContext));
 
       //Successful memory allocation?
       if(aesContext != NULL)
       {
-         //Load encryption key
-         error = aesInit(aesContext, k, 32);
+         //Load decryption key
+         error = aesInit(aesContext, key, 32);
 
          //Check status code
          if(!error)
          {
             //Perform CTR decryption
-            error = ctrDecrypt(AES_CIPHER_ALGO, aesContext, 128, k + 32,
-               ciphertext, plaintext, length);
+            error = ctrDecrypt(AES_CIPHER_ALGO, aesContext, 128, iv, ciphertext,
+               plaintext, length);
          }
 
          //Check status code
@@ -283,23 +327,19 @@ error_t sshDecryptOpenSshPrivateKey(const SshPrivateKeyHeader *privateKeyHeader,
          //Report an error
          error = ERROR_OUT_OF_MEMORY;
       }
-
-      //Any error to report?
-      if(error)
-         return error;
-#else
-      //Encrypted private keys are not supported
-      return ERROR_DECRYPTION_FAILED;
-#endif
    }
    else
    {
-      //Unknown KDF or cipher algorithm
-      return ERROR_DECRYPTION_FAILED;
+      //Report an error
+      error = ERROR_DECRYPTION_FAILED;
    }
 
-   //Successful processing
-   return NO_ERROR;
+   //Return status code
+   return error;
+#else
+   //Encrypted private keys are not supported
+   return ERROR_DECRYPTION_FAILED;
+#endif
 }
 
 
@@ -332,6 +372,11 @@ error_t sshParseBcryptKdfOptions(const uint8_t *data, size_t length,
 
    //Decode 'rounds' fields
    kdfOptions->rounds = LOAD32BE(data);
+
+   //The iteration count must be a positive integer. An upper bound is also
+   //enforced to limit the computation time
+   if(kdfOptions->rounds < 1 || kdfOptions->rounds > SSH_MAX_BCRYPT_KDF_ROUNDS)
+      return ERROR_INVALID_PARAMETER;
 
    //Successful processing
    return NO_ERROR;
@@ -444,6 +489,8 @@ error_t sshBcryptKdf(const char *password, size_t passwordLen, const uint8_t *sa
          }
       }
 
+      //Erase SHA-512 context
+      sha512Deinit(sha512Context);
       //Release previously allocated memory
       sshFreeMem(sha512Context);
    }
@@ -453,11 +500,17 @@ error_t sshBcryptKdf(const char *password, size_t passwordLen, const uint8_t *sa
       error = ERROR_OUT_OF_MEMORY;
    }
 
+   //Erase working state
+   cryptoZeroizeMem(u, sizeof(u));
+   cryptoZeroizeMem(t, sizeof(t));
+   cryptoZeroizeMem(saltHash, sizeof(saltHash));
+   cryptoZeroizeMem(passwordHash, sizeof(passwordHash));
+
    //Return status code
    return error;
 #else
    //Encrypted private keys are not supported
-   return ERROR_NOT_IMPLEMENTED;
+   return ERROR_DECRYPTION_FAILED;
 #endif
 }
 
@@ -491,7 +544,7 @@ error_t sshBcryptKdfHash(uint8_t *password, uint8_t *salt, uint8_t *output)
       if(!error)
       {
          //Perform the first key expansion
-         blowfishExpandKey(blowfishContext, salt, SHA512_DIGEST_SIZE,
+         error = blowfishExpandKey(blowfishContext, salt, SHA512_DIGEST_SIZE,
             password, SHA512_DIGEST_SIZE);
       }
 

@@ -901,52 +901,83 @@ error_t sshEncryptSharedSecret(SshConnection *connection,
       //Make sure the length of the RSA modulus is acceptable
       if(kLen >= SSH_MIN_RSA_MODULUS_SIZE && kLen <= SSH_MAX_RSA_MODULUS_SIZE)
       {
-         //Determine the length of the shared secret
-         connection->kLen = (kLen + 7) / 8;
-         connection->kLen -= (2 * connection->hashAlgo->digestSize) + 6;
-
-         //Generate a random integer K
-         error = context->prngAlgo->generate(context->prngContext,
-            connection->k, connection->kLen);
-
-         //Check status code
-         if(!error)
+         //The modulus of K_T must be at least MINKLEN bits long
+         if(sshCompareAlgo(connection->kexAlgo, "rsa1024-sha1"))
          {
-            //The mpint encoding of K requires a leading zero bit and padding
-            //to a whole number of bytes
-            n = (kLen + 7) % 8;
-
-            //Ensure K is in the range 0 <= K < 2^(KLEN-2*HLEN-49)
-            if(n != 0)
+            //The "rsa1024-sha1" method specifies a minimum RSA modulus length
+            //of 1024 bits (refer to RFC 4432, section 5)
+            if(kLen < 1024)
             {
-               connection->k[0] &= (1 << n) - 1;
+               //Report an error
+               error = ERROR_INVALID_KEY;
             }
-
-            //Log shared secret (for debugging purpose only)
-            sshDumpKey(connection, "SHARED_SECRET", connection->k,
-               connection->kLen);
-
-            //Convert the shared secret K to mpint representation
-            error = sshConvertArrayToMpint(connection->k, connection->kLen,
-               connection->k, &connection->kLen);
          }
-
-         //Check status code
-         if(!error)
+         else if(sshCompareAlgo(connection->kexAlgo, "rsa2048-sha256"))
          {
-            //The encryption is performed according to the RSAES-OAEP scheme,
-            //with a mask generation function of MGF1-with-HASH, a hash of
-            //HASH, and an empty label (refer to RFC 4432, section 4)
-            error  = rsaesOaepEncrypt(context->prngAlgo, context->prngContext,
-               &rsaPublicKey, connection->hashAlgo, connection->hashAlgo, NULL,
-               0, connection->k, connection->kLen, encryptedSecret,
-               encryptedSecretLen);
+            //The "rsa2048-sha256" method specifies a minimum RSA modulus length
+            //of 2048 bits (refer to RFC 4432, section 6)
+            if(kLen < 2048)
+            {
+               //Report an error
+               error = ERROR_INVALID_KEY;
+            }
+         }
+         else
+         {
+            //Unknown key exchange algorithm
+            error = ERROR_UNSUPPORTED_KEY_EXCH_ALGO;
          }
       }
       else
       {
          //Report an error
          error = ERROR_INVALID_KEY;
+      }
+   }
+
+   //Check status code
+   if(!error)
+   {
+      //Determine the length of the shared secret
+      connection->kLen = (kLen + 7) / 8;
+      connection->kLen -= (2 * connection->hashAlgo->digestSize) + 6;
+
+      //Generate a random integer K
+      error = context->prngAlgo->generate(context->prngContext,
+         connection->k, connection->kLen);
+
+      //Check status code
+      if(!error)
+      {
+         //The mpint encoding of K requires a leading zero bit and padding to a
+         //whole number of bytes
+         n = (kLen + 7) % 8;
+
+         //Ensure K is in the range 0 <= K < 2^(KLEN-2*HLEN-49)
+         if(n != 0)
+         {
+            connection->k[0] &= (1 << n) - 1;
+         }
+
+         //Log shared secret (for debugging purpose only)
+         sshDumpKey(connection, "SHARED_SECRET", connection->k,
+            connection->kLen);
+
+         //Convert the shared secret K to mpint representation
+         error = sshConvertArrayToMpint(connection->k, connection->kLen,
+            connection->k, &connection->kLen);
+      }
+
+      //Check status code
+      if(!error)
+      {
+         //The encryption is performed according to the RSAES-OAEP scheme, with
+         //a mask generation function of MGF1-with-HASH, a hash of HASH, and an
+         //empty label (refer to RFC 4432, section 4)
+         error = rsaesOaepEncrypt(context->prngAlgo, context->prngContext,
+            &rsaPublicKey, connection->hashAlgo, connection->hashAlgo, NULL, 0,
+            connection->k, connection->kLen, encryptedSecret,
+            encryptedSecretLen);
       }
    }
 

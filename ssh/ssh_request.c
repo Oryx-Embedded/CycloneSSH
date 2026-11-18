@@ -89,8 +89,8 @@ error_t sshSendGlobalRequest(SshConnection *connection,
       }
       else
       {
-         //The recipient will not respond to the request
-         connection->requestState = SSH_REQUEST_STATE_IDLE;
+         //If not, the request state is left untouched so that a reply still
+         //awaited for a previous request is processed normally
       }
    }
 
@@ -217,8 +217,8 @@ error_t sshSendChannelRequest(SshChannel *channel, const char_t *requestType,
       }
       else
       {
-         //The recipient will not respond to the request
-         channel->requestState = SSH_REQUEST_STATE_IDLE;
+         //If not, the request state is left untouched so that a reply still
+         //awaited for a previous request is processed normally
       }
    }
 
@@ -258,13 +258,6 @@ error_t sshSendChannelSuccess(SshChannel *channel)
 
       //Send message
       error = sshSendPacket(connection, message, length);
-   }
-
-   //Check status code
-   if(!error)
-   {
-      //An SSH_MSG_CHANNEL_SUCCESS message has been successfully sent
-      channel->channelSuccessSent = TRUE;
    }
 
    //Return status code
@@ -1353,19 +1346,45 @@ error_t sshParseChannelRequest(SshConnection *connection,
       //Check channel state
       if(channel->state == SSH_CHANNEL_STATE_OPEN && !channel->closeReceived)
       {
-         //Initialize status code
-         error = ERROR_UNKNOWN_REQUEST;
-
-         //Multiple callbacks may be registered
-         for(i = 0; i < SSH_MAX_CHANNEL_REQ_CALLBACKS &&
-            error == ERROR_UNKNOWN_REQUEST; i++)
+         //Only one of the "shell", "exec" and "subsystem" requests can succeed
+         //per channel (refer to RFC 4254, section 6.5)
+         if((sshCompareString(&requestType, "shell") ||
+            sshCompareString(&requestType, "exec") ||
+            sshCompareString(&requestType, "subsystem")) &&
+            channel->serviceStarted)
          {
-            //Valid callback function?
-            if(context->channelReqCallback[i] != NULL)
+            //Reject the request without invoking the callbacks
+            error = ERROR_WRONG_STATE;
+         }
+         else
+         {
+            //Initialize status code
+            error = ERROR_UNKNOWN_REQUEST;
+
+            //Multiple callbacks may be registered
+            for(i = 0; i < SSH_MAX_CHANNEL_REQ_CALLBACKS &&
+               error == ERROR_UNKNOWN_REQUEST; i++)
             {
-               //Process channel request
-               error = context->channelReqCallback[i](channel, &requestType, p,
-                  length, context->channelReqParam[i]);
+               //Valid callback function?
+               if(context->channelReqCallback[i] != NULL)
+               {
+                  //Process channel request
+                  error = context->channelReqCallback[i](channel, &requestType,
+                     p, length, context->channelReqParam[i]);
+               }
+            }
+
+            //Check status code
+            if(!error)
+            {
+               //Check whether a "shell", "exec" or "subsystem" request has
+               //succeeded
+               if(sshCompareString(&requestType, "shell") ||
+                  sshCompareString(&requestType, "exec") ||
+                  sshCompareString(&requestType, "subsystem"))
+               {
+                  channel->serviceStarted = TRUE;
+               }
             }
          }
 

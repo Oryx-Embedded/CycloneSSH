@@ -464,6 +464,20 @@ error_t sshParseIdString(SshConnection *connection, const uint8_t *id,
       length--;
    }
 
+   //Client operation mode?
+   if(connection->context->mode == SSH_OPERATION_MODE_CLIENT)
+   {
+      //The server may send other lines of data before sending the version
+      //string. Such lines must not begin with "SSH-" (refer to RFC 4253,
+      //section 4.2)
+      if(length < 4 || osMemcmp(id, "SSH-", 4) != 0)
+      {
+         //The line is discarded and the client keeps waiting for the server's
+         //version string
+         return NO_ERROR;
+      }
+   }
+
    //Sanity check
    if(length > SSH_MAX_ID_LEN)
       return ERROR_WRONG_IDENTIFIER;
@@ -686,8 +700,9 @@ error_t sshParseIgnore(SshConnection *connection, const uint8_t *message,
    //Strict key exchange?
    if(!connection->newKeysReceived && connection->kexStrictReceived)
    {
-      //During initial KEX, terminate the connection if any unexpected or
-      //out-of-sequence packet is received
+      //When strict KEX is enabled, implementations must terminate the
+      //connection if they receive a non-KEX message during the initial key
+      //exchange
       return ERROR_UNEXPECTED_MESSAGE;
    }
 #endif
@@ -747,8 +762,9 @@ error_t sshParseDebug(SshConnection *connection, const uint8_t *message,
    //Strict key exchange?
    if(!connection->newKeysReceived && connection->kexStrictReceived)
    {
-      //During initial KEX, terminate the connection if any unexpected or
-      //out-of-sequence packet is received
+      //When strict KEX is enabled, implementations must terminate the
+      //connection if they receive a non-KEX message during the initial key
+      //exchange
       return ERROR_UNEXPECTED_MESSAGE;
    }
 #endif
@@ -902,6 +918,17 @@ error_t sshParseUnimplemented(SshConnection *connection, const uint8_t *message,
    TRACE_INFO("SSH_MSG_UNIMPLEMENTED message received (%" PRIuSIZE " bytes)...\r\n", length);
    TRACE_VERBOSE_ARRAY("  ", message, length);
 
+#if (SSH_KEX_STRICT_SUPPORT == ENABLED)
+   //Strict key exchange?
+   if(!connection->newKeysReceived && connection->kexStrictReceived)
+   {
+      //When strict KEX is enabled, implementations must terminate the
+      //connection if they receive a non-KEX message during the initial key
+      //exchange
+      return ERROR_UNEXPECTED_MESSAGE;
+   }
+#endif
+
    //Sanity check
    if(length < sizeof(uint8_t))
       return ERROR_INVALID_MESSAGE;
@@ -942,10 +969,24 @@ error_t sshParseUnrecognized(SshConnection *connection, const uint8_t *message,
    TRACE_INFO("Unrecognized message received (%" PRIuSIZE " bytes)...\r\n", length);
    TRACE_VERBOSE_ARRAY("  ", message, length);
 
-   //An implementation must respond to all unrecognized messages with an
-   //SSH_MSG_UNIMPLEMENTED message in the order in which the messages were
-   //received (refer to RFC 4253, section 11.4)
-   error = sshSendUnimplemented(connection, connection->decryptionEngine.seqNum);
+#if (SSH_KEX_STRICT_SUPPORT == ENABLED)
+   //Strict key exchange?
+   if(!connection->newKeysReceived && connection->kexStrictReceived)
+   {
+      //When strict KEX is enabled, implementations must terminate the
+      //connection if they receive a non-KEX message during the initial key
+      //exchange
+      error = ERROR_UNEXPECTED_MESSAGE;
+   }
+   else
+#endif
+   {
+      //An implementation must respond to all unrecognized messages with an
+      //SSH_MSG_UNIMPLEMENTED message in the order in which the messages were
+      //received (refer to RFC 4253, section 11.4)
+      error = sshSendUnimplemented(connection,
+         connection->decryptionEngine.seqNum);
+   }
 
    //Such messages must be otherwise ignored
    return error;

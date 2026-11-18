@@ -86,6 +86,8 @@ void sshServerGetDefaultSettings(SshServerSettings *settings)
    settings->certAuthCallback = NULL;
    //CA public key verification callback function
    settings->caPublicKeyVerifyCallback = NULL;
+   //Check the validity period of certificates
+   settings->certValidityCheck = TRUE;
 #endif
 
 #if (SSH_PASSWORD_AUTH_SUPPORT == ENABLED)
@@ -231,6 +233,13 @@ error_t sshServerInit(SshServerContext *context,
          if(error)
             break;
       }
+
+      //Enable or disable the validity period check of certificates
+      error = sshEnableCertValidityCheck(&context->sshContext,
+         settings->certValidityCheck);
+      //Any error to report?
+      if(error)
+         break;
 #endif
 
 #if (SSH_PASSWORD_AUTH_SUPPORT == ENABLED)

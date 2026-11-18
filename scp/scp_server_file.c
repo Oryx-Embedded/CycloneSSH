@@ -62,13 +62,26 @@ error_t scpServerOpenFileForWriting(ScpServerSession *session,
    //Point to the SCP server context
    context = session->context;
 
+   //Initialize status code
+   error = NO_ERROR;
+
    //The SCP command line can specify either a file or a directory
    if(fsDirExists(session->path) || session->recursive)
    {
-      //Retrieve the full pathname
-      pathCopy(context->path, session->path, SCP_SERVER_MAX_PATH_LEN);
-      pathCombine(context->path, filename, SCP_SERVER_MAX_PATH_LEN);
-      pathCanonicalize(context->path);
+      //The file name must fit in the buffer
+      if((osStrlen(session->path) + 1 + osStrlen(filename)) <=
+         SCP_SERVER_MAX_PATH_LEN)
+      {
+         //Retrieve the full pathname
+         pathCopy(context->path, session->path, SCP_SERVER_MAX_PATH_LEN);
+         pathCombine(context->path, filename, SCP_SERVER_MAX_PATH_LEN);
+         pathCanonicalize(context->path);
+      }
+      else
+      {
+         //The path name would be truncated
+         error = ERROR_INVALID_PATH;
+      }
    }
    else
    {
@@ -76,36 +89,40 @@ error_t scpServerOpenFileForWriting(ScpServerSession *session,
       pathCopy(context->path, session->path, SCP_SERVER_MAX_PATH_LEN);
    }
 
-   //Retrieve permissions for the specified file
-   perm = scpServerGetFilePermissions(session, context->path);
-
-   //Check access rights
-   if((perm & SCP_FILE_PERM_WRITE) != 0)
+   //Check status code
+   if(!error)
    {
-      //Open the file for writing
-      session->file = fsOpenFile(context->path, FS_FILE_MODE_WRITE |
-         FS_FILE_MODE_CREATE | FS_FILE_MODE_TRUNC);
+      //Retrieve permissions for the specified file
+      perm = scpServerGetFilePermissions(session, context->path);
 
-      //Valid file pointer?
-      if(session->file != NULL)
+      //Check access rights
+      if((perm & SCP_FILE_PERM_WRITE) != 0)
       {
-         //Save the size of the file
-         session->fileSize = size;
-         session->fileOffset = 0;
+         //Open the file for writing
+         session->file = fsOpenFile(context->path, FS_FILE_MODE_WRITE |
+            FS_FILE_MODE_CREATE | FS_FILE_MODE_TRUNC);
 
-         //Successful processing
-         error = NO_ERROR;
+         //Valid file pointer?
+         if(session->file != NULL)
+         {
+            //Save the size of the file
+            session->fileSize = size;
+            session->fileOffset = 0;
+
+            //Successful processing
+            error = NO_ERROR;
+         }
+         else
+         {
+            //Failed to open the file
+            error = ERROR_FILE_NOT_FOUND;
+         }
       }
       else
       {
-         //Failed to open the file
-         error = ERROR_FILE_NOT_FOUND;
+         //Insufficient access rights
+         error = ERROR_ACCESS_DENIED;
       }
-   }
-   else
-   {
-      //Insufficient access rights
-      error = ERROR_ACCESS_DENIED;
    }
 
    //Return status code

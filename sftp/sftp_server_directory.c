@@ -132,7 +132,6 @@ error_t sftpServerOpenDir(SftpServerSession *session,
    const SshString *path, uint32_t *handle)
 {
    error_t error;
-   uint_t i;
    uint_t perm;
    SftpServerContext *context;
    SftpFileObject *fileObject;
@@ -153,21 +152,11 @@ error_t sftpServerOpenDir(SftpServerSession *session,
    if((perm & SFTP_FILE_PERM_READ) == 0)
       return ERROR_ACCESS_DENIED;
 
-   //Loop through file objects
-   for(i = 0; i < context->numFileObjects; i++)
-   {
-      //Point to the current file object
-      fileObject = &context->fileObjects[i];
+   //Allocate a new file object
+   fileObject = sftpServerAllocateFileObject(session);
 
-      //Unused file object?
-      if(fileObject->type == SSH_FILEXFER_TYPE_INVALID)
-      {
-         break;
-      }
-   }
-
-   //Any file object available for use?
-   if(i < context->numFileObjects)
+   //Any file object available for this connection?
+   if(fileObject != NULL)
    {
       //Open the specified directory
       fileObject->dir = fsOpenDir(context->path);
@@ -203,7 +192,8 @@ error_t sftpServerOpenDir(SftpServerSession *session,
    }
    else
    {
-      //The file object table runs out of space
+      //The file object table runs out of space, or the connection has reached
+      //its file object limit
       error = ERROR_OUT_OF_RESOURCES;
    }
 

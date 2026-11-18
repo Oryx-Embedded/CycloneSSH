@@ -84,6 +84,11 @@ error_t sshInit(SshContext *context, SshConnection *connections,
    context->numChannels = numChannels;
    context->channels = channels;
 
+#if (SSH_CERT_SUPPORT == ENABLED)
+   //The validity period of certificates is checked by default
+   context->certValidityCheck = TRUE;
+#endif
+
    //Start of exception handling block
    do
    {
@@ -259,8 +264,37 @@ error_t sshSetPassword(SshContext *context, const char_t *password)
    if(osStrlen(password) > SSH_MAX_PASSWORD_LEN)
       return ERROR_INVALID_LENGTH;
 
-   //Save password
+   //Erase the previous password
+   cryptoZeroizeMem(context->password, SSH_MAX_PASSWORD_LEN);
+   //Save the new password
    osStrcpy(context->password, password);
+
+   //Successful processing
+   return NO_ERROR;
+#else
+   //Not implemented
+   return ERROR_NOT_IMPLEMENTED;
+#endif
+}
+
+
+/**
+ * @brief Enable or disable the validity period check of certificates
+ * @param[in] context Pointer to the SSH context
+ * @param[in] enable Specifies whether the validity period of certificates
+ *   is checked
+ * @return Error code
+ **/
+
+error_t sshEnableCertValidityCheck(SshContext *context, bool_t enable)
+{
+#if (SSH_CERT_SUPPORT == ENABLED)
+   //Make sure the SSH context is valid
+   if(context == NULL)
+      return ERROR_INVALID_PARAMETER;
+
+   //Enable or disable the validity period check
+   context->certValidityCheck = enable;
 
    //Successful processing
    return NO_ERROR;
@@ -1208,7 +1242,7 @@ error_t sshUnloadRsaKey(SshContext *context, uint_t index)
    //Acquire exclusive access to the SSH context
    osAcquireMutex(&context->mutex);
    //Unload the specified transient RSA key
-   osMemset(&context->rsaKeys[index], 0, sizeof(SshRsaKey));
+   cryptoZeroizeMem(&context->rsaKeys[index], sizeof(SshRsaKey));
    //Release exclusive access to the SSH context
    osReleaseMutex(&context->mutex);
 
@@ -1589,13 +1623,6 @@ error_t sshLoadHostKey(SshContext *context, uint_t index,
          osStrcpy(hostKey->password, "");
       }
 
-#if (SSH_CLIENT_SUPPORT == ENABLED)
-      //Select the default public key algorithm to use during user
-      //authentication
-      hostKey->publicKeyAlgo = sshSelectPublicKeyAlgo(context,
-         hostKey->keyFormatId, NULL);
-#endif
-
       //Release exclusive access to the SSH context
       osReleaseMutex(&context->mutex);
    }
@@ -1650,7 +1677,7 @@ error_t sshUnloadHostKey(SshContext *context, uint_t index)
    }
 
    //Unload the specified key pair
-   osMemset(&context->hostKeys[index], 0, sizeof(SshHostKey));
+   cryptoZeroizeMem(&context->hostKeys[index], sizeof(SshHostKey));
 
    //Release exclusive access to the SSH context
    osReleaseMutex(&context->mutex);
@@ -1869,13 +1896,6 @@ error_t sshLoadCertificate(SshContext *context, uint_t index,
          osStrcpy(hostKey->password, "");
       }
 
-#if (SSH_CLIENT_SUPPORT == ENABLED)
-      //Select the default public key algorithm to use during user
-      //authentication
-      hostKey->publicKeyAlgo = sshSelectPublicKeyAlgo(context,
-         hostKey->keyFormatId, NULL);
-#endif
-
       //Release exclusive access to the SSH context
       osReleaseMutex(&context->mutex);
    }
@@ -1935,7 +1955,7 @@ error_t sshUnloadCertificate(SshContext *context, uint_t index)
    }
 
    //Unload the specified certificate
-   osMemset(&context->hostKeys[index], 0, sizeof(SshHostKey));
+   cryptoZeroizeMem(&context->hostKeys[index], sizeof(SshHostKey));
 
    //Release exclusive access to the SSH context
    osReleaseMutex(&context->mutex);
@@ -1988,12 +2008,8 @@ error_t sshSetPasswordChangePrompt(SshConnection *connection,
 
 SshChannel *sshCreateChannel(SshConnection *connection)
 {
-   uint_t i;
    SshContext *context;
    SshChannel *channel;
-
-   //Initialize handle
-   channel = NULL;
 
    //Point to the SSH context
    context = connection->context;
@@ -2001,38 +2017,31 @@ SshChannel *sshCreateChannel(SshConnection *connection)
    //Acquire exclusive access to the SSH context
    osAcquireMutex(&context->mutex);
 
-   //Loop through SSH channels
-   for(i = 0; i < context->numChannels; i++)
+   //Allocate a new SSH channel
+   channel = sshAllocateChannel(connection);
+
+   //Any SSH channel available for this connection?
+   if(channel != NULL)
    {
-      //Unused SSH channel?
-      if(context->channels[i].state == SSH_CHANNEL_STATE_UNUSED)
-      {
-         //Point to the current SSH channel
-         channel = &context->channels[i];
+      //Clear the structure keeping the event field untouched
+      osMemset(channel, 0, offsetof(SshChannel, event));
 
-         //Clear the structure keeping the event field untouched
-         osMemset(channel, 0, offsetof(SshChannel, event));
+      osMemset((uint8_t *) channel + offsetof(SshChannel, event) + sizeof(OsEvent),
+         0, sizeof(SshChannel) - offsetof(SshChannel, event) - sizeof(OsEvent));
 
-         osMemset((uint8_t *) channel + offsetof(SshChannel, event) + sizeof(OsEvent),
-            0, sizeof(SshChannel) - offsetof(SshChannel, event) - sizeof(OsEvent));
+      //Initialize channel's parameters
+      channel->context = context;
+      channel->connection = connection;
+      channel->timeout = INFINITE_DELAY;
+      channel->rxWindowSize = SSH_CHANNEL_BUFFER_SIZE;
+      channel->exitStatus = -1;
 
-         //Initialize channel's parameters
-         channel->context = context;
-         channel->connection = connection;
-         channel->timeout = INFINITE_DELAY;
-         channel->rxWindowSize = SSH_CHANNEL_BUFFER_SIZE;
-         channel->exitStatus = -1;
+      //When the implementation wish to open a new channel, it allocates a
+      //local number for the channel (refer to RFC 4254, section 5.1)
+      channel->localChannelNum = sshAllocateLocalChannelNum(connection);
 
-         //When the implementation wish to open a new channel, it allocates a
-         //local number for the channel (refer to RFC 4254, section 5.1)
-         channel->localChannelNum = sshAllocateLocalChannelNum(connection);
-
-         //The SSH channel has been successfully allocated
-         channel->state = SSH_CHANNEL_STATE_RESERVED;
-
-         //We are done
-         break;
-      }
+      //The SSH channel has been successfully allocated
+      channel->state = SSH_CHANNEL_STATE_RESERVED;
    }
 
    //Release exclusive access to the SSH context
@@ -2663,7 +2672,7 @@ void sshDeinit(SshContext *context)
       connection = &context->connections[i];
 
       //Clear associated structure
-      osMemset(connection, 0, sizeof(SshConnection));
+      cryptoZeroizeMem(connection, sizeof(SshConnection));
    }
 
    //Loop through SSH channels
@@ -2675,11 +2684,11 @@ void sshDeinit(SshContext *context)
       //Release event object
       osDeleteEvent(&channel->event);
       //Clear associated structure
-      osMemset(channel, 0, sizeof(SshChannel));
+      cryptoZeroizeMem(channel, sizeof(SshChannel));
    }
 
    //Clear SSH context
-   osMemset(context, 0, sizeof(SshContext));
+   cryptoZeroizeMem(context, sizeof(SshContext));
 }
 
 #endif

@@ -251,6 +251,58 @@ void scpClientCloseConnection(ScpClientContext *context)
 
 
 /**
+ * @brief Check the remote path passed to the SCP command line
+ * @param[in] path NULL-terminated string specifying the remote path
+ * @return Error code
+ **/
+
+error_t scpClientCheckPath(const char_t *path)
+{
+   size_t i;
+   size_t n;
+   uint8_t c;
+
+   //Retrieve the length of the path
+   n = osStrlen(path);
+
+   //The SCP command line must fit in the buffer, including the terminating
+   //NULL character
+   if(n == 0 || n > (SCP_CLIENT_BUFFER_SIZE - 8))
+      return ERROR_INVALID_LENGTH;
+
+   //A leading dash would be interpreted as an option by the remote scp
+   if(path[0] == '-')
+      return ERROR_INVALID_PATH;
+
+   //Check each character of the path
+   for(i = 0; i < n; i++)
+   {
+      //Get current character
+      c = (uint8_t) path[i];
+
+      //Check current character
+      if((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
+         (c >= '0' && c <= '9') || c >= 0x80 || c == '/' || c == '.' ||
+         c == '_' || c == '-' || c == '+' || c == '=' || c == ':' ||
+         c == ',' || c == '@' || c == '~')
+      {
+         //Letters, digits, non-ASCII bytes and the characters that no shell
+         //interprets are accepted
+      }
+      else
+      {
+         //Whitespace, quotes, shell metacharacters, wildcards and control
+         //characters are rejected
+         return ERROR_INVALID_PATH;
+      }
+   }
+
+   //The path can be safely sent to the server
+   return NO_ERROR;
+}
+
+
+/**
  * @brief Send a SCP directive to the server
  * @param[in] context Pointer to the SCP client context
  * @param[in] directive SCP directive parameters
@@ -526,7 +578,7 @@ error_t scpClientCheckTimeout(ScpClientContext *context)
    time = osGetSystemTime();
 
    //Check whether the timeout has elapsed
-   if(timeCompare(time, context->timestamp + context->timeout) >= 0)
+   if((time - context->timestamp) >= context->timeout)
    {
       //Report a timeout error
       error = ERROR_TIMEOUT;

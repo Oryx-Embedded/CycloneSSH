@@ -113,6 +113,7 @@ error_t sshFormatPublicKeyAuthParams(SshConnection *connection,
    SshHostKey *hostKey;
    SshBinaryString sessionId;
    SshBinaryString tbsData;
+   const char_t *publicKeyAlgo;
 
    //Total number of bytes that have been written
    *written = 0;
@@ -140,12 +141,17 @@ error_t sshFormatPublicKeyAuthParams(SshConnection *connection,
    if(hostKey == NULL)
       return ERROR_INVALID_KEY;
 
+   //Select the public key algorithm to use, depending on the algorithms
+   //accepted by the server
+   publicKeyAlgo = sshSelectPublicKeyAlgo(connection->context,
+      hostKey->keyFormatId, connection->peerSigAlgos);
+
    //Make sure the public key algorithm is valid
-   if(hostKey->publicKeyAlgo == NULL)
+   if(publicKeyAlgo == NULL)
       return ERROR_INVALID_KEY;
 
    //Format public key algorithm name
-   error = sshFormatString(hostKey->publicKeyAlgo, p, &n);
+   error = sshFormatString(publicKeyAlgo, p, &n);
    //Any error to report?
    if(error)
       return error;
@@ -180,8 +186,8 @@ error_t sshFormatPublicKeyAuthParams(SshConnection *connection,
       tbsData.length = messageLen + *written;
 
       //Compute the signature using the private key
-      error = sshGenerateSignature(connection, hostKey->publicKeyAlgo,
-         hostKey, &sessionId, &tbsData, p + sizeof(uint32_t), &n);
+      error = sshGenerateSignature(connection, publicKeyAlgo, hostKey,
+         &sessionId, &tbsData, p + sizeof(uint32_t), &n);
       //Any error to report?
       if(error)
          return error;
@@ -446,6 +452,8 @@ error_t sshParseUserAuthPkOk(SshConnection *connection,
 #if (SSH_CLIENT_SUPPORT == ENABLED)
    error_t error;
    const uint8_t *p;
+   const char_t *selectedAlgo;
+   SshHostKey *hostKey;
    SshString publicKeyAlgo;
    SshBinaryString publicKey;
 
@@ -500,6 +508,21 @@ error_t sshParseUserAuthPkOk(SshConnection *connection,
    //Sanity check
    if(connection->publicKeyOk)
       return ERROR_UNEXPECTED_MESSAGE;
+
+   //Get the currently selected host key
+   hostKey = sshGetHostKey(connection);
+   //Invalid host key?
+   if(hostKey == NULL)
+      return ERROR_UNEXPECTED_MESSAGE;
+
+   //Retrieve the public key algorithm that was used in the request
+   selectedAlgo = sshSelectPublicKeyAlgo(connection->context,
+      hostKey->keyFormatId, connection->peerSigAlgos);
+
+   //The server must respond with the public key algorithm name from the
+   //request (refer to RFC 4252, section 7)
+   if(!sshCompareString(&publicKeyAlgo, selectedAlgo))
+      return ERROR_INVALID_MESSAGE;
 
 #if (SSH_CERT_SUPPORT == ENABLED)
    //Certificate-based authentication?

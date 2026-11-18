@@ -35,6 +35,13 @@
 #include "ssh.h"
 #include "ssh_key_parse.h"
 
+//Maximum number of bcrypt KDF round
+#ifndef SSH_MAX_BCRYPT_KDF_ROUNDS
+   #define SSH_MAX_BCRYPT_KDF_ROUNDS 100
+#elif (SSH_MAX_BCRYPT_KDF_ROUNDS < 1)
+   #error SSH_MAX_BCRYPT_KDF_ROUNDS parameter is not valid
+#endif
+
 //C++ guard
 #ifdef __cplusplus
 extern "C" {
@@ -59,6 +66,9 @@ error_t sshDecryptPrivateKey(const char_t *input, size_t inputLen,
 error_t sshDecryptOpenSshPrivateKey(const SshPrivateKeyHeader *privateKeyHeader,
    const char_t *password, const uint8_t *ciphertext, uint8_t *plaintext,
    size_t length);
+
+error_t sshDecryptOpenSshPrivateKeyAes256Ctr(const uint8_t *key, uint8_t *iv,
+   const uint8_t *ciphertext, uint8_t *plaintext, size_t length);
 
 error_t sshParseBcryptKdfOptions(const uint8_t *data, size_t length,
    SshBcryptKdfOptions *kdfOptions);

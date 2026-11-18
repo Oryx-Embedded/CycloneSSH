@@ -145,7 +145,10 @@ error_t sshParseDsaCertPublicKey(const uint8_t *data, size_t length,
 error_t sshParseEcdsaCertPublicKey(const uint8_t *data, size_t length,
    size_t *consumed, SshEcdsaCertPublicKey *publicKey);
 
-error_t sshParseEddsaCertPublicKey(const uint8_t *data, size_t length,
+error_t sshParseEd25519CertPublicKey(const uint8_t *data, size_t length,
+   size_t *consumed, SshEddsaCertPublicKey *publicKey);
+
+error_t sshParseEd448CertPublicKey(const uint8_t *data, size_t length,
    size_t *consumed, SshEddsaCertPublicKey *publicKey);
 
 error_t sshParseValidPrincipals(const uint8_t *data, size_t length,

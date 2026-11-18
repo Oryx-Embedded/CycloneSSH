@@ -637,7 +637,7 @@ error_t sftpClientCheckTimeout(SftpClientContext *context)
    time = osGetSystemTime();
 
    //Check whether the timeout has elapsed
-   if(timeCompare(time, context->timestamp + context->timeout) >= 0)
+   if((time - context->timestamp) >= context->timeout)
    {
       //Report a timeout error
       error = ERROR_TIMEOUT;

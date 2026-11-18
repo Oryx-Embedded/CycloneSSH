@@ -35,6 +35,7 @@
 #include "ssh/ssh.h"
 #include "ssh/ssh_cert_parse.h"
 #include "ssh/ssh_misc.h"
+#include "ecc/eddsa.h"
 #include "debug.h"
 
 //Check SSH stack configuration
@@ -121,7 +122,7 @@ error_t sshParseCertificate(const uint8_t *data, size_t length,
       sshCompareString(&cert->keyFormatId, "ssh-ed25519-cert-v01@openssh.com"))
    {
       //Parse Ed25519 public key
-      error = sshParseEddsaCertPublicKey(data, length, &n,
+      error = sshParseEd25519CertPublicKey(data, length, &n,
          &cert->publicKey.eddsaPublicKey);
    }
    else
@@ -131,7 +132,7 @@ error_t sshParseCertificate(const uint8_t *data, size_t length,
    if(sshCompareString(&cert->keyFormatId, "ssh-ed448-cert"))
    {
       //Parse Ed448 public key
-      error = sshParseEddsaCertPublicKey(data, length, &n,
+      error = sshParseEd448CertPublicKey(data, length, &n,
          &cert->publicKey.eddsaPublicKey);
    }
    else
@@ -446,7 +447,7 @@ error_t sshParseEcdsaCertPublicKey(const uint8_t *data, size_t length,
 
 
 /**
- * @brief Parse an EdDSA public key
+ * @brief Parse an Ed25519 public key
  * @param[in] data Pointer to the input data to parse
  * @param[in] length Number of bytes available in the input data
  * @param[in] consumed Number of bytes that have been consumed
@@ -454,20 +455,66 @@ error_t sshParseEcdsaCertPublicKey(const uint8_t *data, size_t length,
  * @return Error code
  **/
 
-error_t sshParseEddsaCertPublicKey(const uint8_t *data, size_t length,
+error_t sshParseEd25519CertPublicKey(const uint8_t *data, size_t length,
    size_t *consumed, SshEddsaCertPublicKey *publicKey)
 {
-#if (SSH_ED25519_SIGN_SUPPORT == ENABLED || SSH_ED448_SIGN_SUPPORT == ENABLED)
+#if (SSH_ED25519_SIGN_SUPPORT == ENABLED)
    error_t error;
 
    //Total number of bytes that have been consumed
    *consumed = 0;
 
-   //Parse EdDSA public key value
+   //Parse Ed25519 public key value
    error = sshParseBinaryString(data, length, &publicKey->q);
    //Any error to report?
    if(error)
       return error;
+
+   //The public key shall consist of 32 octets
+   if(publicKey->q.length != ED25519_PUBLIC_KEY_LEN)
+      return ERROR_INVALID_SYNTAX;
+
+   //Point to the next field
+   data += sizeof(uint32_t) + publicKey->q.length;
+   length -= sizeof(uint32_t) + publicKey->q.length;
+   *consumed += sizeof(uint32_t) + publicKey->q.length;
+
+   //Successful processing
+   return NO_ERROR;
+#else
+   //Not implemented
+   return ERROR_NOT_IMPLEMENTED;
+#endif
+}
+
+
+/**
+ * @brief Parse an Ed448 public key
+ * @param[in] data Pointer to the input data to parse
+ * @param[in] length Number of bytes available in the input data
+ * @param[in] consumed Number of bytes that have been consumed
+ * @param[out] publicKey Information resulting from the parsing process
+ * @return Error code
+ **/
+
+error_t sshParseEd448CertPublicKey(const uint8_t *data, size_t length,
+   size_t *consumed, SshEddsaCertPublicKey *publicKey)
+{
+#if (SSH_ED448_SIGN_SUPPORT == ENABLED)
+   error_t error;
+
+   //Total number of bytes that have been consumed
+   *consumed = 0;
+
+   //Parse Ed448 public key value
+   error = sshParseBinaryString(data, length, &publicKey->q);
+   //Any error to report?
+   if(error)
+      return error;
+
+   //The public key shall consist of 32 octets
+   if(publicKey->q.length != ED448_PUBLIC_KEY_LEN)
+      return ERROR_INVALID_SYNTAX;
 
    //Point to the next field
    data += sizeof(uint32_t) + publicKey->q.length;

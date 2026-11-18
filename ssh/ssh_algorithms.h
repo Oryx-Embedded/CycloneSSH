@@ -74,7 +74,9 @@ const char_t *sshSelectCompressionAlgo(SshContext *context,
    const SshNameList *peerAlgoList);
 
 const char_t *sshSelectPublicKeyAlgo(SshContext *context,
-   const char_t *keyFormatId, const SshNameList *peerAlgoList);
+   const char_t *keyFormatId, uint32_t peerAlgos);
+
+uint32_t sshGetPeerPublicKeyAlgos(const SshNameList *peerAlgoList);
 
 const char_t *sshGetKeyFormatId(const SshString *publicKeyAlgo);
 const char_t *sshGetSignFormatId(const SshString *publicKeyAlgo);

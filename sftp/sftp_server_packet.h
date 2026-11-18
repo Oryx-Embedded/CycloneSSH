@@ -88,7 +88,16 @@ error_t sftpServerParseFxpSetFstat(SftpServerSession *session,
 error_t sftpServerParseFxpRename(SftpServerSession *session,
    const uint8_t *packet, size_t length);
 
+error_t sftpServerParseFxpReadLink(SftpServerSession *session,
+   const uint8_t *packet, size_t length);
+
+error_t sftpServerParseFxpSymLink(SftpServerSession *session,
+   const uint8_t *packet, size_t length);
+
 error_t sftpServerParseFxpExtended(SftpServerSession *session,
+   const uint8_t *packet, size_t length);
+
+error_t sftpServerParseUnsupported(SftpServerSession *session,
    const uint8_t *packet, size_t length);
 
 error_t sftpFormatFxpVersion(SftpServerSession *session, uint32_t version);

@@ -241,18 +241,28 @@ error_t sftpServerSetFileStat(SftpServerSession *session,
    //Retrieve the full pathname
    error = sftpServerGetPath(session, path, context->path,
       SFTP_SERVER_MAX_PATH_LEN);
-   //Any error to report?
-   if(error)
-      return error;
 
-   //Retrieve permissions for the specified file
-   perm = sftpServerGetFilePermissions(session, context->path);
-   //Insufficient access rights?
-   if((perm & SFTP_FILE_PERM_WRITE) == 0)
-      return ERROR_ACCESS_DENIED;
+   //Check status code
+   if(!error)
+   {
+      //Retrieve permissions for the specified file
+      perm = sftpServerGetFilePermissions(session, context->path);
 
-   //Modify file attributes
-   return NO_ERROR;
+      //Sufficient access rights?
+      if((perm & SFTP_FILE_PERM_WRITE) != 0)
+      {
+         //Modify file attributes
+         error = NO_ERROR;
+      }
+      else
+      {
+         //Insufficient access rights
+         error = ERROR_ACCESS_DENIED;
+      }
+   }
+
+   //Return status code
+   return error;
 }
 
 
@@ -268,6 +278,7 @@ error_t sftpServerSetFileStatEx(SftpServerSession *session,
    const SshBinaryString *handle, const SftpFileAttrs *attributes)
 {
    error_t error;
+   uint_t perm;
    SftpFileObject *fileObject;
 
    //The SSH_FXP_OPEN request returns a handle which may be used to access
@@ -277,8 +288,20 @@ error_t sftpServerSetFileStatEx(SftpServerSession *session,
    //Valid handle?
    if(fileObject != NULL)
    {
-      //Modify file attributes
-      error = NO_ERROR;
+      //Retrieve permissions for the file referenced by the handle
+      perm = sftpServerGetFilePermissions(session, fileObject->path);
+
+      //Sufficient access rights?
+      if((perm & SFTP_FILE_PERM_WRITE) != 0)
+      {
+         //Modify file attributes
+         error = NO_ERROR;
+      }
+      else
+      {
+         //Insufficient access rights
+         error = ERROR_ACCESS_DENIED;
+      }
    }
    else
    {
@@ -304,13 +327,11 @@ error_t sftpServerRenameFile(SftpServerSession *session,
 {
    error_t error;
    uint_t perm;
-   char_t *path;
    SftpServerContext *context;
+   char_t path[SFTP_SERVER_MAX_PATH_LEN + 1];
 
    //Point to the SFTP server context
    context = session->context;
-   //Point to the scratch buffer
-   path = (char_t *) session->buffer;
 
    //Retrieve the full pathname of the file to be renamed
    error = sftpServerGetPath(session, oldPath, context->path,
@@ -326,8 +347,7 @@ error_t sftpServerRenameFile(SftpServerSession *session,
       return ERROR_ACCESS_DENIED;
 
    //Retrieve the full pathname of the new filename
-   error = sftpServerGetPath(session, newPath, path,
-      SFTP_SERVER_BUFFER_SIZE);
+   error = sftpServerGetPath(session, newPath, path, SFTP_SERVER_MAX_PATH_LEN);
    //Any error to report?
    if(error)
       return error;
@@ -398,7 +418,6 @@ error_t sftpServerOpenFile(SftpServerSession *session, const SshString *path,
    uint32_t pflags, const SftpFileAttrs *attributes, uint32_t *handle)
 {
    error_t error;
-   uint_t i;
    uint_t perm;
    uint_t mode;
    SftpServerContext *context;
@@ -418,13 +437,19 @@ error_t sftpServerOpenFile(SftpServerSession *session, const SshString *path,
    //Retrieve permissions for the specified file
    perm = sftpServerGetFilePermissions(session, context->path);
 
-   //Check if the file is opened for reading or writing
-   if((pflags & SSH_FXF_WRITE) != 0)
+   //Opening a file for writing requires write access. The same applies to
+   //SSH_FXF_CREAT and SSH_FXF_TRUNC, which may create or truncate the file
+   //even if it is not opened for writing
+   if((pflags & (SSH_FXF_WRITE | SSH_FXF_CREAT | SSH_FXF_TRUNC)) != 0)
    {
       //Insufficient access rights?
       if((perm & SFTP_FILE_PERM_WRITE) == 0)
          return ERROR_ACCESS_DENIED;
+   }
 
+   //Check if the file is opened for reading or writing
+   if((pflags & SSH_FXF_WRITE) != 0)
+   {
       //Just for sanity
       fileStat.size = 0;
    }
@@ -445,21 +470,20 @@ error_t sftpServerOpenFile(SftpServerSession *session, const SshString *path,
          return ERROR_FILE_NOT_FOUND;
    }
 
-   //Loop through file objects
-   for(i = 0; i < context->numFileObjects; i++)
+   //The SSH_FXF_EXCL flag causes the request to fail if the named file already
+   //exists (SSH_FXF_CREAT must also be specified if this flag is used)
+   if((pflags & SSH_FXF_CREAT) != 0 && (pflags & SSH_FXF_EXCL) != 0)
    {
-      //Point to the current file object
-      fileObject = &context->fileObjects[i];
-
-      //Unused file object?
-      if(fileObject->type == SSH_FILEXFER_TYPE_INVALID)
-      {
-         break;
-      }
+      //Check whether a file or a directory with the same name already exists
+      if(fsFileExists(context->path) || fsDirExists(context->path))
+         return ERROR_FILE_ALREADY_EXISTS;
    }
 
-   //Any file object available for use?
-   if(i < context->numFileObjects)
+   //Allocate a new file object
+   fileObject = sftpServerAllocateFileObject(session);
+
+   //Any file object available for this connection?
+   if(fileObject != NULL)
    {
       //The 'pflags' field is a bitmask that specifies the desired access mode
       if((pflags & SSH_FXF_WRITE) != 0)
@@ -537,7 +561,8 @@ error_t sftpServerOpenFile(SftpServerSession *session, const SshString *path,
    }
    else
    {
-      //The file object table runs out of space
+      //The file object table runs out of space, or the connection has reached
+      //its file object limit
       error = ERROR_OUT_OF_RESOURCES;
    }
 

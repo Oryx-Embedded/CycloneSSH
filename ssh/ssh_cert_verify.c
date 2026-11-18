@@ -84,6 +84,11 @@ error_t sshVerifyClientCertificate(SshConnection *connection,
    if(cert.type != SSH_CERT_TYPE_USER)
       return ERROR_BAD_CERTIFICATE;
 
+   //A zero-length 'valid principals' field would make the certificate valid
+   //for any user. Such user certificates are rejected
+   if(cert.validPrincipals.length == 0)
+      return ERROR_BAD_CERTIFICATE;
+
    //Check whether the certificate is valid for the current user name
    error = sshVerifyPrincipal(&cert, connection->user);
    //Any error to report?
@@ -91,7 +96,7 @@ error_t sshVerifyClientCertificate(SshConnection *connection,
       return error;
 
    //Check the validity period of the certificate
-   error = sshVerifyValidity(&cert);
+   error = sshVerifyValidity(context, &cert);
    //Any error to report?
    if(error)
       return error;
@@ -184,7 +189,7 @@ error_t sshVerifyServerCertificate(SshConnection *connection,
       return ERROR_BAD_CERTIFICATE;
 
    //Check the validity period of the certificate
-   error = sshVerifyValidity(&cert);
+   error = sshVerifyValidity(context, &cert);
    //Any error to report?
    if(error)
       return error;
@@ -285,30 +290,44 @@ error_t sshVerifyPrincipal(const SshCertificate *cert, const char_t *name)
 
 /**
  * @brief Verify validity period
+ * @param[in] context Pointer to the SSH context
  * @param[in] cert Pointer to the SSH certificate
  * @return Error code
  **/
 
-error_t sshVerifyValidity(const SshCertificate *cert)
+error_t sshVerifyValidity(SshContext *context, const SshCertificate *cert)
 {
    error_t error;
    uint64_t currentTime;
 
-   //Initialize status code
-   error = NO_ERROR;
-
-   //Retrieve current time
-   currentTime = getCurrentUnixTime();
-
-   //Any real-time clock implemented?
-   if(currentTime != 0)
+   //Check whether the validity period of certificates must be checked
+   if(context->certValidityCheck)
    {
+      //Retrieve current time
+      currentTime = getCurrentUnixTime();
+
       //Check the validity period
-      if(currentTime < cert->validAfter || currentTime > cert->validBefore)
+      if(currentTime < cert->validAfter || currentTime >= cert->validBefore)
       {
          //The certificate has expired or is not yet valid
-         return ERROR_CERTIFICATE_EXPIRED;
+         error = ERROR_CERTIFICATE_EXPIRED;
       }
+      else if(currentTime == 0 && cert->validBefore != UINT64_MAX)
+      {
+         //Without a real-time clock, only certificates that never expire can
+         //be accepted
+         error = ERROR_CERTIFICATE_EXPIRED;
+      }
+      else
+      {
+         //The certificate is within its validity period
+         error = NO_ERROR;
+      }
+   }
+   else
+   {
+      //The validity period check has been disabled by the application
+      error = NO_ERROR;
    }
 
    //Return status code
@@ -433,10 +452,24 @@ error_t sshVerifySrcAddrOption(SshConnection *connection,
                   if(error)
                      break;
 
+                  //The prefix length must consist of 1 to 3 decimal digits
+                  if(!osIsdigit(p[1]) || osStrlen(p + 1) > 3)
+                  {
+                     error = ERROR_INVALID_SYNTAX;
+                     break;
+                  }
+
                   //Convert the CIDR prefix length
                   prefixLen = osStrtoul(p + 1, &p, 10);
                   //Malformed CIDR representation?
                   if(*p != '\0')
+                  {
+                     error = ERROR_INVALID_SYNTAX;
+                     break;
+                  }
+
+                  //The prefix length cannot exceed the length of the address
+                  if(prefixLen > (ipAddr.length * 8))
                   {
                      error = ERROR_INVALID_SYNTAX;
                      break;

@@ -97,7 +97,7 @@ error_t shellServerChannelRequestCallback(SshChannel *channel,
          session = shellServerFindSession(context, channel);
 
          //If no matching session exists, a new session is started
-         if(session == NULL)
+         if(session == NULL && !channel->owned)
          {
             //Allocate a new session
             session = shellServerOpenSession(context, channel);
@@ -148,7 +148,7 @@ error_t shellServerChannelRequestCallback(SshChannel *channel,
          session = shellServerFindSession(context, channel);
 
          //If no matching session exists, a new session is started
-         if(session == NULL)
+         if(session == NULL && !channel->owned)
          {
             //Allocate a new session
             session = shellServerOpenSession(context, channel);
@@ -182,8 +182,8 @@ error_t shellServerChannelRequestCallback(SshChannel *channel,
                }
                else
                {
-                  //Access denied
-                  shellServerCloseSession(session);
+                  //Access is denied
+                  error = ERROR_ACCESS_DENIED;
                }
             }
             else
@@ -233,7 +233,7 @@ error_t shellServerChannelRequestCallback(SshChannel *channel,
                session = shellServerFindSession(context, channel);
 
                //If no matching session exists, a new session is started
-               if(session == NULL)
+               if(session == NULL && !channel->owned)
                {
                   //Allocate a new session
                   session = shellServerOpenSession(context, channel);
@@ -260,9 +260,6 @@ error_t shellServerChannelRequestCallback(SshChannel *channel,
                      //Check if user is granted access to the shell
                      if(status == SHELL_ACCESS_ALLOWED)
                      {
-                        //Set initial session state
-                        session->state = SHELL_SERVER_SESSION_STATE_EXEC;
-
                         //Copy command string
                         osMemcpy(session->buffer, requestParams.command.value,
                            requestParams.command.length);
@@ -272,13 +269,15 @@ error_t shellServerChannelRequestCallback(SshChannel *channel,
                         //Save the length of the command
                         session->bufferLen = requestParams.command.length;
 
+                        //Set initial session state
+                        session->state = SHELL_SERVER_SESSION_STATE_EXEC;
                         //Start the execution of the given command
                         osSetEvent(&session->startEvent);
                      }
                      else
                      {
-                        //Access denied
-                        shellServerCloseSession(session);
+                        //Access is denied
+                        error = ERROR_ACCESS_DENIED;
                      }
                   }
                   else
@@ -434,22 +433,6 @@ ShellServerSession *shellServerOpenSession(ShellServerContext *context,
       }
    }
 
-   //Reuse orphan sessions in INIT state, if necessary
-   if(session == NULL)
-   {
-      //Loop through shell sessions
-      for(i = 0; i < context->numSessions; i++)
-      {
-         //Check whether the current session can be reused
-         if(context->sessions[i].state == SHELL_SERVER_SESSION_STATE_INIT)
-         {
-            //Point to the current session
-            session = &context->sessions[i];
-            break;
-         }
-      }
-   }
-
    //Valid session?
    if(session != NULL)
    {
@@ -485,6 +468,14 @@ ShellServerSession *shellServerOpenSession(ShellServerContext *context,
 
       //Set initial session state
       session->state = SHELL_SERVER_SESSION_STATE_INIT;
+
+      //The channel is now owned by the shell session, so the SSH layer must
+      //not release it before the session closes it
+      channel->owned = TRUE;
+
+      //Wake up the shell task, which monitors the channel until a "shell" or
+      //"exec" request is received
+      osSetEvent(&session->startEvent);
    }
 
    //Return a pointer to the newly created shell session, if any
@@ -661,6 +652,9 @@ void shellServerAddCommandLine(ShellServerSession *session,
 
             //Adjust the length of the command history buffer
             session->historyLen -= i - j;
+
+            //The next entry has been moved to the position of the removed one
+            i = j;
          }
          else
          {

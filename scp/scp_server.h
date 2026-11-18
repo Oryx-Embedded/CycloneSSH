@@ -71,8 +71,8 @@
 
 //Size of buffer used for input/output operations
 #ifndef SCP_SERVER_BUFFER_SIZE
-   #define SCP_SERVER_BUFFER_SIZE 512
-#elif (SCP_SERVER_BUFFER_SIZE < 128)
+   #define SCP_SERVER_BUFFER_SIZE 1024
+#elif (SCP_SERVER_BUFFER_SIZE < 512)
    #error SCP_SERVER_BUFFER_SIZE parameter is not valid
 #endif
 

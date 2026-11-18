@@ -194,6 +194,9 @@ error_t sshSendUserAuthSuccess(SshConnection *connection)
    //Check status code
    if(!error)
    {
+      //User authentication is complete
+      connection->authenticated = TRUE;
+
       //Either party may later initiate a key re-exchange by sending a
       //SSH_MSG_KEXINIT message
       connection->kexInitSent = FALSE;
@@ -765,6 +768,10 @@ error_t sshParseUserAuthRequest(SshConnection *connection,
    if(error)
       return error;
 
+   //The user name must not contain any NULL character
+   if(osMemchr(userName.value, '\0', userName.length) != NULL)
+      return ERROR_INVALID_MESSAGE;
+
    //Point to the next field
    p += sizeof(uint32_t) + userName.length;
    length -= sizeof(uint32_t) + userName.length;
@@ -879,7 +886,7 @@ error_t sshParseNoneAuthParams(SshConnection *connection,
 
 #if (SSH_PASSWORD_AUTH_SUPPORT == ENABLED)
       //The server must always reject this request, unless the client is to be
-      //granted access without any authentication (refer to RFC 4552, section 4)
+      //granted access without any authentication (refer to RFC 4252, section 4)
       if(context->passwordAuthCallback != NULL)
       {
          //Manage authentication policy
@@ -949,6 +956,9 @@ error_t sshParseUserAuthSuccess(SshConnection *connection,
    //Malformed message?
    if(length != sizeof(uint8_t))
       return ERROR_INVALID_MESSAGE;
+
+   //User authentication is complete
+   connection->authenticated = TRUE;
 
    //Either party may later initiate a key re-exchange by sending a
    //SSH_MSG_KEXINIT message
